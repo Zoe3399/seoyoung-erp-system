@@ -1,0 +1,2291 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="./public/favicon.svg" type="image/svg+xml" />
+    <title>경남차유리 업무관리</title>
+    <style>
+      :root {
+        color: #191f28;
+        background: #ffffff;
+        font-family:
+          "Pretendard Variable", "Pretendard", "Noto Sans KR", system-ui, -apple-system,
+          BlinkMacSystemFont, "Segoe UI", sans-serif;
+        letter-spacing: 0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #ffffff;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button {
+        border: 0;
+        cursor: pointer;
+      }
+
+      h1,
+      h2,
+      p {
+        margin: 0;
+      }
+
+      .is-hidden {
+        display: none !important;
+      }
+
+      .login-page {
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+        padding: 40px 20px;
+        background: #fbfbfc;
+      }
+
+      .login-form {
+        display: grid;
+        width: min(420px, 100%);
+        transform: translateY(-5vh);
+      }
+
+      .login-brand {
+        display: grid;
+        justify-items: center;
+        margin-bottom: 30px;
+        text-align: center;
+      }
+
+      .login-fields {
+        display: grid;
+        gap: 12px;
+      }
+
+      .login-fields input {
+        width: 100%;
+        height: 56px;
+        padding: 0 20px;
+        border: 1px solid #d1d6db;
+        border-radius: 12px;
+        background: #ffffff;
+        color: #191f28;
+        font-size: 16px;
+      }
+
+      .login-fields input::placeholder {
+        color: #a3aab5;
+      }
+
+      .login-fields input:focus {
+        border-color: #3182f6;
+        outline: 0;
+        box-shadow: 0 0 0 3px rgb(49 130 246 / 12%);
+      }
+
+      .login-options {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 10px 28px;
+        margin-top: 14px;
+      }
+
+      .login-option {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 32px;
+        color: #4e5968;
+        font-size: 14px;
+        font-weight: 800;
+        user-select: none;
+        cursor: pointer;
+      }
+
+      .login-option input {
+        width: 18px;
+        height: 18px;
+        margin: 0;
+        accent-color: #3182f6;
+        cursor: pointer;
+      }
+
+      .login-test-account {
+        margin-top: 12px;
+        color: #6b7684;
+        text-align: center;
+        font-size: 13px;
+      }
+
+      .login-error {
+        margin-top: 10px;
+        color: #e42939;
+        text-align: center;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .login-button {
+        width: 100%;
+        height: 64px;
+        margin-top: 24px;
+        border-radius: 8px;
+        background: #3182f6;
+        color: #ffffff;
+        font-size: 17px;
+        font-weight: 800;
+      }
+
+      .login-button:disabled {
+        background: #a8aabd;
+        color: #eceef4;
+        cursor: default;
+      }
+
+      .login-links {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        margin-top: 18px;
+      }
+
+      .login-links button {
+        background: transparent;
+        color: #6b7684;
+        font-size: 14px;
+      }
+
+      .login-links span {
+        width: 1px;
+        height: 14px;
+        background: #d1d6db;
+      }
+
+      .brand-identity {
+        display: flex;
+        align-items: center;
+        min-width: 0;
+      }
+
+      .brand-identity-logo {
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+      }
+
+      .brand-identity-logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+
+      .brand-identity-text {
+        display: grid;
+        min-width: 0;
+      }
+
+      .brand-identity strong,
+      .brand-identity small {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .brand-identity strong {
+        color: #191f28;
+        font-weight: 900;
+      }
+
+      .brand-identity small {
+        color: #3182f6;
+        font-weight: 900;
+      }
+
+      .brand-identity-header {
+        gap: 8px;
+      }
+
+      .brand-identity-header .brand-identity-logo {
+        width: 32px;
+        height: 26px;
+      }
+
+      .brand-identity-header strong {
+        font-size: 15px;
+      }
+
+      .brand-identity-login {
+        display: grid;
+        justify-items: center;
+        gap: 32px;
+        text-align: center;
+      }
+
+      .brand-identity-login .brand-identity-logo {
+        width: 132px;
+        height: 82px;
+      }
+
+      .brand-identity-login .brand-identity-text {
+        justify-items: center;
+      }
+
+      .brand-identity-login strong {
+        font-size: 42px;
+        line-height: 1;
+      }
+
+      .brand-identity-login small {
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: 220px minmax(0, 1fr);
+        grid-template-rows: 48px minmax(0, 1fr);
+        min-height: 100vh;
+        background: #ffffff;
+      }
+
+      .app-header {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: 220px minmax(0, 1fr) auto;
+        align-items: center;
+        height: 48px;
+        border-bottom: 1px solid #edf0f2;
+        background: #ffffff;
+      }
+
+      .app-header-brand {
+        display: flex;
+        align-items: center;
+        height: 100%;
+        padding: 0 16px;
+        background: transparent;
+        color: #191f28;
+        text-align: left;
+        font-size: 15px;
+        font-weight: 900;
+      }
+
+      .app-top-nav {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        height: 100%;
+      }
+
+      .app-top-nav button {
+        height: 100%;
+        padding: 0 12px;
+        border-bottom: 2px solid transparent;
+        background: transparent;
+        color: #4e5968;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .app-top-nav button.active,
+      .app-top-nav button:hover {
+        border-color: #191f28;
+        color: #191f28;
+      }
+
+      .app-header-actions {
+        display: flex;
+        gap: 6px;
+        padding: 0 16px;
+      }
+
+      .app-header-actions button {
+        height: 30px;
+        padding: 0 10px;
+        border: 1px solid #e5e8eb;
+        border-radius: 999px;
+        background: #ffffff;
+        color: #4e5968;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .sidebar {
+        position: sticky;
+        top: 48px;
+        grid-row: 2;
+        height: calc(100vh - 48px);
+        padding: 16px 12px;
+        border-right: 1px solid #e5e8eb;
+        background: #ffffff;
+      }
+
+      .nav {
+        display: grid;
+        gap: 4px;
+      }
+
+      .nav button {
+        display: grid;
+        grid-template-columns: 24px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        min-height: 42px;
+        padding: 0 10px;
+        border-radius: 8px;
+        background: transparent;
+        color: #6b7684;
+        text-align: left;
+      }
+
+      .nav button.active,
+      .nav button:hover {
+        background: #eef6ff;
+        color: #1b64da;
+        font-weight: 700;
+      }
+
+      .nav .count {
+        min-width: 22px;
+        padding: 4px 7px;
+        border-radius: 999px;
+        background: #e5e8eb;
+        color: #4e5968;
+        font-size: 12px;
+        text-align: center;
+      }
+
+      .workspace {
+        grid-row: 2;
+        min-width: 0;
+        padding: 18px 28px 40px;
+        background: #ffffff;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #edf0f2;
+      }
+
+      .date {
+        margin-bottom: 4px;
+        color: #8b95a1;
+        font-size: 13px;
+      }
+
+      h1 {
+        font-size: 28px;
+        line-height: 1.2;
+      }
+
+      h2 {
+        font-size: 17px;
+      }
+
+      .topbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .search {
+        display: flex;
+        align-items: center;
+        width: 430px;
+        height: 44px;
+        padding: 0 14px;
+        border: 1px solid #e5e8eb;
+        border-radius: 8px;
+        background: #ffffff;
+      }
+
+      .search input {
+        width: 100%;
+        border: 0;
+        outline: 0;
+        color: #191f28;
+      }
+
+      .primary,
+      .secondary,
+      .mini {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        min-height: 36px;
+        border-radius: 8px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .primary {
+        padding: 0 14px;
+        background: #3182f6;
+        color: #ffffff;
+      }
+
+      .secondary,
+      .mini {
+        padding: 0 12px;
+        background: #f2f4f6;
+        color: #333d4b;
+      }
+
+      .mini {
+        min-height: 30px;
+        color: #1b64da;
+        background: #eef6ff;
+        font-size: 12px;
+      }
+
+      .page {
+        display: none;
+      }
+
+      .page.active {
+        display: grid;
+        gap: 16px;
+      }
+
+      .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .kpi,
+      .panel {
+        border: 1px solid #e5e8eb;
+        border-radius: 6px;
+        background: #ffffff;
+      }
+
+      .kpi {
+        min-height: 108px;
+        padding: 14px;
+      }
+
+      .kpi .icon {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        margin-bottom: 10px;
+        border-radius: 8px;
+      }
+
+      .blue .icon {
+        color: #1b64da;
+        background: #eef6ff;
+      }
+
+      .orange .icon {
+        color: #b25e09;
+        background: #fff4e5;
+      }
+
+      .purple .icon {
+        color: #6b3fd1;
+        background: #f3edff;
+      }
+
+      .red .icon {
+        color: #e42939;
+        background: #fff0f0;
+      }
+
+      .yellow .icon {
+        color: #9a6b00;
+        background: #fff8d6;
+      }
+
+      .kpi span,
+      .kpi small {
+        display: block;
+        color: #8b95a1;
+        font-size: 13px;
+      }
+
+      .kpi strong {
+        display: block;
+        margin: 5px 0 2px;
+        font-size: 23px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .span-4 {
+        grid-column: span 4;
+      }
+
+      .span-5 {
+        grid-column: span 5;
+      }
+
+      .span-6 {
+        grid-column: span 6;
+      }
+
+      .span-7 {
+        grid-column: span 7;
+      }
+
+      .span-8 {
+        grid-column: span 8;
+      }
+
+      .span-12 {
+        grid-column: span 12;
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 50px;
+        padding: 0 16px;
+        border-bottom: 1px solid #edf0f2;
+      }
+
+      .panel-body {
+        padding: 14px 16px 16px;
+      }
+
+      .timeline {
+        display: grid;
+      }
+
+      .timeline-row {
+        display: grid;
+        grid-template-columns: 64px minmax(0, 1fr);
+        gap: 12px;
+        padding: 14px 0;
+        border-bottom: 1px solid #edf0f2;
+      }
+
+      .timeline-row:last-child {
+        border-bottom: 0;
+      }
+
+      .timeline-row time {
+        color: #3182f6;
+        font-weight: 800;
+      }
+
+      .row-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .timeline-row p,
+      .customer-card p {
+        margin-top: 4px;
+        color: #6b7684;
+        font-size: 14px;
+      }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+        margin-top: 10px;
+        color: #6b7684;
+        font-size: 13px;
+      }
+
+      .calendar-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+
+      .calendar-toolbar strong {
+        display: block;
+      }
+
+      .calendar-toolbar strong {
+        font-size: 18px;
+      }
+
+      .calendar-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+
+      .calendar-summary span {
+        display: inline-flex;
+        align-items: center;
+        min-height: 26px;
+        padding: 0 9px;
+        border-radius: 999px;
+        background: #f2f4f6;
+        color: #6b7684;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .work-calendar-panel .panel-body {
+        padding: 16px;
+      }
+
+      .calendar-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .calendar-register-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .work-list-filter {
+        display: inline-grid;
+        grid-template-columns: repeat(3, 42px);
+        height: 30px;
+        padding: 3px;
+        border-radius: 8px;
+        background: #f2f4f6;
+      }
+
+      .work-list-filter button {
+        border-radius: 6px;
+        background: transparent;
+        color: #6b7684;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .work-list-filter .selected {
+        background: #ffffff;
+        color: #191f28;
+        box-shadow: 0 1px 2px rgb(25 31 40 / 12%);
+      }
+
+      .daily-work-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .daily-work-item {
+        display: grid;
+        grid-template-columns: 52px minmax(0, 1fr);
+        gap: 10px;
+        padding: 12px;
+        border: 1px solid #edf0f2;
+        border-radius: 8px;
+        background: #ffffff;
+      }
+
+      .daily-work-item:hover {
+        border-color: #c9dcff;
+        background: #fbfdff;
+      }
+
+      .daily-work-item.todo {
+        border-color: #e8f3ec;
+        background: #fbfffc;
+      }
+
+      .daily-work-item time {
+        color: #3182f6;
+        font-weight: 900;
+      }
+
+      .daily-work-item.todo time {
+        color: #00a661;
+      }
+
+      .daily-work-item p {
+        margin-top: 4px;
+        color: #4e5968;
+        font-size: 13px;
+      }
+
+      .work-item-actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 10px;
+      }
+
+      .work-item-actions button {
+        height: 30px;
+        padding: 0 10px;
+        border-radius: 6px;
+        background: #f2f4f6;
+        color: #4e5968;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .work-item-actions button:last-child {
+        background: #eef6ff;
+        color: #1b64da;
+      }
+
+      .calendar-view-tabs {
+        display: inline-grid;
+        grid-template-columns: repeat(4, 42px);
+        height: 34px;
+        padding: 3px;
+        border-radius: 8px;
+        background: #f2f4f6;
+      }
+
+      .calendar-view-tabs button {
+        border-radius: 6px;
+        background: transparent;
+        color: #6b7684;
+        font-weight: 800;
+      }
+
+      .calendar-view-tabs button.active {
+        background: #ffffff;
+        color: #191f28;
+        box-shadow: 0 1px 2px rgb(25 31 40 / 12%);
+      }
+
+      .calendar-day-view {
+        display: grid;
+        border-top: 1px solid #edf0f2;
+      }
+
+      .calendar-time-row {
+        display: grid;
+        grid-template-columns: 72px minmax(0, 1fr);
+        min-height: 64px;
+        border-bottom: 1px solid #edf0f2;
+      }
+
+      .calendar-time-row time {
+        padding-top: 14px;
+        color: #8b95a1;
+        font-weight: 800;
+      }
+
+      .calendar-time-cell {
+        display: grid;
+        align-content: start;
+        gap: 8px;
+        padding: 8px 0;
+        border-left: 1px solid #edf0f2;
+      }
+
+      .calendar-time-row.has-job .calendar-time-cell {
+        padding-left: 10px;
+      }
+
+      .calendar-week-view {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(120px, 1fr));
+        min-height: 420px;
+        overflow-x: auto;
+        border: 1px solid #edf0f2;
+        border-radius: 8px;
+      }
+
+      .calendar-day-column {
+        display: grid;
+        grid-template-rows: 54px minmax(0, 1fr);
+        min-width: 120px;
+        border-right: 1px solid #edf0f2;
+        background: #ffffff;
+      }
+
+      .calendar-day-column:last-child {
+        border-right: 0;
+      }
+
+      .calendar-day-column header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 10px;
+        border-bottom: 1px solid #edf0f2;
+      }
+
+      .calendar-day-column header span {
+        color: #6b7684;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .calendar-day-column header strong {
+        font-size: 18px;
+      }
+
+      .calendar-day-jobs {
+        display: grid;
+        align-content: start;
+        gap: 8px;
+        padding: 10px;
+      }
+
+      .calendar-empty {
+        color: #adb5bd;
+        font-size: 13px;
+      }
+
+      .calendar-month-view {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(92px, 1fr));
+        overflow-x: auto;
+        border: 1px solid #edf0f2;
+        border-radius: 8px;
+      }
+
+      .calendar-weekday {
+        padding: 10px;
+        border-right: 1px solid #edf0f2;
+        border-bottom: 1px solid #edf0f2;
+        background: #f7f8fa;
+        color: #6b7684;
+        font-size: 13px;
+        font-weight: 800;
+        text-align: center;
+      }
+
+      .calendar-month-cell {
+        display: grid;
+        align-content: start;
+        gap: 6px;
+        min-height: 104px;
+        padding: 8px;
+        border-right: 1px solid #edf0f2;
+        border-bottom: 1px solid #edf0f2;
+        background: #ffffff;
+      }
+
+      .calendar-month-cell.today {
+        background: #f6faff;
+      }
+
+      .calendar-month-cell.today time {
+        display: grid;
+        place-items: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 999px;
+        background: #3182f6;
+        color: #ffffff;
+      }
+
+      .calendar-more {
+        color: #3182f6;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .calendar-year-view {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .calendar-year-view article {
+        display: grid;
+        gap: 6px;
+        min-height: 112px;
+        padding: 14px;
+        border: 1px solid #e5e8eb;
+        border-radius: 8px;
+        background: #ffffff;
+      }
+
+      .calendar-year-view article.selected {
+        border-color: #3182f6;
+        background: #eef6ff;
+      }
+
+      .calendar-job {
+        min-width: 0;
+        padding: 12px;
+        border: 0;
+        border-left: 3px solid #3182f6;
+        border-radius: 8px;
+        background: #f6faff;
+      }
+
+      .calendar-job.todo {
+        border-left-color: #00a661;
+        background: #f6fdf9;
+      }
+
+      .calendar-job.compact {
+        padding: 9px;
+      }
+
+      .calendar-job.mini {
+        padding: 6px 7px;
+        border-radius: 6px;
+      }
+
+      .calendar-job p {
+        margin-top: 5px;
+        color: #4e5968;
+        font-size: 14px;
+      }
+
+      .calendar-job.mini strong {
+        font-size: 12px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 54px;
+        min-height: 26px;
+        padding: 0 9px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .pill.blue {
+        color: #1b64da;
+        background: #eef6ff;
+      }
+
+      .pill.green {
+        color: #11844f;
+        background: #e9f8f0;
+      }
+
+      .pill.orange {
+        color: #b25e09;
+        background: #fff4e5;
+      }
+
+      .pill.red {
+        color: #e42939;
+        background: #fff0f0;
+      }
+
+      .pill.purple {
+        color: #6b3fd1;
+        background: #f3edff;
+      }
+
+      .pill.gray {
+        color: #6b7684;
+        background: #f2f4f6;
+      }
+
+      .priority {
+        display: grid;
+        gap: 10px;
+      }
+
+      .priority-item {
+        display: grid;
+        gap: 4px;
+        padding: 12px;
+        border-radius: 8px;
+        background: #f7f8fa;
+      }
+
+      .priority-item span {
+        color: #8b95a1;
+        font-size: 13px;
+      }
+
+      .filters {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+
+      .field span {
+        color: #8b95a1;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .field input {
+        height: 40px;
+        padding: 0 11px;
+        border: 1px solid #e5e8eb;
+        border-radius: 8px;
+        outline: 0;
+      }
+
+      table {
+        width: 100%;
+        min-width: 760px;
+        border-collapse: collapse;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+      }
+
+      th,
+      td {
+        padding: 13px 10px;
+        border-bottom: 1px solid #edf0f2;
+        text-align: left;
+        vertical-align: middle;
+      }
+
+      th {
+        color: #8b95a1;
+        font-size: 12px;
+      }
+
+      td {
+        color: #333d4b;
+        font-size: 14px;
+        line-height: 1.45;
+        white-space: pre-line;
+      }
+
+      .customer-layout {
+        display: grid;
+        grid-template-columns: 320px minmax(0, 1fr);
+        gap: 16px;
+      }
+
+      .customer-list {
+        display: grid;
+        gap: 4px;
+      }
+
+      .customer-list button {
+        display: grid;
+        gap: 4px;
+        width: 100%;
+        padding: 13px;
+        border-radius: 8px;
+        background: transparent;
+        text-align: left;
+      }
+
+      .customer-list button.active,
+      .customer-list button:hover {
+        background: #eef6ff;
+      }
+
+      .customer-list span,
+      .customer-list small {
+        color: #8b95a1;
+        font-size: 13px;
+      }
+
+      .customer-list-header {
+        display: grid;
+        grid-template-columns: minmax(280px, 1fr) auto auto;
+        gap: 10px;
+        align-items: end;
+        margin-bottom: 14px;
+      }
+
+      .filter-chips {
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .filter-chips button {
+        height: 38px;
+        padding: 0 13px;
+        border: 1px solid #e5e8eb;
+        border-radius: 999px;
+        background: #ffffff;
+        color: #4e5968;
+        font-weight: 800;
+      }
+
+      .filter-chips button.active,
+      .filter-chips button:hover {
+        border-color: #3182f6;
+        background: #eef6ff;
+        color: #1b64da;
+      }
+
+      .list-count {
+        color: #6b7684;
+        font-size: 13px;
+        font-weight: 800;
+        text-align: right;
+      }
+
+      .customer-name-button {
+        display: grid;
+        gap: 3px;
+        max-width: 260px;
+        color: #191f28;
+        text-align: left;
+      }
+
+      .customer-name-button strong,
+      .customer-name-button span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .customer-name-button strong {
+        color: #1b64da;
+      }
+
+      .customer-name-button span {
+        color: #6b7684;
+        font-size: 12px;
+      }
+
+      .empty-state {
+        display: grid;
+        place-items: center;
+        min-height: 180px;
+        border: 1px dashed #d1d6db;
+        border-radius: 8px;
+        color: #6b7684;
+      }
+
+      .customer-card {
+        display: grid;
+        grid-template-columns: 54px minmax(0, 1fr);
+        gap: 14px;
+      }
+
+      .avatar {
+        display: grid;
+        place-items: center;
+        width: 54px;
+        height: 54px;
+        border-radius: 8px;
+        background: #191f28;
+        color: #ffffff;
+        font-size: 20px;
+        font-weight: 800;
+      }
+
+      .info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .info {
+        display: grid;
+        gap: 4px;
+        min-height: 58px;
+        padding: 10px;
+        border-radius: 8px;
+        background: #f7f8fa;
+      }
+
+      .info span {
+        color: #8b95a1;
+        font-size: 12px;
+      }
+
+      .history-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .history {
+        display: grid;
+        gap: 5px;
+        padding: 14px;
+        border: 1px solid #e5e8eb;
+        border-radius: 8px;
+      }
+
+      .history span,
+      .history small {
+        color: #8b95a1;
+        font-size: 13px;
+      }
+
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        display: grid;
+        place-items: center;
+        padding: 28px;
+        background: rgb(25 31 40 / 42%);
+      }
+
+      .modal-backdrop[hidden] {
+        display: none;
+      }
+
+      .customer-modal {
+        width: min(980px, 100%);
+        max-height: min(760px, calc(100vh - 56px));
+        overflow: hidden;
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 24px 70px rgb(25 31 40 / 24%);
+      }
+
+      .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 18px 20px;
+        border-bottom: 1px solid #edf0f2;
+      }
+
+      .modal-body {
+        display: grid;
+        gap: 18px;
+        max-height: calc(100vh - 170px);
+        overflow: auto;
+        padding: 20px;
+      }
+
+      @media (max-width: 1200px) {
+        .kpi-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .span-4,
+        .span-5,
+        .span-6,
+        .span-7,
+        .span-8 {
+          grid-column: span 12;
+        }
+      }
+
+      @media (max-width: 860px) {
+        .app,
+        .customer-layout,
+        .customer-list-header {
+          grid-template-columns: 1fr;
+        }
+
+        .app-header {
+          position: static;
+          display: grid;
+          grid-template-columns: 1fr;
+          height: auto;
+          gap: 8px;
+          padding: 10px 12px;
+        }
+
+        .app-header-brand {
+          height: 28px;
+          padding: 0;
+        }
+
+        .app-top-nav,
+        .app-header-actions {
+          padding: 0;
+          overflow-x: auto;
+        }
+
+        .sidebar {
+          position: static;
+          height: auto;
+        }
+
+        .nav {
+          display: flex;
+          overflow-x: auto;
+        }
+
+        .nav button {
+          min-width: 120px;
+        }
+
+        .topbar,
+        .topbar-actions,
+        .calendar-toolbar,
+        .calendar-actions {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .search {
+          width: 100%;
+        }
+
+        .kpi-grid,
+        .filters,
+        .info-grid,
+        .history-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <section class="login-page" id="login-page">
+      <form class="login-form" id="login-form">
+        <div class="login-brand">
+          <span class="brand-identity brand-identity-login">
+            <span class="brand-identity-logo" aria-hidden="true">
+              <img alt="" src="./public/gn-car-glass-logo.svg" />
+            </span>
+            <span class="brand-identity-text">
+              <strong>경남차유리 업무관리</strong>
+            </span>
+          </span>
+        </div>
+        <div class="login-fields">
+          <input id="login-id" autocomplete="username" placeholder="아이디" />
+          <input id="login-password" autocomplete="current-password" placeholder="비밀번호" type="password" />
+        </div>
+        <div class="login-options">
+          <label class="login-option">
+            <input id="remember-login-id" type="checkbox" />
+            <span>ID 저장</span>
+          </label>
+          <label class="login-option">
+            <input id="auto-login" type="checkbox" />
+            <span>자동로그인</span>
+          </label>
+        </div>
+        <p class="login-test-account">테스트 계정: 아이디 test / 비밀번호 test123@</p>
+        <p class="login-error" id="login-error" hidden>아이디 또는 비밀번호를 확인해주세요.</p>
+        <button class="login-button" id="login-button" disabled type="submit">로그인하기</button>
+        <!-- <div class="login-links">
+          <button type="button">아이디 찾기</button>
+          <span></span>
+          <button type="button">비밀번호 찾기</button>
+        </div> -->
+      </form>
+    </section>
+
+    <main class="app is-hidden" id="erp-app">
+      <header class="app-header">
+        <button class="app-header-brand" data-page="dashboard">
+          <span class="brand-identity brand-identity-header">
+            <span class="brand-identity-logo" aria-hidden="true">
+              <img alt="" src="./public/gn-car-glass-logo.svg" />
+            </span>
+            <span class="brand-identity-text">
+              <strong>경남차유리 업무관리</strong>
+            </span>
+          </span>
+        </button>
+        <nav class="app-top-nav">
+          <button class="active" data-page="dashboard">홈</button>
+          <button data-page="estimates">견적</button>
+          <button data-page="work">작업</button>
+          <button data-page="claims">청구</button>
+          <button data-page="inventory">재고</button>
+        </nav>
+        <div class="app-header-actions">
+          <button>알림</button>
+          <button>내 정보</button>
+        </div>
+      </header>
+
+      <aside class="sidebar">
+        <nav class="nav" id="nav">
+          <button class="active" data-page="dashboard"><span>홈</span><strong>홈</strong></button>
+          <button data-page="estimates"><span>견</span><strong>견적</strong><em class="count">7</em></button>
+          <button data-page="work"><span>작</span><strong>작업</strong><em class="count">5</em></button>
+          <button data-page="claims"><span>청</span><strong>청구</strong><em class="count">4</em></button>
+          <button data-page="inventory"><span>재</span><strong>재고</strong><em class="count">2</em></button>
+          <button data-page="customers"><span>고</span><strong>고객</strong></button>
+          <button data-page="attachments"><span>자</span><strong>자료</strong></button>
+        </nav>
+      </aside>
+
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="date">2026.05.20 수요일</p>
+            <h1 id="page-title">홈</h1>
+          </div>
+          <div class="topbar-actions">
+            <label class="search">
+              <input placeholder="이름, 차량번호, 부품번호 검색" />
+            </label>
+            <button class="primary">견적 등록</button>
+          </div>
+        </header>
+
+        <section class="page active" id="dashboard">
+          <div class="kpi-grid">
+            <article class="kpi blue"><div class="icon">작</div><span>오늘 할 일</span><strong>7건</strong><small>작업 4 · 일반 3</small></article>
+            <article class="kpi orange"><div class="icon">견</div><span>견적 대기</span><strong>7건</strong><small>부품확인 3</small></article>
+            <article class="kpi purple"><div class="icon">청</div><span>청구 대기</span><strong>4건</strong><small>보험 3 · 정비소 1</small></article>
+            <article class="kpi red"><div class="icon">미</div><span>미수금</span><strong>1,970,000원</strong><small>2개 거래처</small></article>
+            <article class="kpi yellow"><div class="icon">재</div><span>부족 재고</span><strong>2품목</strong><small>전면유리 우선</small></article>
+          </div>
+
+          <div class="grid">
+            <section class="panel span-8">
+              <div class="panel-header"><h2>오늘 작업</h2><button class="secondary">일 보기</button></div>
+              <div class="panel-body timeline" id="dashboard-work"></div>
+            </section>
+            <section class="panel span-4">
+              <div class="panel-header"><h2>처리 필요</h2></div>
+              <div class="panel-body priority">
+                <article class="priority-item"><strong>보험 접수번호 확인</strong><span>김민수 · GV80</span></article>
+                <article class="priority-item"><strong>부족 재고 발주</strong><span>GV80 전면유리 ADAS</span></article>
+                <article class="priority-item"><strong>부분 입금 확인</strong><span>대성모터스 290,000원</span></article>
+                <article class="priority-item"><strong>작업 사진 올리기</strong><span>카니발 도어유리</span></article>
+              </div>
+            </section>
+            <section class="panel span-7">
+              <div class="panel-header"><h2>최근 견적</h2></div>
+              <div class="panel-body table-wrap" id="dashboard-estimates"></div>
+            </section>
+            <section class="panel span-5">
+              <div class="panel-header"><h2>고객 상세</h2><button class="mini" data-jump="customers">전체 보기</button></div>
+              <div class="panel-body" id="customer-snapshot"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="page" id="estimates">
+          <div class="grid">
+            <section class="panel span-12">
+              <div class="panel-header"><h2>견적 목록</h2><button class="primary">등록</button></div>
+              <div class="panel-body">
+                <div class="filters">
+                  <label class="field"><span>고객/차량</span><input value="김민수, GV80, 80가" /></label>
+                  <label class="field"><span>수리부위</span><input value="전면유리, 도어유리" /></label>
+                  <label class="field"><span>보험사</span><input value="삼성화재, 현대해상" /></label>
+                </div>
+                <div class="table-wrap" id="estimate-table"></div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="page" id="work">
+          <div class="grid">
+            <section class="panel span-8 work-calendar-panel">
+              <div class="panel-body">
+                <div class="calendar-toolbar">
+                  <div>
+                    <strong>2026년 5월</strong>
+                    <div class="calendar-summary">
+                      <span>오늘 7건</span>
+                      <span>작업 4건</span>
+                      <span>일반 3건</span>
+                    </div>
+                  </div>
+                  <div class="calendar-actions">
+                    <div class="calendar-view-tabs" aria-label="일정 보기">
+                      <button class="active" data-calendar-view="day" type="button">일</button>
+                      <button data-calendar-view="week" type="button">주</button>
+                      <button data-calendar-view="month" type="button">월</button>
+                      <button data-calendar-view="year" type="button">년</button>
+                    </div>
+                    <div class="calendar-register-actions">
+                      <button class="secondary">할 일 등록</button>
+                      <button class="primary">작업 등록</button>
+                    </div>
+                  </div>
+                </div>
+                <div id="work-calendar"></div>
+              </div>
+            </section>
+            <section class="panel span-4">
+              <div class="panel-header">
+                <h2>오늘 할 일</h2>
+                <div class="work-list-filter">
+                  <button class="selected" data-work-list-filter="all" type="button">전체</button>
+                  <button data-work-list-filter="work" type="button">작업</button>
+                  <button data-work-list-filter="todo" type="button">일반</button>
+                </div>
+              </div>
+              <div class="panel-body daily-work-list" id="work-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="page" id="claims">
+          <div class="grid">
+            <section class="panel span-12">
+              <div class="panel-header"><h2>청구/입금 현황</h2><button class="primary">청구 등록</button></div>
+              <div class="panel-body table-wrap" id="claim-table"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="page" id="inventory">
+          <div class="kpi-grid">
+            <article class="kpi blue"><div class="icon">재</div><span>총 보유수량</span><strong>23개</strong><small>4개 품목</small></article>
+            <article class="kpi red"><div class="icon">부</div><span>부족 재고</span><strong>1품목</strong><small>GV80 전면유리 ADAS</small></article>
+            <article class="kpi orange"><div class="icon">확</div><span>확인 필요</span><strong>1품목</strong><small>스타리아 후면유리 열선</small></article>
+            <article class="kpi purple"><div class="icon">금</div><span>재고 금액</span><strong>3,148,000원</strong><small>센터가 기준</small></article>
+            <article class="kpi yellow"><div class="icon">청</div><span>청구 기준 금액</span><strong>4,080,000원</strong><small>예상 차이 932,000원</small></article>
+          </div>
+
+          <div class="grid">
+            <section class="panel span-12">
+              <div class="panel-header"><h2>부품/재고</h2><button class="primary">입고 등록</button></div>
+              <div class="panel-body table-wrap" id="inventory-table"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="page" id="customers">
+          <div class="grid">
+            <section class="panel span-12">
+              <div class="panel-header"><h2>고객 목록</h2><button class="primary">고객 등록</button></div>
+              <div class="panel-body">
+                <div class="customer-list-header">
+                  <label class="field">
+                    <span>전체 검색</span>
+                    <input id="customer-query" list="customer-suggestions" placeholder="고객명, 연락처, 차량번호, 차대번호, 메모 검색" />
+                    <datalist id="customer-suggestions"></datalist>
+                  </label>
+                  <div class="filter-chips" id="customer-filters">
+                    <button class="active" data-customer-filter="all">전체</button>
+                    <button data-customer-filter="unpaid">미수</button>
+                    <button data-customer-filter="clear">정상</button>
+                    <button data-customer-filter="recent">최근 작업</button>
+                  </div>
+                  <span class="list-count" id="customer-count">총 0건</span>
+                </div>
+                <div class="table-wrap" id="customer-table"></div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="page" id="customers-legacy">
+          <div class="customer-layout">
+            <section class="panel">
+              <div class="panel-header"><h2>고객 목록</h2></div>
+              <div class="panel-body customer-list" id="customer-list"></div>
+            </section>
+            <div class="grid">
+              <section class="panel span-12">
+                <div class="panel-header"><h2>고객 상세</h2></div>
+                <div class="panel-body" id="customer-detail"></div>
+              </section>
+              <section class="panel span-12">
+                <div class="panel-header"><h2>업무 이력</h2></div>
+                <div class="panel-body history-grid" id="customer-history"></div>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <section class="page" id="attachments">
+          <div class="grid">
+            <section class="panel span-12">
+              <div class="panel-header"><h2>업무 자료</h2><button class="primary">파일 올리기</button></div>
+              <div class="panel-body table-wrap" id="attachment-table"></div>
+            </section>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <div class="modal-backdrop" id="customer-modal" hidden>
+      <section class="customer-modal" role="dialog" aria-modal="true" aria-labelledby="customer-modal-title">
+        <header class="modal-header">
+          <div>
+            <p class="date">고객 상세</p>
+            <h2 id="customer-modal-title"></h2>
+          </div>
+          <button class="secondary" id="customer-modal-close">닫기</button>
+        </header>
+        <div class="modal-body">
+          <div id="customer-modal-detail"></div>
+          <section>
+            <h3>업무 이력</h3>
+            <div class="history-grid" id="customer-modal-history"></div>
+          </section>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      const workOrders = [
+        ['09:30', '박지현', '기아 카니발', '조수석 도어유리 교체', '매장', '경남차유리 작업장', '진행중', 'GLS-KA-2041 1개'],
+        ['11:00', '김민수', '제네시스 GV80', '전면유리 교체 + ADAS', '출장', '울산 남구 삼산동', '예정', 'G80-FR-ADAS 1개'],
+        ['14:30', '대성모터스', '현대 스타리아', '후면유리 교체', '출장', '대성모터스 공업사', '예정', 'STR-RR-H 1개'],
+        ['17:00', '최은우', 'BMW 520i', '스톤칩 복원', '매장', '경남차유리 작업장', '보류', '복원 키트'],
+      ];
+
+      const generalTasks = [
+        ['10:00', '보험 접수번호 확인', '보험', '김민수 GV80 접수번호 받은 뒤 청구 준비', '정하늘', '예정'],
+        ['13:30', '부품 발주 확인', '재고', 'GV80 전면유리 ADAS 입고 가능 시간 확인', '이준호', '진행중'],
+        ['16:00', '거래처 입금 확인', '정산', '대성모터스 부분 입금 290,000원 확인', '정하늘', '예정'],
+      ];
+
+      const todayEntries = [
+        ...workOrders.map((order) => ({ type: 'work', item: order })),
+        ...generalTasks.map((task) => ({ type: 'todo', item: task })),
+      ].sort((a, b) => entryTime(a).localeCompare(entryTime(b)));
+
+      const estimates = [
+        ['EST-2026-0017', '05.20 10:14', '김민수\\n010-3182-****', '제네시스 GV80', '전면유리 교체\\n전면유리, ADAS', '1,280,000원', '확정'],
+        ['EST-2026-0016', '05.20 09:32', '박지현\\n010-7751-****', '기아 카니발', '도어유리 교체\\n조수석 도어유리', '360,000원', '작업전환'],
+        ['EST-2026-0015', '05.19 16:40', '대성모터스\\n052-268-****', '현대 스타리아', '후면유리 교체\\n후면유리, 열선', '720,000원', '부품확인'],
+        ['EST-2026-0014', '05.19 13:18', '최은우\\n010-9028-****', 'BMW 520i', '스톤칩 복원\\n전면유리', '85,000원', '견적중'],
+      ];
+
+      const claims = [
+        ['CLM-2026-0088', '김민수\\n제네시스 GV80', '자차', '삼성화재', '1,180,000원', '0원', '100,000원', '청구대기'],
+        ['CLM-2026-0087', '대성모터스\\n현대 스타리아', '정비소 청구', '현대해상', '690,000원', '400,000원', '0원', '일부입금'],
+        ['CLM-2026-0086', '박지현\\n기아 카니발', '일반', '-', '0원', '360,000원', '360,000원', '입금완료'],
+      ];
+
+      const inventory = [
+        ['G80-FR-ADAS', 'GV80 전면유리 ADAS', '제네시스 GV80 2021~', 'A-01', '1 / 최소 2', '980,000원', '1,180,000원', '부족'],
+        ['GLS-KA-2041', '카니발 조수석 도어유리', '기아 카니발 KA4', 'B-03', '4 / 최소 2', '210,000원', '280,000원', '정상'],
+        ['STR-RR-H', '스타리아 후면유리 열선', '현대 스타리아', 'A-04', '2 / 최소 2', '520,000원', '690,000원', '확인필요'],
+      ];
+
+      const customers = [
+        ['김민수', '010-3182-****', '제네시스 GV80 / 80가****', 'KMH*********2491', '2,560,000원', '1,280,000원', '보험 접수번호 확인 후 청구 진행'],
+        ['박지현', '010-7751-****', '기아 카니발 / 43두****', 'KNA*********8831', '980,000원', '0원', '방문 결제 완료'],
+        ['대성모터스', '052-268-****', '현대 스타리아 / 120서****', 'KMJ*********9033', '3,720,000원', '690,000원', '월말 정산 거래처'],
+      ];
+
+      /*
+        ['이서윤', '010-4492-****', '기아 쏘렌토 / 158서****', 'KND*********1104', '430,000원', '0원', '재방문 가능성 높음, 동일 부위 이력 확인'],
+        ['한빛자동차', '052-711-****', '현대 아반떼 / 29하****', 'KMH*********7742', '2,140,000원', '320,000원', '정비소 청구, 월말 정산 대상'],
+        ['조현우', '010-6230-****', 'BMW X5 / 62누****', 'WBA*********5210', '1,380,000원', '0원', '수입차 부품 입고 전 연락 필요'],
+        ['울산렌트카', '052-901-****', '현대 스타리아 / 177허****', 'KMJ*********2238', '4,860,000원', '890,000원', '렌트 차량 다수, 차량번호 검색 중요'],
+        ['오민재', '010-8840-****', '테슬라 Model Y / 31모****', 'LRW*********7719', '920,000원', '120,000원', 'ADAS 보정 여부 확인 후 안내'],
+      ];
+      */
+
+      customers.push(
+        ['이서윤', '010-4492-****', '기아 쏘렌토 / 158서****', 'KND*********1104', '430,000원', '0원', '재방문 가능성 높음, 동일 부위 이력 확인'],
+        ['한빛자동차', '052-711-****', '현대 아반떼 / 29하****', 'KMH*********7742', '2,140,000원', '320,000원', '정비소 청구, 월말 정산 대상'],
+        ['조현우', '010-6230-****', 'BMW X5 / 62누****', 'WBA*********5210', '1,380,000원', '0원', '수입차 부품 입고 전 연락 필요'],
+        ['울산렌트카', '052-901-****', '현대 스타리아 / 177허****', 'KMJ*********2238', '4,860,000원', '890,000원', '렌트 차량 다수, 차량번호 검색 중요'],
+        ['오민재', '010-8840-****', '테슬라 Model Y / 31모****', 'LRW*********7719', '920,000원', '120,000원', 'ADAS 보정 여부 확인 후 안내'],
+      );
+
+      const attachments = [
+        ['파손사진_김민수_0520.jpg', 'EST-2026-0017', '견적', '김민수'],
+        ['보험접수증_삼성화재.pdf', 'CLM-2026-0088', '청구', '김민수'],
+        ['작업후사진_카니발.jpg', 'WO-2026-0042', '작업', '박지현'],
+        ['대성모터스_사업자등록증.pdf', '거래처', '기준정보', '대성모터스'],
+      ];
+
+      const titleMap = {
+        dashboard: '홈',
+        estimates: '견적',
+        work: '작업',
+        claims: '청구',
+        inventory: '재고',
+        customers: '고객/차량',
+        attachments: '자료',
+      };
+
+      function tone(status) {
+        if (status === '정상') return 'green';
+        if (status === '미수') return 'red';
+        return {
+          확정: 'green',
+          작업전환: 'purple',
+          부품확인: 'orange',
+          견적중: 'blue',
+          진행중: 'orange',
+          예정: 'blue',
+          보류: 'gray',
+          청구대기: 'orange',
+          일부입금: 'orange',
+          입금완료: 'green',
+          부족: 'red',
+          정상: 'green',
+          확인필요: 'orange',
+        }[status] || 'gray';
+      }
+
+      function pill(status) {
+        return `<span class="pill ${tone(status)}">${status}</span>`;
+      }
+
+      function entryTime(entry) {
+        return entry.type === 'work' ? entry.item[0] : entry.item[0];
+      }
+
+      function entryTitle(entry) {
+        return entry.type === 'work' ? entry.item[3] : entry.item[1];
+      }
+
+      function resolveEntry(entryRef) {
+        return entryRef.type === 'work'
+          ? { type: 'work', item: workOrders[entryRef.index] }
+          : { type: 'todo', item: generalTasks[entryRef.index] };
+      }
+
+      function table(columns, rows) {
+        return `
+          <table>
+            <thead><tr>${columns.map((col) => `<th>${col}</th>`).join('')}</tr></thead>
+            <tbody>
+              ${rows.map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join('')}</tr>`).join('')}
+            </tbody>
+          </table>
+        `;
+      }
+
+      function renderWork(targetId) {
+        document.getElementById(targetId).innerHTML = workOrders
+          .map(
+            (order) => `
+              <article class="timeline-row">
+                <time>${order[0]}</time>
+                <div>
+                  <div class="row-title"><strong>${order[3]}</strong>${pill(order[6])}</div>
+                  <p>${order[1]} · ${order[2]}</p>
+                  <div class="meta"><span>${order[4]} · ${order[5]}</span><span>${order[7]}</span></div>
+                </div>
+              </article>
+            `,
+          )
+          .join('');
+      }
+
+      const weekCalendar = [
+        { day: '월', date: '18', entries: [{ type: 'work', index: 0 }] },
+        { day: '화', date: '19', entries: [{ type: 'todo', index: 1 }] },
+        {
+          day: '수',
+          date: '20',
+          entries: [
+            { type: 'work', index: 1 },
+            { type: 'todo', index: 0 },
+            { type: 'work', index: 2 },
+            { type: 'todo', index: 1 },
+            { type: 'todo', index: 2 },
+            { type: 'work', index: 3 },
+          ],
+        },
+        { day: '목', date: '21', entries: [{ type: 'work', index: 0 }] },
+        { day: '금', date: '22', entries: [{ type: 'work', index: 2 }, { type: 'todo', index: 2 }] },
+        { day: '토', date: '23', entries: [] },
+        { day: '일', date: '24', entries: [] },
+      ];
+
+      const monthEntries = {
+        7: [{ type: 'work', index: 0 }],
+        12: [{ type: 'work', index: 2 }],
+        19: [{ type: 'todo', index: 1 }],
+        20: [
+          { type: 'work', index: 1 },
+          { type: 'todo', index: 0 },
+          { type: 'work', index: 2 },
+          { type: 'todo', index: 1 },
+          { type: 'todo', index: 2 },
+          { type: 'work', index: 3 },
+        ],
+        21: [{ type: 'work', index: 0 }],
+        22: [{ type: 'work', index: 2 }, { type: 'todo', index: 2 }],
+        26: [{ type: 'work', index: 1 }],
+      };
+
+      const yearCalendar = [
+        ['1월', '18건', '보험 7'],
+        ['2월', '21건', '출장 8'],
+        ['3월', '24건', '정비소 6'],
+        ['4월', '20건', '미수 2'],
+        ['5월', '29건', '오늘 7'],
+        ['6월', '예정 9건', '예약 4'],
+        ['7월', '예정 3건', '성수기 대비'],
+        ['8월', '예정 2건', '휴가 일정'],
+        ['9월', '예정 5건', '보험 2'],
+        ['10월', '예정 4건', '출장 1'],
+        ['11월', '예정 1건', '점검'],
+        ['12월', '예정 2건', '마감'],
+      ];
+
+      function calendarEntry(entry, mode = '') {
+        const isTodo = entry.type === 'todo';
+        const item = entry.item;
+        const isMini = mode === 'mini';
+        const title = isTodo ? item[1] : item[1];
+        const subtitle = isTodo ? item[3] : item[3];
+        const status = isTodo ? item[5] : item[6];
+        const metaSecond = isTodo ? item[2] : item[2];
+        const metaThird = isTodo ? item[4] : item[6];
+
+        return `
+          <div class="calendar-job ${isTodo ? 'todo' : ''} ${mode}">
+            <div class="row-title"><strong>${isMini ? entryTitle(entry) : title}</strong>${isMini ? '' : pill(status)}</div>
+            ${isMini ? '' : `<p>${subtitle}</p>`}
+            <div class="meta"><span>${item[0]}</span><span>${metaSecond}</span>${mode ? '' : `<span>${metaThird}</span>`}</div>
+          </div>
+        `;
+      }
+
+      function renderWorkCalendar(view = 'day') {
+        const target = document.getElementById('work-calendar');
+        if (!target) return;
+
+        if (view === 'day') {
+          const slots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+          target.innerHTML = `
+            <div class="calendar-day-view">
+              ${slots
+                .map((slot) => {
+                  const slotEntries = todayEntries.filter((entry) => entryTime(entry).startsWith(slot.slice(0, 2)));
+                  return `
+                    <article class="calendar-time-row ${slotEntries.length ? 'has-job' : ''}">
+                      <time>${slot}</time>
+                      <div class="calendar-time-cell">${slotEntries.map((entry) => calendarEntry(entry)).join('')}</div>
+                    </article>
+                  `;
+                })
+                .join('')}
+            </div>
+          `;
+          return;
+        }
+
+        if (view === 'week') {
+          target.innerHTML = `
+            <div class="calendar-week-view">
+              ${weekCalendar
+                .map(
+                  (day) => `
+                    <article class="calendar-day-column">
+                      <header><span>${day.day}</span><strong>${day.date}</strong></header>
+                      <div class="calendar-day-jobs">
+                        ${
+                          day.entries.length
+                            ? day.entries.map((entryRef) => calendarEntry(resolveEntry(entryRef), 'compact')).join('')
+                            : '<span class="calendar-empty">일정 없음</span>'
+                        }
+                      </div>
+                    </article>
+                  `,
+                )
+                .join('')}
+            </div>
+          `;
+          return;
+        }
+
+        if (view === 'month') {
+          const cells = [
+            ...Array.from({ length: 4 }, () => ''),
+            ...Array.from({ length: 31 }, (_, index) => String(index + 1)),
+          ];
+          target.innerHTML = `
+            <div class="calendar-month-view">
+              ${['월', '화', '수', '목', '금', '토', '일'].map((day) => `<div class="calendar-weekday">${day}</div>`).join('')}
+              ${cells
+                .map((date) => {
+                  const entries = monthEntries[date] || [];
+                  return `
+                    <article class="calendar-month-cell ${date === '20' ? 'today' : ''}">
+                      <time>${date}</time>
+                      ${entries.slice(0, 2).map((entryRef) => calendarEntry(resolveEntry(entryRef), 'mini')).join('')}
+                      ${entries.length > 2 ? `<span class="calendar-more">+${entries.length - 2}</span>` : ''}
+                    </article>
+                  `;
+                })
+                .join('')}
+            </div>
+          `;
+          return;
+        }
+
+        target.innerHTML = `
+          <div class="calendar-year-view">
+            ${yearCalendar
+              .map(
+                ([month, count, detail]) => `
+                  <article class="${month === '5월' ? 'selected' : ''}">
+                    <strong>${month}</strong>
+                    <span>${count}</span>
+                    <small>${detail}</small>
+                  </article>
+                `,
+              )
+              .join('')}
+          </div>
+        `;
+      }
+
+      let workListFilter = 'all';
+
+      function renderWorkList() {
+        const target = document.getElementById('work-list');
+        if (!target) return;
+
+        const entries = todayEntries.filter((entry) => {
+          if (workListFilter === 'work') return entry.type === 'work';
+          if (workListFilter === 'todo') return entry.type === 'todo';
+          return true;
+        });
+
+        target.innerHTML = entries
+          .map((entry) => {
+            if (entry.type === 'todo') {
+              const task = entry.item;
+              return `
+                <article class="daily-work-item todo">
+                  <time>${task[0]}</time>
+                  <div>
+                    <div class="row-title"><strong>${task[1]}</strong>${pill(task[5])}</div>
+                    <p>${task[3]}</p>
+                    <div class="meta"><span>${task[2]}</span><span>${task[4]}</span></div>
+                    <div class="work-item-actions">
+                      <button type="button">메모</button>
+                      <button type="button">완료</button>
+                    </div>
+                  </div>
+                </article>
+              `;
+            }
+
+            const order = entry.item;
+
+            return `
+              <article class="daily-work-item">
+                <time>${order[0]}</time>
+                <div>
+                  <div class="row-title"><strong>${order[3]}</strong>${pill(order[6])}</div>
+                  <p>${order[1]} · ${order[2]}</p>
+                  <div class="meta"><span>${order[4]}</span><span>${order[6]}</span><span>${order[7]}</span></div>
+                  <div class="work-item-actions">
+                    <button type="button">상세</button>
+                    <button type="button">완료</button>
+                  </div>
+                </div>
+              </article>
+            `;
+          })
+          .join('');
+      }
+
+      function renderCustomer(index = 0) {
+        const c = customers[index];
+        const html = `
+          <div class="customer-card">
+            <div class="avatar">${c[0].slice(0, 1)}</div>
+            <div>
+              <div class="row-title"><strong>${c[0]}</strong>${c[5] === '0원' ? pill('정상') : pill('미수')}</div>
+              <p>${c[1]}</p>
+              <div class="info-grid">
+                <div class="info"><span>차량</span><strong>${c[2]}</strong></div>
+                <div class="info"><span>차대번호</span><strong>${c[3]}</strong></div>
+                <div class="info"><span>매출</span><strong>${c[4]}</strong></div>
+                <div class="info"><span>미수</span><strong>${c[5]}</strong></div>
+              </div>
+              <p>${c[6]}</p>
+            </div>
+          </div>
+        `;
+        document.getElementById('customer-snapshot').innerHTML = html;
+        document.getElementById('customer-detail').innerHTML = html;
+        document.getElementById('customer-history').innerHTML = `
+          <article class="history"><span>견적</span><strong>3건</strong><small>최근 EST-2026-0017</small></article>
+          <article class="history"><span>작업</span><strong>2건</strong><small>최근 작업 완료</small></article>
+          <article class="history"><span>청구</span><strong>${c[5]}</strong><small>미수 기준</small></article>
+          <article class="history"><span>자료</span><strong>2개</strong><small>사진, PDF</small></article>
+        `;
+      }
+
+      let customerFilter = 'all';
+
+      function customerStatus(c) {
+        return c[5].startsWith('0') ? '정상' : '미수';
+      }
+
+      function customerDetailHtml(index) {
+        const c = customers[index];
+        return `
+          <div class="customer-card">
+            <div class="avatar">${c[0].slice(0, 1)}</div>
+            <div>
+              <div class="row-title"><strong>${c[0]}</strong>${pill(customerStatus(c))}</div>
+              <p>${c[1]}</p>
+              <div class="info-grid">
+                <div class="info"><span>차량</span><strong>${c[2]}</strong></div>
+                <div class="info"><span>차대번호</span><strong>${c[3]}</strong></div>
+                <div class="info"><span>매출</span><strong>${c[4]}</strong></div>
+                <div class="info"><span>미수</span><strong>${c[5]}</strong></div>
+              </div>
+              <p>${c[6]}</p>
+            </div>
+          </div>
+        `;
+      }
+
+      function openCustomerModal(index) {
+        const c = customers[index];
+        document.getElementById('customer-modal-title').textContent = c[0];
+        document.getElementById('customer-modal-detail').innerHTML = customerDetailHtml(index);
+        document.getElementById('customer-modal-history').innerHTML = `
+          <article class="history"><span>견적</span><strong>3건</strong><small>최근 EST-2026-0017</small></article>
+          <article class="history"><span>작업</span><strong>2건</strong><small>${c[6]}</small></article>
+          <article class="history"><span>청구</span><strong>${c[5]}</strong><small>미수 기준</small></article>
+          <article class="history"><span>자료</span><strong>2개</strong><small>사진, PDF</small></article>
+        `;
+        document.getElementById('customer-modal').hidden = false;
+      }
+
+      function closeCustomerModal() {
+        document.getElementById('customer-modal').hidden = true;
+      }
+
+      function renderCustomers() {
+        const query = document.getElementById('customer-query')?.value.trim().toLowerCase() || '';
+        const suggestions = [...new Set(customers.flatMap((c) => [c[0], c[1], c[2], c[3], c[6]]))];
+        document.getElementById('customer-suggestions').innerHTML = suggestions.map((item) => `<option value="${item}"></option>`).join('');
+
+        const filtered = customers.filter((c) => {
+          const target = c.join(' ').toLowerCase();
+          const matchesQuery = !query || target.includes(query);
+          const status = customerStatus(c);
+          const matchesFilter =
+            customerFilter === 'all' ||
+            (customerFilter === 'unpaid' && status === '미수') ||
+            (customerFilter === 'clear' && status === '정상') ||
+            customerFilter === 'recent';
+
+          return matchesQuery && matchesFilter;
+        });
+
+        document.getElementById('customer-count').textContent = `총 ${filtered.length}건`;
+
+        document.getElementById('customer-table').innerHTML =
+          filtered.length > 0
+            ? table(
+                ['고객명', '연락처', '차량', '차대번호', '매출', '미수', '상태', '상세'],
+                filtered.map((c) => {
+                  const originalIndex = customers.indexOf(c);
+                  return [
+                    `<button class="customer-name-button" data-customer-open="${originalIndex}"><strong>${c[0]}</strong><span>${c[6]}</span></button>`,
+                    c[1],
+                    c[2],
+                    c[3],
+                    c[4],
+                    c[5],
+                    pill(customerStatus(c)),
+                    `<button class="mini" data-customer-open="${originalIndex}">보기</button>`,
+                  ];
+                }),
+              )
+            : `<div class="empty-state">검색 결과가 없습니다.</div>`;
+
+        document.querySelectorAll('[data-customer-open]').forEach((button) => {
+          button.addEventListener('click', () => openCustomerModal(Number(button.dataset.customerOpen)));
+        });
+      }
+
+      renderWork('dashboard-work');
+      renderWorkCalendar('day');
+      renderWorkList();
+      document.querySelectorAll('[data-calendar-view]').forEach((button) => {
+        button.addEventListener('click', () => {
+          document.querySelectorAll('[data-calendar-view]').forEach((item) => item.classList.remove('active'));
+          button.classList.add('active');
+          renderWorkCalendar(button.dataset.calendarView);
+        });
+      });
+      document.querySelectorAll('[data-work-list-filter]').forEach((button) => {
+        button.addEventListener('click', () => {
+          workListFilter = button.dataset.workListFilter;
+          document.querySelectorAll('[data-work-list-filter]').forEach((item) => item.classList.remove('selected'));
+          button.classList.add('selected');
+          renderWorkList();
+        });
+      });
+      document.getElementById('dashboard-estimates').innerHTML = table(
+        ['견적번호', '고객/차량', '수리', '금액', '상태'],
+        estimates.map((e) => [e[0], `${e[2]}\\n${e[3]}`, e[4], e[5], pill(e[6])]),
+      );
+      document.getElementById('estimate-table').innerHTML = table(
+        ['견적번호', '접수', '고객', '차량', '수리부위', '금액', '상태'],
+        estimates.map((e) => [e[0], e[1], e[2], e[3], e[4], e[5], pill(e[6])]),
+      );
+      document.getElementById('claim-table').innerHTML = table(
+        ['청구번호', '고객/차량', '구분', '보험사', '청구금액', '입금액', '고객결제', '상태'],
+        claims.map((c) => [...c.slice(0, 7), pill(c[7])]),
+      );
+      document.getElementById('inventory-table').innerHTML = table(
+        ['부품번호', '품명', '호환차종', '위치', '재고', '센터가', '보험청구단가', '상태'],
+        inventory.map((i) => [...i.slice(0, 7), pill(i[7])]),
+      );
+      document.getElementById('attachment-table').innerHTML = table(
+        ['파일명', '연결 대상', '구분', '고객/거래처'],
+        attachments,
+      );
+      renderCustomers();
+      renderCustomer();
+
+      document.getElementById('customer-query').addEventListener('input', renderCustomers);
+      document.querySelectorAll('[data-customer-filter]').forEach((button) => {
+        button.addEventListener('click', () => {
+          customerFilter = button.dataset.customerFilter;
+          document.querySelectorAll('[data-customer-filter]').forEach((item) => item.classList.remove('active'));
+          button.classList.add('active');
+          renderCustomers();
+        });
+      });
+      document.getElementById('customer-modal-close').addEventListener('click', closeCustomerModal);
+      document.getElementById('customer-modal').addEventListener('click', (event) => {
+        if (event.target.id === 'customer-modal') closeCustomerModal();
+      });
+
+      const loginForm = document.getElementById('login-form');
+      const loginId = document.getElementById('login-id');
+      const loginPassword = document.getElementById('login-password');
+      const loginButton = document.getElementById('login-button');
+      const loginError = document.getElementById('login-error');
+      const rememberLoginId = document.getElementById('remember-login-id');
+      const autoLogin = document.getElementById('auto-login');
+      const loginPage = document.getElementById('login-page');
+      const erpApp = document.getElementById('erp-app');
+      const loginStorageKeys = {
+        autoLogin: 'seoyoung.login.autoLogin',
+        rememberedId: 'seoyoung.login.rememberedId',
+      };
+      const testAccount = {
+        id: 'test',
+        password: 'test123@',
+      };
+
+      function readLoginStorageValue(key) {
+        try {
+          return window.localStorage.getItem(key);
+        } catch {
+          return null;
+        }
+      }
+
+      function writeLoginStorageValue(key, value) {
+        try {
+          window.localStorage.setItem(key, value);
+        } catch {
+          // Browser storage can be unavailable in privacy modes.
+        }
+      }
+
+      function removeLoginStorageValue(key) {
+        try {
+          window.localStorage.removeItem(key);
+        } catch {
+          // Browser storage can be unavailable in privacy modes.
+        }
+      }
+
+      function openApp() {
+        loginPage.classList.add('is-hidden');
+        erpApp.classList.remove('is-hidden');
+      }
+
+      function saveLoginPreferences(normalizedLoginId) {
+        removeLoginStorageValue(loginStorageKeys.autoLogin);
+
+        if (rememberLoginId.checked || autoLogin.checked) {
+          writeLoginStorageValue(loginStorageKeys.rememberedId, normalizedLoginId);
+        } else {
+          removeLoginStorageValue(loginStorageKeys.rememberedId);
+        }
+
+        if (autoLogin.checked) {
+          writeLoginStorageValue(loginStorageKeys.autoLogin, 'true');
+        }
+      }
+
+      function updateLoginState() {
+        loginButton.disabled = !loginId.value.trim() || !loginPassword.value.trim();
+        loginError.hidden = true;
+      }
+
+      const savedLoginId = readLoginStorageValue(loginStorageKeys.rememberedId) || '';
+      loginId.value = savedLoginId;
+      rememberLoginId.checked = savedLoginId.length > 0;
+      autoLogin.checked = readLoginStorageValue(loginStorageKeys.autoLogin) === 'true';
+      if (autoLogin.checked && savedLoginId.length > 0) {
+        rememberLoginId.checked = true;
+        openApp();
+      } else {
+        removeLoginStorageValue(loginStorageKeys.autoLogin);
+      }
+
+      loginId.addEventListener('input', updateLoginState);
+      loginPassword.addEventListener('input', updateLoginState);
+      rememberLoginId.addEventListener('change', () => {
+        if (!rememberLoginId.checked) {
+          autoLogin.checked = false;
+        }
+      });
+      autoLogin.addEventListener('change', () => {
+        if (autoLogin.checked) {
+          rememberLoginId.checked = true;
+        }
+      });
+      loginForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        if (loginButton.disabled) return;
+        const normalizedLoginId = loginId.value.trim();
+        if (normalizedLoginId !== testAccount.id || loginPassword.value !== testAccount.password) {
+          loginError.hidden = false;
+          return;
+        }
+        saveLoginPreferences(normalizedLoginId);
+        openApp();
+      });
+
+      document.querySelectorAll('[data-page]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const page = button.dataset.page;
+          document.querySelectorAll('[data-page]').forEach((item) => item.classList.remove('active'));
+          document.querySelectorAll('.page').forEach((item) => item.classList.remove('active'));
+          document.querySelectorAll(`[data-page="${page}"]`).forEach((item) => item.classList.add('active'));
+          document.getElementById(page).classList.add('active');
+          document.getElementById('page-title').textContent = titleMap[page];
+        });
+      });
+
+      document.querySelectorAll('[data-jump]').forEach((button) => {
+        button.addEventListener('click', () => {
+          document.querySelector(`[data-page="${button.dataset.jump}"]`).click();
+        });
+      });
+    </script>
+  </body>
+</html>

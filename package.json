@@ -1,0 +1,35 @@
+{
+  "name": "seoyoung-erp-system",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20",
+    "npm": ">=10"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "prebuild": "node scripts/check-before-build.mjs --quick",
+    "check": "node scripts/check-before-build.mjs",
+    "build:test": "node scripts/check-before-build.mjs --build",
+    "dev": "npm --workspace=@seoyoung-erp/web run dev",
+    "build": "npm --workspace=@seoyoung-erp/web run build",
+    "preview": "npm --workspace=@seoyoung-erp/web run preview",
+    "dev:static": "node apps/web/serve-prototype.mjs",
+    "dev:api": "npm --workspace=@seoyoung-erp/api run dev",
+    "build:api": "npm --workspace=@seoyoung-erp/api run build",
+    "build:all": "npm --workspaces --if-present run build",
+    "lint": "npm --workspaces --if-present run lint",
+    "format": "prettier --write .",
+    "db:generate": "npm --workspace=@seoyoung-erp/database run generate",
+    "db:migrate": "npm --workspace=@seoyoung-erp/database run migrate",
+    "db:studio": "npm --workspace=@seoyoung-erp/database run studio"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.6",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3"
+  }
+}

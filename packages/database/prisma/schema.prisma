@@ -1,0 +1,634 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  STAFF
+}
+
+enum EstimateStatus {
+  DRAFT
+  QUOTED
+  CONFIRMED
+  CONVERTED
+  CANCELED
+}
+
+enum WorkOrderStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  HOLD
+  CANCELED
+}
+
+enum ItemType {
+  STOCK
+  SERVICE
+  SUPPLY
+}
+
+enum InventoryTransactionType {
+  IN
+  OUT
+  ADJUST
+}
+
+enum VoucherType {
+  SALES
+  PURCHASE
+  DEPOSIT
+  WITHDRAWAL
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIAL
+  PAID
+  CANCELED
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  CARD
+  OTHER
+}
+
+enum PartnerType {
+  GENERAL
+  SUPPLIER
+  OUTSOURCER
+  REPAIR_SHOP
+  INSURANCE_COMPANY
+}
+
+enum VisitType {
+  SHOP_VISIT
+  MOBILE_SERVICE
+}
+
+enum DocumentType {
+  ESTIMATE_PDF
+}
+
+enum DocumentAccessAction {
+  VIEW
+  DOWNLOAD
+}
+
+enum NotificationChannel {
+  KAKAO_ALIMTALK
+  SMS
+  MANUAL
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENDING
+  SENT
+  FAILED
+  CANCELED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(STAFF)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  estimates       Estimate[]
+  workOrders      WorkOrder[]
+  inventoryLogs   InventoryTransaction[]
+  vouchers        Voucher[]
+  payments        Payment[]
+  documents       Document[]
+  attachments     Attachment[]
+  auditLogs       AuditLog[]
+}
+
+model Partner {
+  id                     String      @id @default(cuid())
+  type                   PartnerType @default(GENERAL)
+  name                   String
+  shortName              String?
+  businessRegistrationNo String?
+  representativeName     String?
+  contactName            String?
+  email                  String?
+  phone                  String?
+  mobile                 String?
+  paymentTerms           String?
+  sealFileKey            String?
+  isActive               Boolean     @default(true)
+  memo                   String?
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+
+  contacts            PartnerContact[]
+  estimates           Estimate[] @relation("EstimatePartner")
+  workOrders          WorkOrder[] @relation("WorkOrderPartner")
+  insuranceEstimates  Estimate[] @relation("EstimateInsuranceCompany")
+  insuranceWorkOrders WorkOrder[] @relation("WorkOrderInsuranceCompany")
+  vouchers            Voucher[]
+
+  @@index([name])
+  @@index([type])
+  @@index([isActive])
+}
+
+model PartnerContact {
+  id        String   @id @default(cuid())
+  partnerId String
+  name      String
+  department String?
+  phone     String?
+  mobile    String?
+  email     String?
+  isActive  Boolean  @default(true)
+  memo      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  partner              Partner     @relation(fields: [partnerId], references: [id])
+  insuranceEstimates   Estimate[]  @relation("EstimateInsuranceContact")
+  insuranceWorkOrders  WorkOrder[] @relation("WorkOrderInsuranceContact")
+
+  @@index([partnerId])
+  @@index([name])
+  @@index([isActive])
+}
+
+model InquiryChannel {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  memo      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  estimates  Estimate[]
+  workOrders WorkOrder[]
+
+  @@index([isActive])
+}
+
+model Customer {
+  id                String    @id @default(cuid())
+  name              String?
+  phone             String
+  kakaoOptIn        Boolean   @default(false)
+  kakaoOptInAt      DateTime?
+  kakaoOptOutAt     DateTime?
+  memo              String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  vehicles             Vehicle[]
+  estimates            Estimate[]
+  workOrders           WorkOrder[]
+  notificationMessages NotificationMessage[]
+
+  @@index([phone])
+  @@index([kakaoOptIn])
+}
+
+model Vehicle {
+  id          String   @id @default(cuid())
+  customerId  String?
+  modelName   String
+  vin         String?
+  plateNumber String?
+  memo        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  customer   Customer?   @relation(fields: [customerId], references: [id])
+  estimates  Estimate[]
+  workOrders WorkOrder[]
+
+  @@index([modelName])
+  @@index([vin])
+  @@index([plateNumber])
+}
+
+model Estimate {
+  id              String         @id @default(cuid())
+  estimateNo      String         @unique
+  status          EstimateStatus @default(DRAFT)
+  requestedDate   DateTime
+  workType        String
+  repairType      String?
+  repairArea      String?
+  partnerId       String?
+  customerId      String?
+  vehicleId       String?
+  inquiryChannelId String?
+  insuranceCompanyId String?
+  insuranceContactId String?
+  estimatorName   String?
+  customerPhone   String?
+  description     String
+  amount          Decimal?       @db.Decimal(12, 2)
+  memo            String?
+  createdById     String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  partner          Partner?        @relation("EstimatePartner", fields: [partnerId], references: [id])
+  customer         Customer?       @relation(fields: [customerId], references: [id])
+  vehicle          Vehicle?        @relation(fields: [vehicleId], references: [id])
+  inquiryChannel   InquiryChannel? @relation(fields: [inquiryChannelId], references: [id])
+  insuranceCompany Partner?        @relation("EstimateInsuranceCompany", fields: [insuranceCompanyId], references: [id])
+  insuranceContact PartnerContact? @relation("EstimateInsuranceContact", fields: [insuranceContactId], references: [id])
+  createdBy        User?           @relation(fields: [createdById], references: [id])
+  workOrder        WorkOrder?
+  items            EstimateItem[]
+  vouchers         Voucher[]
+  documents        Document[]
+  attachments      Attachment[]
+  notificationMessages NotificationMessage[]
+
+  @@index([requestedDate])
+  @@index([status])
+  @@index([workType])
+  @@index([estimatorName])
+  @@index([customerId])
+  @@index([inquiryChannelId])
+  @@index([insuranceCompanyId])
+}
+
+model WorkOrder {
+  id             String          @id @default(cuid())
+  workOrderNo    String          @unique
+  estimateId     String?         @unique
+  status         WorkOrderStatus @default(SCHEDULED)
+  scheduledStart DateTime
+  scheduledEnd   DateTime?
+  workType       String
+  repairType     String?
+  repairArea     String?
+  visitType      VisitType?
+  businessTraveler String?
+  partnerId      String?
+  customerId     String?
+  vehicleId      String?
+  inquiryChannelId String?
+  insuranceCompanyId String?
+  insuranceContactId String?
+  receiptNumber  String?
+  insuranceClaimAmount Decimal? @db.Decimal(12, 2)
+  insuranceDepositAmount Decimal? @db.Decimal(12, 2)
+  customerPaymentAmount Decimal? @db.Decimal(12, 2)
+  customerPhone  String?
+  description    String
+  memo           String?
+  createdById    String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  estimate         Estimate?       @relation(fields: [estimateId], references: [id])
+  partner          Partner?        @relation("WorkOrderPartner", fields: [partnerId], references: [id])
+  customer         Customer?       @relation(fields: [customerId], references: [id])
+  vehicle          Vehicle?        @relation(fields: [vehicleId], references: [id])
+  inquiryChannel   InquiryChannel? @relation(fields: [inquiryChannelId], references: [id])
+  insuranceCompany Partner?        @relation("WorkOrderInsuranceCompany", fields: [insuranceCompanyId], references: [id])
+  insuranceContact PartnerContact? @relation("WorkOrderInsuranceContact", fields: [insuranceContactId], references: [id])
+  createdBy        User?           @relation(fields: [createdById], references: [id])
+  items            WorkOrderItem[]
+  inventoryLogs    InventoryTransaction[]
+  vouchers         Voucher[]
+  documents        Document[]
+  attachments      Attachment[]
+  notificationMessages NotificationMessage[]
+
+  @@index([scheduledStart])
+  @@index([status])
+  @@index([workType])
+  @@index([customerId])
+  @@index([inquiryChannelId])
+  @@index([insuranceCompanyId])
+}
+
+model ItemCategory {
+  id        String   @id @default(cuid())
+  name      String
+  parentId  String?
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  memo      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  parent   ItemCategory?  @relation("ItemCategoryTree", fields: [parentId], references: [id])
+  children ItemCategory[] @relation("ItemCategoryTree")
+  items    Item[]
+
+  @@index([name])
+  @@index([parentId])
+  @@index([isActive])
+}
+
+model Item {
+  id           String   @id @default(cuid())
+  categoryId   String?
+  itemCode     String   @unique
+  name         String
+  itemType     ItemType @default(STOCK)
+  unit         String   @default("EA")
+  basePrice    Decimal? @db.Decimal(12, 2)
+  currentStock Decimal  @default(0) @db.Decimal(12, 3)
+  minimumStock Decimal  @default(0) @db.Decimal(12, 3)
+  isActive     Boolean  @default(true)
+  memo         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  category      ItemCategory?          @relation(fields: [categoryId], references: [id])
+  estimateItems EstimateItem[]
+  workOrderItems WorkOrderItem[]
+  inventoryLogs InventoryTransaction[]
+
+  @@index([name])
+  @@index([categoryId])
+  @@index([isActive])
+}
+
+model EstimateItem {
+  id         String   @id @default(cuid())
+  estimateId String
+  itemId     String
+  quantity   Decimal  @db.Decimal(12, 3)
+  unitPrice  Decimal? @db.Decimal(12, 2)
+  memo       String?
+  createdAt  DateTime @default(now())
+
+  estimate Estimate @relation(fields: [estimateId], references: [id])
+  item     Item     @relation(fields: [itemId], references: [id])
+
+  @@index([estimateId])
+  @@index([itemId])
+}
+
+model WorkOrderItem {
+  id          String   @id @default(cuid())
+  workOrderId String
+  itemId      String
+  quantity    Decimal  @db.Decimal(12, 3)
+  unitPrice   Decimal? @db.Decimal(12, 2)
+  memo        String?
+  createdAt   DateTime @default(now())
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id])
+  item      Item      @relation(fields: [itemId], references: [id])
+
+  @@index([workOrderId])
+  @@index([itemId])
+}
+
+model InventoryTransaction {
+  id          String                   @id @default(cuid())
+  itemId      String
+  workOrderId String?
+  type        InventoryTransactionType
+  quantity    Decimal                  @db.Decimal(12, 3)
+  unitCost    Decimal?                 @db.Decimal(12, 2)
+  reason      String
+  occurredAt  DateTime                 @default(now())
+  createdById String?
+  createdAt   DateTime                 @default(now())
+
+  item      Item       @relation(fields: [itemId], references: [id])
+  workOrder WorkOrder? @relation(fields: [workOrderId], references: [id])
+  createdBy User?      @relation(fields: [createdById], references: [id])
+
+  @@index([itemId])
+  @@index([workOrderId])
+  @@index([occurredAt])
+  @@index([type])
+}
+
+model Voucher {
+  id            String        @id @default(cuid())
+  voucherNo     String        @unique
+  type          VoucherType
+  issuedDate    DateTime
+  partnerId     String?
+  estimateId    String?
+  workOrderId   String?
+  title         String
+  supplyAmount  Decimal       @db.Decimal(12, 2)
+  taxAmount     Decimal       @default(0) @db.Decimal(12, 2)
+  totalAmount   Decimal       @db.Decimal(12, 2)
+  paymentStatus PaymentStatus @default(UNPAID)
+  memo          String?
+  createdById   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  partner   Partner?   @relation(fields: [partnerId], references: [id])
+  estimate  Estimate?  @relation(fields: [estimateId], references: [id])
+  workOrder WorkOrder? @relation(fields: [workOrderId], references: [id])
+  createdBy User?      @relation(fields: [createdById], references: [id])
+  payments  Payment[]
+
+  @@index([issuedDate])
+  @@index([type])
+  @@index([paymentStatus])
+  @@index([partnerId])
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  voucherId   String
+  paymentDate DateTime
+  method      PaymentMethod
+  amount      Decimal       @db.Decimal(12, 2)
+  memo        String?
+  createdById String?
+  createdAt   DateTime      @default(now())
+
+  voucher   Voucher @relation(fields: [voucherId], references: [id])
+  createdBy User?   @relation(fields: [createdById], references: [id])
+
+  @@index([voucherId])
+  @@index([paymentDate])
+  @@index([method])
+}
+
+model Attachment {
+  id          String   @id @default(cuid())
+  estimateId  String?
+  workOrderId String?
+  title       String?
+  fileName    String
+  mimeType    String
+  storageKey  String
+  fileSize    Int?
+  memo        String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  estimate  Estimate?  @relation(fields: [estimateId], references: [id])
+  workOrder WorkOrder? @relation(fields: [workOrderId], references: [id])
+  createdBy User?      @relation(fields: [createdById], references: [id])
+
+  @@index([estimateId])
+  @@index([workOrderId])
+  @@index([createdAt])
+}
+
+model Document {
+  id          String       @id @default(cuid())
+  type        DocumentType
+  estimateId  String?
+  workOrderId String?
+  version     Int          @default(1)
+  title       String
+  fileName    String
+  mimeType    String       @default("application/pdf")
+  storageKey  String
+  fileSize    Int?
+  checksum    String?
+  generatedAt DateTime     @default(now())
+  expiresAt   DateTime?
+  createdById String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  estimate             Estimate?             @relation(fields: [estimateId], references: [id])
+  workOrder            WorkOrder?            @relation(fields: [workOrderId], references: [id])
+  createdBy            User?                 @relation(fields: [createdById], references: [id])
+  shares               DocumentShare[]
+  accessLogs           DocumentAccessLog[]
+  notificationMessages NotificationMessage[]
+
+  @@unique([estimateId, type, version])
+  @@index([type])
+  @@index([estimateId])
+  @@index([workOrderId])
+}
+
+model DocumentShare {
+  id            String    @id @default(cuid())
+  documentId    String
+  tokenHash     String    @unique
+  tokenPrefix   String?
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  maxViews      Int?
+  viewCount     Int       @default(0)
+  downloadCount Int       @default(0)
+  createdAt     DateTime  @default(now())
+
+  document             Document              @relation(fields: [documentId], references: [id])
+  accessLogs           DocumentAccessLog[]
+  notificationMessages NotificationMessage[]
+
+  @@index([documentId])
+  @@index([expiresAt])
+  @@index([revokedAt])
+}
+
+model DocumentAccessLog {
+  id         String               @id @default(cuid())
+  documentId String
+  shareId    String?
+  action     DocumentAccessAction
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime             @default(now())
+
+  document Document       @relation(fields: [documentId], references: [id])
+  share    DocumentShare? @relation(fields: [shareId], references: [id])
+
+  @@index([documentId])
+  @@index([shareId])
+  @@index([createdAt])
+}
+
+model NotificationTemplate {
+  id                   String              @id @default(cuid())
+  code                 String              @unique
+  channel              NotificationChannel
+  title                String
+  content              String
+  buttonLabel          String?
+  providerTemplateCode String?
+  isActive             Boolean             @default(true)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  messages NotificationMessage[]
+
+  @@index([channel])
+  @@index([isActive])
+}
+
+model NotificationMessage {
+  id                String              @id @default(cuid())
+  templateId        String?
+  estimateId        String?
+  workOrderId       String?
+  customerId        String?
+  documentId        String?
+  documentShareId   String?
+  channel           NotificationChannel
+  status            NotificationStatus  @default(QUEUED)
+  recipientName     String?
+  recipientPhone    String
+  subject           String?
+  body              String
+  providerMessageId String?
+  errorCode         String?
+  errorMessage      String?
+  scheduledAt       DateTime?
+  sentAt            DateTime?
+  failedAt          DateTime?
+  attemptCount      Int                 @default(0)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  template      NotificationTemplate? @relation(fields: [templateId], references: [id])
+  estimate      Estimate?             @relation(fields: [estimateId], references: [id])
+  workOrder     WorkOrder?            @relation(fields: [workOrderId], references: [id])
+  customer      Customer?             @relation(fields: [customerId], references: [id])
+  document      Document?             @relation(fields: [documentId], references: [id])
+  documentShare DocumentShare?        @relation(fields: [documentShareId], references: [id])
+
+  @@index([status])
+  @@index([channel])
+  @@index([recipientPhone])
+  @@index([estimateId])
+  @@index([documentId])
+  @@index([scheduledAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}

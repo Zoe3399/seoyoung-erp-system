@@ -1,0 +1,13 @@
+node_modules
+dist
+build
+.turbo
+.env
+.env.local
+.env.*.local
+coverage
+*.log
+*.tsbuildinfo
+*.docx
+apps/web/.vite
+packages/database/generated
