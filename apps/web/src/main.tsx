@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useMemo, useRef, useState, type ChangeEvent, type Dispatch, type DragEvent, type FormEvent, type ReactNode, type SetStateAction, type TextareaHTMLAttributes } from 'react';
+import { StrictMode, useEffect, useMemo, useRef, useState, type ChangeEvent, type ClipboardEvent, type Dispatch, type DragEvent, type FormEvent, type ReactNode, type SetStateAction, type TextareaHTMLAttributes } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   AlertCircle,
@@ -70,6 +70,7 @@ const LOGIN_STORAGE_KEYS = {
   autoLogin: 'seoyoung.login.autoLogin',
   rememberedId: 'seoyoung.login.rememberedId',
 } as const;
+const CARD_SALES_STORAGE_KEY = 'seoyoung.cardSales.overrides';
 
 function readLoginStorageValue(key: string) {
   if (typeof window === 'undefined') return null;
@@ -4014,10 +4015,41 @@ function modeDetailLabel(mode: AppMode) {
   return '기준 데이터 중심';
 }
 
+function defaultModePage(mode: AppMode) {
+  return MODE_OPTIONS.find((option) => option.id === mode)?.defaultPage ?? 'dashboard';
+}
+
+function normalizeInitialPage(mode: AppMode, page: PageId | null) {
+  if (mode === 'worker' && (!page || page === 'dashboard')) return defaultModePage(mode);
+  return page ?? defaultModePage(mode);
+}
+
+function preferredGroupNode(group: SidebarNavGroup) {
+  return group.items.find((item) => item.children?.length) ?? group.items[0] ?? null;
+}
+
+function firstPageInNode(node: SidebarNavNode | null) {
+  if (!node) return null;
+  return node.pageId ?? node.children?.find((child) => child.pageId)?.pageId ?? null;
+}
+
+function defaultExpandedGroupIds(mode: AppMode) {
+  return new Set(
+    sidebarGroupsForMode(mode)
+      .filter((group) => group.items.length > 1 || group.items.some((item) => item.children?.length))
+      .map((group) => group.id),
+  );
+}
+
+function defaultExpandedNodeIds(mode: AppMode) {
+  void mode;
+  return new Set<string>();
+}
+
 function App() {
   const initialPage = readPageSearchParam();
   const initialMode = appModeForPage(initialPage);
-  const initialActivePage = initialPage ?? 'dashboard';
+  const initialActivePage = normalizeInitialPage(initialMode, initialPage);
   const initialSidebarPath = findSidebarNavPath(initialMode, initialActivePage);
   const [isAuthenticated, setIsAuthenticated] = useState(
     () =>
@@ -4029,6 +4061,8 @@ function App() {
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [activeGroupId, setActiveGroupId] = useState(() => initialSidebarPath?.group.id ?? 'overview');
   const [activeNodeId, setActiveNodeId] = useState(() => initialSidebarPath?.node.id ?? null);
+  const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(() => defaultExpandedGroupIds(initialMode));
+  const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(() => defaultExpandedNodeIds(initialMode));
   const [customerModalId, setCustomerModalId] = useState<string | null>(null);
   const [isEstimateRegistrationOpen, setIsEstimateRegistrationOpen] = useState(false);
   const [isVehicleRegistrationOpen, setIsVehicleRegistrationOpen] = useState(false);
@@ -4083,27 +4117,71 @@ function App() {
   function handleModeChange(nextMode: AppMode) {
     const nextModeOption = MODE_OPTIONS.find((mode) => mode.id === nextMode) ?? MODE_OPTIONS[0]!;
     const nextGroups = sidebarGroupsForMode(nextMode);
-    const nextItems = collectSidebarNavItems(nextGroups);
+    const nextPage = nextModeOption.defaultPage;
+    const nextPath = findSidebarNavPath(nextMode, nextPage);
     setAppMode(nextMode);
-    setActiveGroupId(nextGroups[0]?.id ?? 'overview');
-    setActiveNodeId(nextGroups[0]?.items[0]?.id ?? null);
-    if (!nextItems.some((item) => item.id === activePage)) {
-      navigatePage(nextModeOption.defaultPage);
-    }
+    setActiveGroupId(nextPath?.group.id ?? nextGroups[0]?.id ?? 'overview');
+    setActiveNodeId(nextPath?.node.id ?? null);
+    setExpandedGroupIds(defaultExpandedGroupIds(nextMode));
+    setExpandedNodeIds(defaultExpandedNodeIds(nextMode));
+    navigatePage(nextPage);
   }
 
   function handleGroupSelect(group: SidebarNavGroup) {
-    const firstNode = group.items[0] ?? null;
-    setActiveGroupId(group.id);
-    setActiveNodeId(null);
+    const isSinglePageGroup = group.items.length === 1 && !group.items[0]?.children?.length;
+    const isExpanded = expandedGroupIds.has(group.id);
 
-    if (group.items.length === 1 && firstNode?.pageId && !firstNode.children?.length) {
-      navigatePage(firstNode.pageId);
+    if (!isSinglePageGroup) {
+      setExpandedGroupIds((current) => {
+        const next = new Set(current);
+        if (isExpanded) {
+          next.delete(group.id);
+        } else {
+          next.add(group.id);
+        }
+        return next;
+      });
+    }
+
+    const currentNode = group.items.find((item) => item.pageId === activePage || nodeContainsPage(item, activePage));
+    const nextNode = currentNode ?? preferredGroupNode(group);
+    setActiveGroupId(group.id);
+    setActiveNodeId(nextNode?.id ?? null);
+
+    if (isSinglePageGroup) {
+      const firstNode = group.items[0];
+      if (firstNode?.pageId) navigatePage(firstNode.pageId);
+      return;
+    }
+
+    const nextPage = !isExpanded && !currentNode ? firstPageInNode(nextNode) : null;
+    if (nextPage) {
+      navigatePage(nextPage);
     }
   }
 
   function handleNodeSelect(node: SidebarNavNode) {
+    const hasChildren = Boolean(node.children?.length);
+    const isExpanded = expandedNodeIds.has(node.id);
     setActiveNodeId(node.id);
+
+    if (hasChildren) {
+      setExpandedNodeIds((current) => {
+        const next = new Set(current);
+        if (isExpanded) {
+          next.delete(node.id);
+        } else {
+          next.add(node.id);
+        }
+        return next;
+      });
+
+      if (!isExpanded) {
+        const nextPage = node.pageId ?? node.children?.find((child) => child.pageId)?.pageId;
+        if (nextPage) navigatePage(nextPage);
+      }
+      return;
+    }
 
     if (node.pageId) {
       navigatePage(node.pageId);
@@ -4178,7 +4256,7 @@ function App() {
   function renderSidebarNode(node: SidebarNavNode, depth: 3 | 4): ReactNode {
     const Icon = node.icon;
     const hasChildren = Boolean(node.children?.length);
-    const isOpen = hasChildren && (activeNodeId === node.id || nodeContainsPage(node, activePage));
+    const isOpen = hasChildren && expandedNodeIds.has(node.id);
     const isActive = node.pageId === activePage || nodeContainsPage(node, activePage);
 
     return (
@@ -4274,10 +4352,9 @@ function App() {
             <p className="nav-section-title">2차 메뉴</p>
             {navGroups.map((group) => {
               const Icon = group.icon;
-              const isOpen = activeGroup.id === group.id;
+              const isOpen = expandedGroupIds.has(group.id);
               const isSinglePageGroup = group.items.length === 1 && !group.items[0]?.children?.length;
-              const isActive =
-                isOpen || group.items.some((item) => item.pageId === activePage || nodeContainsPage(item, activePage));
+              const isActive = group.items.some((item) => item.pageId === activePage || nodeContainsPage(item, activePage));
 
               return (
                 <div className="nav-tree-group" key={group.id}>
@@ -8219,6 +8296,75 @@ type CardSalesOverride = {
   depositDate: string;
   depositAmount: string;
 };
+type CardSalesStorageState = {
+  overrides: Record<string, CardSalesOverride>;
+  bulkDepositDate: string;
+  bulkDepositAmount: string;
+};
+
+function formatCardSalesMoneyInput(value: string) {
+  const digits = value.replace(/[^\d]/g, '');
+  return digits ? Number(digits).toLocaleString('ko-KR') : '';
+}
+
+function normalizeCardSalesDateInput(value: string) {
+  const normalized = normalizeWorkDate(value.trim());
+  return normalized && parseDateInput(normalized) ? normalized : '';
+}
+
+function isCardSalesOverride(value: unknown): value is CardSalesOverride {
+  if (!value || typeof value !== 'object') return false;
+  const item = value as Record<string, unknown>;
+  return typeof item.depositDate === 'string' && typeof item.depositAmount === 'string';
+}
+
+function readCardSalesStorage(): CardSalesStorageState {
+  const fallback = {
+    overrides: {},
+    bulkDepositDate: todayDateInputValue(),
+    bulkDepositAmount: '',
+  };
+  if (typeof window === 'undefined') return fallback;
+
+  try {
+    const rawValue = window.localStorage.getItem(CARD_SALES_STORAGE_KEY);
+    if (!rawValue) return fallback;
+    const parsedValue: unknown = JSON.parse(rawValue);
+    if (!parsedValue || typeof parsedValue !== 'object') return fallback;
+
+    const state = parsedValue as Record<string, unknown>;
+    const rawOverrides = state.overrides && typeof state.overrides === 'object' ? (state.overrides as Record<string, unknown>) : {};
+    const overrides = Object.fromEntries(
+      Object.entries(rawOverrides)
+        .filter((entry): entry is [string, CardSalesOverride] => isCardSalesOverride(entry[1]))
+        .map(([key, value]) => [
+          key,
+          {
+            depositDate: normalizeCardSalesDateInput(value.depositDate),
+            depositAmount: formatCardSalesMoneyInput(value.depositAmount),
+          },
+        ]),
+    );
+
+    return {
+      overrides,
+      bulkDepositDate: normalizeCardSalesDateInput(String(state.bulkDepositDate ?? '')) || fallback.bulkDepositDate,
+      bulkDepositAmount: formatCardSalesMoneyInput(String(state.bulkDepositAmount ?? '')),
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function writeCardSalesStorage(state: CardSalesStorageState) {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(CARD_SALES_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Browser storage can be unavailable in privacy modes.
+  }
+}
 
 function cardSalesKey(settlement: CardSettlement, index: number) {
   return `${settlement.workDate ?? settlement.date}-${settlement.date}-${settlement.brand}-${settlement.plate}-${settlement.source ?? index}`;
@@ -8243,12 +8389,13 @@ function todayDateInputValue() {
 }
 
 function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
+  const initialCardSalesStorage = useMemo(() => readCardSalesStorage(), []);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<CardSalesSort>('workAsc');
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
-  const [overrides, setOverrides] = useState<Record<string, CardSalesOverride>>({});
-  const [bulkDepositDate, setBulkDepositDate] = useState(() => todayDateInputValue());
-  const [bulkDepositAmount, setBulkDepositAmount] = useState('');
+  const [overrides, setOverrides] = useState<Record<string, CardSalesOverride>>(() => initialCardSalesStorage.overrides);
+  const [bulkDepositDate, setBulkDepositDate] = useState(() => initialCardSalesStorage.bulkDepositDate);
+  const [bulkDepositAmount, setBulkDepositAmount] = useState(() => initialCardSalesStorage.bulkDepositAmount);
   const normalizedQuery = query.trim().toLowerCase();
   const rows = useMemo(
     () =>
@@ -8349,13 +8496,18 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
     });
   }, [rows]);
 
+  useEffect(() => {
+    writeCardSalesStorage({ overrides, bulkDepositDate, bulkDepositAmount });
+  }, [bulkDepositAmount, bulkDepositDate, overrides]);
+
   function updateOverride(key: string, field: keyof CardSalesOverride, value: string) {
+    const nextValue = field === 'depositAmount' ? formatCardSalesMoneyInput(value) : value;
     setOverrides((current) => ({
       ...current,
       [key]: {
         depositDate: current[key]?.depositDate ?? '',
         depositAmount: current[key]?.depositAmount ?? '',
-        [field]: value,
+        [field]: nextValue,
       },
     }));
   }
@@ -8366,6 +8518,14 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
     const today = todayDateInputValue();
     input.value = today;
     updateOverride(key, 'depositDate', today);
+  }
+
+  function applyPastedDepositDate(event: ClipboardEvent<HTMLInputElement>, onApply: (value: string) => void) {
+    const normalized = normalizeCardSalesDateInput(event.clipboardData.getData('text'));
+    if (!normalized) return;
+
+    event.preventDefault();
+    onApply(normalized);
   }
 
   function toggleSelected(key: string, canSelect: boolean) {
@@ -8481,11 +8641,21 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
           <div className="card-bulk-controls">
             <label>
               <span>입금일자</span>
-              <input onChange={(event) => setBulkDepositDate(event.target.value)} type="date" value={bulkDepositDate} />
+              <input
+                onChange={(event) => setBulkDepositDate(event.target.value)}
+                onPaste={(event) => applyPastedDepositDate(event, setBulkDepositDate)}
+                type="date"
+                value={bulkDepositDate}
+              />
             </label>
             <label>
               <span>일괄입금액</span>
-              <input inputMode="numeric" onChange={(event) => setBulkDepositAmount(event.target.value)} placeholder="입금금액" value={bulkDepositAmount} />
+              <input
+                inputMode="numeric"
+                onChange={(event) => setBulkDepositAmount(formatCardSalesMoneyInput(event.target.value))}
+                placeholder="입금금액"
+                value={bulkDepositAmount}
+              />
             </label>
             <button className="primary-button" disabled={selectedRows.length === 0 || parseMoneyText(bulkDepositAmount) <= 0} onClick={applyBulkDeposit} type="button">
               계산
@@ -8535,13 +8705,14 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
               row.settlement.amount.toLocaleString('ko-KR'),
               row.settlement.brand,
               <input
-                className="card-sales-inline-input"
-                key={`${row.key}-deposit-date`}
-                onFocus={(event) => setDefaultDepositDateIfEmpty(row.key, row.depositDate, event.currentTarget)}
-                onChange={(event) => updateOverride(row.key, 'depositDate', event.target.value)}
-                type="date"
-                value={row.depositDate}
-              />,
+              className="card-sales-inline-input"
+              key={`${row.key}-deposit-date`}
+              onFocus={(event) => setDefaultDepositDateIfEmpty(row.key, row.depositDate, event.currentTarget)}
+              onChange={(event) => updateOverride(row.key, 'depositDate', event.target.value)}
+              onPaste={(event) => applyPastedDepositDate(event, (value) => updateOverride(row.key, 'depositDate', value))}
+              type="date"
+              value={row.depositDate}
+            />,
               <input
                 className="card-sales-inline-input money"
                 inputMode="numeric"
