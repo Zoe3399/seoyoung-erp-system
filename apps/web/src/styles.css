@@ -2630,6 +2630,90 @@ tbody tr:hover {
   min-width: 1180px;
 }
 
+.payment-list-table-panel .table-wrap table {
+  table-layout: fixed;
+}
+
+.payment-list-table-panel .table-wrap th,
+.payment-list-table-panel .table-wrap td {
+  height: 64px;
+  padding: 12px 10px;
+  vertical-align: middle;
+}
+
+.payment-list-table-panel .table-wrap th {
+  color: #6b7684;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.payment-list-table-panel .table-wrap td {
+  color: #0f172a;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.payment-list-table-panel .table-wrap th:nth-child(1),
+.payment-list-table-panel .table-wrap td:nth-child(1),
+.payment-list-table-panel .table-wrap th:nth-child(2),
+.payment-list-table-panel .table-wrap td:nth-child(2) {
+  width: 72px;
+  text-align: center;
+}
+
+.payment-list-table-panel .table-wrap th:nth-child(3),
+.payment-list-table-panel .table-wrap td:nth-child(3),
+.payment-list-table-panel .table-wrap th:nth-child(9),
+.payment-list-table-panel .table-wrap td:nth-child(9),
+.payment-list-table-panel .table-wrap th:nth-child(11),
+.payment-list-table-panel .table-wrap td:nth-child(11) {
+  width: 64px;
+  text-align: center;
+}
+
+.payment-list-table-panel .table-wrap th:nth-child(4),
+.payment-list-table-panel .table-wrap td:nth-child(4) {
+  width: 96px;
+  text-align: left;
+}
+
+.payment-list-table-panel .table-wrap th:nth-child(5),
+.payment-list-table-panel .table-wrap td:nth-child(5) {
+  width: 170px;
+  text-align: left;
+}
+
+.payment-list-table-panel .table-wrap th:nth-child(6),
+.payment-list-table-panel .table-wrap td:nth-child(6) {
+  width: 78px;
+  text-align: center;
+}
+
+.payment-list-table-panel .table-wrap th:nth-child(7),
+.payment-list-table-panel .table-wrap td:nth-child(7) {
+  width: 150px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.payment-list-table-panel .table-wrap th:nth-child(8),
+.payment-list-table-panel .table-wrap td:nth-child(8) {
+  width: 118px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.payment-list-table-panel .table-wrap th:nth-child(10),
+.payment-list-table-panel .table-wrap td:nth-child(10) {
+  width: 180px;
+  text-align: center;
+}
+
+.payment-list-table-panel .table-wrap td:nth-child(11) .mini-button {
+  min-width: 44px;
+}
+
 .payment-list-table-panel .panel-header {
   min-height: 66px;
   padding-top: 10px;
@@ -2904,6 +2988,19 @@ tbody tr:hover {
 .payment-status-stack span {
   color: #6b7684;
   font-size: 12px;
+}
+
+.payment-status-stack {
+  justify-items: center;
+}
+
+.payment-status-stack .status-pill {
+  display: inline-flex;
+  justify-content: center;
+  min-width: 128px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
 }
 
 .payment-repeat-note {
