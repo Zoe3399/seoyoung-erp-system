@@ -6783,7 +6783,7 @@ function PurchasePage({
             formatMoney(entry.amount),
             entry.invoiceIssued ? 'Y' : 'N',
             <div className="payment-status-stack" key={`${entry.id}-status`}>
-              <span>{entry.dueDate}</span>
+              {entry.amount > 0 && entry.paidAmount >= entry.amount ? <span>{entry.dueDate}</span> : null}
               <StatusPill label={entry.status} tone={paymentStatusTone(entry.status)} />
             </div>,
             entry.memo,
@@ -7163,7 +7163,7 @@ function PaymentListPage({
             formatMoney(aggregate.amount),
             aggregate.invoiceSummary,
             <div className="payment-status-stack" key={`${aggregate.key}-status`}>
-              <span>{aggregate.dueDateSummary}</span>
+              {aggregate.amount > 0 && aggregate.paidAmount >= aggregate.amount ? <span>{aggregate.dueDateSummary}</span> : null}
               <StatusPill label={aggregate.status} tone={paymentStatusTone(aggregate.status)} />
             </div>,
             <button
