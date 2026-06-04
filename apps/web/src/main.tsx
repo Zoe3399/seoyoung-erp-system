@@ -2,7 +2,6 @@ import { StrictMode, useEffect, useMemo, useRef, useState, type ChangeEvent, typ
 import { createRoot } from 'react-dom/client';
 import {
   AlertCircle,
-  Bell,
   Building2,
   CalendarDays,
   Camera,
@@ -402,6 +401,96 @@ type PaymentScheduleDraft = {
   memo: string;
 };
 
+type PurchaseVariability = '고정' | '변동';
+type PurchasePaymentStatus = PaymentScheduleStatus;
+type PurchaseEntry = {
+  id: string;
+  baseMonth: string;
+  paymentMonth: string;
+  dueDate: string;
+  variability: PurchaseVariability;
+  category: string;
+  partner: string;
+  bank: string;
+  accountNumber: string;
+  amount: number;
+  paidAmount: number;
+  invoiceIssued: boolean;
+  status: PurchasePaymentStatus;
+  memo: string;
+};
+type PurchaseFilter = 'all' | 'fixed' | 'variable' | 'unpaid' | 'paid';
+type PaymentRepeat = 'none' | 'monthly' | 'quarterly' | 'halfYear' | 'yearly';
+type PaymentPeriodBasis = 'base' | 'payment' | 'custom';
+type PaymentListSort = 'dueAsc' | 'dueDesc' | 'amountDesc' | 'partnerAsc';
+type ManualPaymentRule = {
+  id: string;
+  startDate: string;
+  partner: string;
+  item: string;
+  amount: number;
+  paidAmount: number;
+  variability: PurchaseVariability;
+  category: string;
+  bank: string;
+  accountNumber: string;
+  invoiceIssued: boolean;
+  status: PurchasePaymentStatus;
+  repeat: PaymentRepeat;
+  endDate: string;
+  memo: string;
+};
+type ManualPaymentDraft = {
+  startDate: string;
+  partner: string;
+  item: string;
+  amount: string;
+  paidAmount: string;
+  variability: PurchaseVariability;
+  category: string;
+  bank: string;
+  accountNumber: string;
+  invoiceIssued: 'Y' | 'N';
+  status: PurchasePaymentStatus;
+  repeat: PaymentRepeat;
+  endDate: string;
+  memo: string;
+};
+type PaymentListSourceItem = {
+  id: string;
+  baseMonth: string;
+  paymentMonth: string;
+  dueDate: string;
+  variability: PurchaseVariability;
+  category: string;
+  partner: string;
+  bank: string;
+  accountNumber: string;
+  amount: number;
+  paidAmount: number;
+  invoiceIssued: boolean;
+  status: PurchasePaymentStatus;
+  source: '구매관리' | '수기등록';
+  memo: string;
+};
+type PaymentPartnerAggregate = {
+  key: string;
+  baseMonth: string;
+  paymentMonth: string;
+  partner: string;
+  amount: number;
+  paidAmount: number;
+  variability: string;
+  category: string;
+  bank: string;
+  accountNumber: string;
+  invoiceSummary: string;
+  status: PurchasePaymentStatus;
+  dueDateSummary: string;
+  sourceSummary: string;
+  entries: PaymentListSourceItem[];
+};
+
 type Claim = {
   no: string;
   customer: string;
@@ -698,11 +787,284 @@ type GlobalSearchSuggestion = {
   customerId?: string;
 };
 
+type CustomerLinkedSectionId = 'vehicle' | 'estimates' | 'work' | 'claims' | 'sales' | 'attachments';
+
+type CustomerLinkedItem = {
+  id: string;
+  title: string;
+  detail: string;
+  pageId: PageId;
+  meta?: string;
+  status?: string;
+  tone?: Tone;
+};
+
+type CustomerLinkedSection = {
+  id: CustomerLinkedSectionId;
+  title: string;
+  icon: LucideIcon;
+  pageId: PageId;
+  countLabel: string;
+  detail: string;
+  emptyLabel: string;
+  items: CustomerLinkedItem[];
+};
+
 function compactTextParts(parts: Array<string | number | undefined | null>) {
   return parts
     .map((part) => String(part ?? '').trim())
     .filter(Boolean)
     .join(' · ');
+}
+
+function normalizeLinkedText(value: string | number | undefined | null) {
+  return String(value ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function splitCustomerVehicle(customer: Customer) {
+  const [model = '', plate = ''] = customer.vehicle.split('/').map((part) => part.trim());
+  return { model, plate };
+}
+
+function customerVehicleAliases(customer: Customer) {
+  const { model, plate } = splitCustomerVehicle(customer);
+  const aliases = new Set<string>();
+
+  [customer.vehicle, model, plate, customer.vin].forEach((value) => {
+    const normalized = normalizeLinkedText(value);
+    if (normalized.length >= 2) aliases.add(normalized);
+  });
+
+  model
+    .split(/\s+/)
+    .slice(1)
+    .forEach((token) => {
+      const normalized = normalizeLinkedText(token);
+      if (normalized.length >= 2) aliases.add(normalized);
+    });
+
+  return Array.from(aliases);
+}
+
+function matchesCustomerRecord(customer: Customer, parts: Array<string | number | undefined | null>) {
+  const target = normalizeLinkedText(parts.join(' '));
+  if (!target) return false;
+
+  const directTokens = [customer.name, customer.phone, customer.vin].map(normalizeLinkedText).filter(Boolean);
+  if (directTokens.some((token) => target.includes(token))) return true;
+
+  return customerVehicleAliases(customer).some((alias) => target.includes(alias));
+}
+
+function matchesCustomerIdentity(customer: Customer, parts: Array<string | number | undefined | null>) {
+  const target = normalizeLinkedText(parts.join(' '));
+  if (!target) return false;
+
+  return [customer.name, customer.phone, customer.vin].map(normalizeLinkedText).filter(Boolean).some((token) => target.includes(token));
+}
+
+function firstLine(value: string) {
+  return value.split('\n')[0]?.trim() || value;
+}
+
+function countLabel(count: number, unit = '건') {
+  return `${count}${unit}`;
+}
+
+function sectionDetail(items: CustomerLinkedItem[], emptyLabel: string) {
+  return items[0]?.title ? `최근 ${items[0].title}` : emptyLabel;
+}
+
+function buildCustomerLinkedSections(customer: Customer): CustomerLinkedSection[] {
+  const { model, plate } = splitCustomerVehicle(customer);
+  const vehicleItems: CustomerLinkedItem[] = [
+    {
+      id: `vehicle-${customer.id}`,
+      title: customer.vehicle,
+      detail: compactTextParts([model, plate, customer.vin]),
+      pageId: 'vehicles',
+      status: '차량',
+      tone: 'blue',
+    },
+  ];
+  const estimateItems: CustomerLinkedItem[] = estimates
+    .filter((estimate) =>
+      matchesCustomerRecord(customer, [
+        estimate.no,
+        estimate.customer,
+        estimate.phone,
+        estimate.vehicle,
+        estimate.repair,
+        estimate.area.join(' '),
+      ]),
+    )
+    .map((estimate) => ({
+      id: `estimate-${estimate.no}`,
+      title: estimate.no,
+      detail: compactTextParts([estimate.estimateDate, estimate.customer, estimate.vehicle, estimate.repair]),
+      pageId: 'estimates',
+      meta: formatMoney(estimate.amount),
+      status: estimate.status,
+      tone: statusTone(estimate.status),
+    }));
+  const workItems: CustomerLinkedItem[] = workerWorkListRecords
+    .filter((record) =>
+      matchesCustomerRecord(customer, [
+        record.id,
+        record.date,
+        record.time,
+        record.customer,
+        record.vehicle,
+        record.plateNumber,
+        record.title,
+        record.company,
+        record.location,
+        record.stock,
+      ]),
+    )
+    .map((record) => ({
+      id: `work-${record.id}`,
+      title: firstLine(record.title),
+      detail: compactTextParts([record.date, record.time, record.customer, record.vehicle, record.owner]),
+      pageId: 'work',
+      status: record.status,
+      tone: statusTone(record.status),
+    }));
+  const claimItems: CustomerLinkedItem[] = claims
+    .filter((claim) =>
+      matchesCustomerRecord(customer, [claim.no, claim.customer, claim.vehicle, claim.type, claim.insurer, claim.status]),
+    )
+    .map((claim) => ({
+      id: `claim-${claim.no}`,
+      title: claim.no,
+      detail: compactTextParts([claim.type, claim.insurer, claim.customer, claim.vehicle]),
+      pageId: 'claims',
+      meta: formatMoney(claim.claimAmount || claim.customerAmount),
+      status: claim.status,
+      tone: statusTone(claim.status),
+    }));
+  const saleItems: CustomerLinkedItem[] = productSales
+    .filter((sale) =>
+      matchesCustomerIdentity(customer, [
+        sale.no,
+        sale.customer,
+        sale.itemName,
+        sale.partNo,
+        sale.paymentMethod,
+        sale.status,
+      ]),
+    )
+    .map((sale) => ({
+      id: `sale-${sale.no}`,
+      title: sale.no,
+      detail: compactTextParts([sale.date, sale.type, sale.customer, sale.itemName, sale.partNo]),
+      pageId: 'sales',
+      meta: formatMoney(sale.salePrice || sale.purchasePrice),
+      status: sale.status,
+      tone: statusTone(sale.status),
+    }));
+  const attachmentItems: CustomerLinkedItem[] = [
+    ...attachments
+      .filter((file) => matchesCustomerRecord(customer, [file.name, file.target, file.type, file.owner]))
+      .map((file) => ({
+        id: `attachment-${file.name}`,
+        title: file.name,
+        detail: compactTextParts([file.type, file.target, file.owner]),
+        pageId: 'attachments' as PageId,
+        status: file.type,
+        tone: statusTone(file.type),
+      })),
+    ...customer.files.map((fileName, index) => ({
+      id: `customer-file-${customer.id}-${index}`,
+      title: fileName,
+      detail: compactTextParts(['고객 기본 자료', customer.name]),
+      pageId: 'attachments' as PageId,
+      status: '자료',
+      tone: 'gray' as Tone,
+    })),
+  ];
+
+  return [
+    {
+      id: 'vehicle',
+      title: '차량',
+      icon: Car,
+      pageId: 'vehicles',
+      countLabel: countLabel(vehicleItems.length, '대'),
+      detail: compactTextParts([model, plate, customer.vin]),
+      emptyLabel: '연결 차량 없음',
+      items: vehicleItems,
+    },
+    {
+      id: 'estimates',
+      title: '견적',
+      icon: FileText,
+      pageId: 'estimates',
+      countLabel: countLabel(estimateItems.length),
+      detail: sectionDetail(estimateItems, '연결 견적 없음'),
+      emptyLabel: '연결된 견적이 없습니다.',
+      items: estimateItems,
+    },
+    {
+      id: 'work',
+      title: '작업',
+      icon: Wrench,
+      pageId: 'work',
+      countLabel: countLabel(workItems.length),
+      detail: sectionDetail(workItems, '연결 작업 없음'),
+      emptyLabel: '연결된 작업이 없습니다.',
+      items: workItems,
+    },
+    {
+      id: 'claims',
+      title: '청구',
+      icon: ReceiptText,
+      pageId: 'claims',
+      countLabel: countLabel(claimItems.length),
+      detail: customer.unpaid > 0 ? `미수 ${formatMoney(customer.unpaid)}` : sectionDetail(claimItems, '미수 없음'),
+      emptyLabel: '연결된 청구가 없습니다.',
+      items: claimItems,
+    },
+    {
+      id: 'sales',
+      title: '판매',
+      icon: CreditCard,
+      pageId: 'sales',
+      countLabel: countLabel(saleItems.length),
+      detail: sectionDetail(saleItems, '연결 판매 없음'),
+      emptyLabel: '연결된 판매가 없습니다.',
+      items: saleItems,
+    },
+    {
+      id: 'attachments',
+      title: '자료',
+      icon: FolderOpen,
+      pageId: 'attachments',
+      countLabel: countLabel(attachmentItems.length, '개'),
+      detail: sectionDetail(attachmentItems, '연결 자료 없음'),
+      emptyLabel: '연결된 자료가 없습니다.',
+      items: attachmentItems,
+    },
+  ];
+}
+
+function buildCustomerSearchTokens(customer: Customer, sections?: CustomerLinkedSection[]) {
+  const activeSections = sections ?? buildCustomerLinkedSections(customer);
+
+  return [
+    customer.name,
+    customer.phone,
+    customer.vehicle,
+    customer.vin,
+    customer.memo,
+    customer.lastWork,
+    ...activeSections.flatMap((section) => [
+      section.title,
+      section.countLabel,
+      section.detail,
+      ...section.items.flatMap((item) => [item.title, item.detail, item.meta, item.status]),
+    ]),
+  ].filter((value): value is string => Boolean(value));
 }
 
 function buildGlobalSearchSuggestions(vehicleSuggestions: VehicleSuggestionSet): GlobalSearchSuggestion[] {
@@ -996,9 +1358,7 @@ const MODE_OPTIONS: ModeOption[] = [
 const TOP_NAV_PAGE_IDS: PageId[] = ['dashboard', 'revenue', 'sales', 'estimates', 'work'];
 
 const PLACEHOLDER_PAGE_IDS = new Set<PageId>([
-  'purchase',
   'cardSales',
-  'paymentList',
   'workKp',
   'workInsurance',
   'workBest',
@@ -1032,6 +1392,20 @@ const PAYMENT_SCHEDULE_FILTER_OPTIONS: Array<{ id: PaymentScheduleFilter; label:
   { id: 'paid', label: '결제완료' },
   { id: 'partial', label: '부분결제' },
   { id: 'overdue', label: '연체' },
+];
+const PURCHASE_FILTER_OPTIONS: Array<{ id: PurchaseFilter; label: string }> = [
+  { id: 'all', label: '전체' },
+  { id: 'fixed', label: '고정' },
+  { id: 'variable', label: '변동' },
+  { id: 'unpaid', label: '미결' },
+  { id: 'paid', label: '완료' },
+];
+const PAYMENT_REPEAT_OPTIONS: Array<{ id: PaymentRepeat; label: string; intervalMonths: number | null }> = [
+  { id: 'none', label: '없음', intervalMonths: null },
+  { id: 'monthly', label: '매월', intervalMonths: 1 },
+  { id: 'quarterly', label: '3개월', intervalMonths: 3 },
+  { id: 'halfYear', label: '6개월', intervalMonths: 6 },
+  { id: 'yearly', label: '1년', intervalMonths: 12 },
 ];
 const WORK_PAGE_SIZE_OPTIONS: WorkPageSize[] = [20, 50, 100];
 const WORK_COLUMN_FILTER_OPTIONS: Array<{ key: WorkColumnFilterKey; label: string }> = [
@@ -1497,6 +1871,137 @@ const productSales: ProductSale[] = [
     stockAfter: 1,
     status: '결제대기',
     tone: 'red',
+  },
+];
+
+const purchaseEntries: PurchaseEntry[] = [
+  {
+    id: 'purchase-001',
+    baseMonth: '2026.05',
+    paymentMonth: '2026.06',
+    dueDate: '2026.06.05',
+    variability: '고정',
+    category: '급여',
+    partner: '정보경',
+    bank: '국민',
+    accountNumber: '54780204131478',
+    amount: 1000000,
+    paidAmount: 0,
+    invoiceIssued: false,
+    status: '결제예정',
+    memo: '월 급여 지급 예정',
+  },
+  {
+    id: 'purchase-002',
+    baseMonth: '2026.05',
+    paymentMonth: '2026.06',
+    dueDate: '2026.06.05',
+    variability: '고정',
+    category: '임대료',
+    partner: '안민자',
+    bank: '농협',
+    accountNumber: '00000000000000',
+    amount: 1000000,
+    paidAmount: 0,
+    invoiceIssued: false,
+    status: '결제예정',
+    memo: '사업장 임대료',
+  },
+  {
+    id: 'purchase-003',
+    baseMonth: '2026.05',
+    paymentMonth: '2026.06',
+    dueDate: '2026.06.05',
+    variability: '변동',
+    category: '매입(유리)',
+    partner: '우신유리(주)',
+    bank: '국민',
+    accountNumber: '00000000000000',
+    amount: 1000000,
+    paidAmount: 0,
+    invoiceIssued: false,
+    status: '결제예정',
+    memo: '전면 유리 매입',
+  },
+  {
+    id: 'purchase-004',
+    baseMonth: '2026.05',
+    paymentMonth: '2026.06',
+    dueDate: '2026.06.05',
+    variability: '고정',
+    category: '보험료',
+    partner: '[건강보험]산재',
+    bank: '-',
+    accountNumber: '-',
+    amount: 1000000,
+    paidAmount: 0,
+    invoiceIssued: false,
+    status: '결제예정',
+    memo: '4대보험 정기 지출',
+  },
+  {
+    id: 'purchase-005',
+    baseMonth: '2026.05',
+    paymentMonth: '2026.06',
+    dueDate: '2026.06.12',
+    variability: '변동',
+    category: '부자재',
+    partner: '현대모비스 부산점',
+    bank: '신한',
+    accountNumber: '110122030405',
+    amount: 850000,
+    paidAmount: 850000,
+    invoiceIssued: true,
+    status: '결제완료',
+    memo: '부자재 세금계산서 수취 완료',
+  },
+  {
+    id: 'purchase-006',
+    baseMonth: '2026.05',
+    paymentMonth: '2026.06',
+    dueDate: '2026.06.18',
+    variability: '변동',
+    category: '매입(유리)',
+    partner: '우신유리(주)',
+    bank: '국민',
+    accountNumber: '00000000000000',
+    amount: 630000,
+    paidAmount: 300000,
+    invoiceIssued: true,
+    status: '부분결제',
+    memo: '카니발 도어유리 입고분 일부 지급',
+  },
+  {
+    id: 'purchase-007',
+    baseMonth: '2026.04',
+    paymentMonth: '2026.05',
+    dueDate: '2026.05.28',
+    variability: '변동',
+    category: '외주',
+    partner: '진주 썬팅마스터',
+    bank: '기업',
+    accountNumber: '020300401234',
+    amount: 400000,
+    paidAmount: 0,
+    invoiceIssued: true,
+    status: '연체',
+    memo: '외주 시공비 지급 확인 필요',
+  },
+  {
+    id: 'purchase-008',
+    baseMonth: '2026.06',
+    paymentMonth: '2026.07',
+    dueDate: '2026.07.05',
+    variability: '고정',
+    category: '급여',
+    partner: '정보경',
+    bank: '국민',
+    accountNumber: '54780204131478',
+    amount: 1000000,
+    paidAmount: 0,
+    invoiceIssued: false,
+    status: '결제예정',
+    memo: '월 급여 지급 예정',
   },
 ];
 
@@ -3524,11 +4029,8 @@ function App() {
   const [vehicleCatalog, setVehicleCatalog] = useState<VehicleCatalogItem[]>(() =>
     mergeVehicleCatalog(defaultVehicleCatalog, readVehicleCatalogStorage()),
   );
-  const [salesRegistrationRequestId, setSalesRegistrationRequestId] = useState(0);
-  const [workRegistrationRequestId, setWorkRegistrationRequestId] = useState(0);
-  const [paymentRegistrationRequestId, setPaymentRegistrationRequestId] = useState(0);
-  const [priceBookRegistrationRequestId, setPriceBookRegistrationRequestId] = useState(0);
-  const [warrantyRegistrationRequestId, setWarrantyRegistrationRequestId] = useState(0);
+  const [purchasePartnerFilter, setPurchasePartnerFilter] = useState(() => readSearchParam('purchasePartner') ?? '');
+  const [purchaseMonthFilter, setPurchaseMonthFilter] = useState(() => readSearchParam('purchaseMonth') ?? '');
   const vehicleSuggestions = useMemo(() => buildVehicleSuggestions(vehicleCatalog), [vehicleCatalog]);
   const globalSearchSuggestions = useMemo(() => buildGlobalSearchSuggestions(vehicleSuggestions), [vehicleSuggestions]);
   const globalSearchOptions = useMemo<SearchSuggestion[]>(
@@ -3555,29 +4057,6 @@ function App() {
     [customerModalId],
   );
   const activeNav = ALL_NAV_ITEMS.find((item) => item.id === activePage) ?? ALL_NAV_ITEMS[0]!;
-  const primaryActionLabel =
-    activePage === 'revenue'
-      ? '리포트 저장'
-      : activePage === 'sales'
-      ? '판매 등록'
-      : activePage === 'inventory'
-        ? '입고 등록'
-        : activePage === 'vehicles'
-          ? '차량 추가'
-        : activePage === 'work'
-          ? '예외 작업 등록'
-        : activePage === 'schedule'
-            ? '결제 등록'
-            : activePage === 'ledger'
-              ? '행 추가'
-            : activePage === 'priceBook'
-              ? '기준정보 등록'
-            : activePage === 'warranty'
-              ? '보증서 등록'
-            : '견적 등록';
-  const canShowPrimaryAction =
-    !PLACEHOLDER_PAGE_IDS.has(activePage) && activePage !== 'priceBook' && activePage !== 'vehicles';
-
   useEffect(() => {
     writeVehicleCatalogStorage(vehicleCatalog);
   }, [vehicleCatalog]);
@@ -3627,12 +4106,36 @@ function App() {
   }
 
   function navigatePage(nextPage: PageId) {
+    if (nextPage !== 'purchase') {
+      setPurchasePartnerFilter('');
+      setPurchaseMonthFilter('');
+    }
     setActivePage(nextPage);
     setIsEstimateRegistrationOpen(false);
     setIsVehicleRegistrationOpen(false);
     updateUrlSearchParams({
       page: nextPage,
+      ...(nextPage === 'purchase' ? {} : { purchasePartner: null, purchaseMonth: null }),
       ...(nextPage === 'work' ? {} : { workItem: null, workPage: null, workPageSize: null, workView: null }),
+    });
+  }
+
+  function openPurchasePartner(partner: string, monthKey: string) {
+    const nextPage: PageId = 'purchase';
+    setAppMode(appModeForPage(nextPage));
+    setPurchasePartnerFilter(partner);
+    setPurchaseMonthFilter(monthKey);
+    setActivePage(nextPage);
+    setIsEstimateRegistrationOpen(false);
+    setIsVehicleRegistrationOpen(false);
+    updateUrlSearchParams({
+      page: nextPage,
+      purchasePartner: partner,
+      purchaseMonth: monthKey,
+      workItem: null,
+      workPage: null,
+      workPageSize: null,
+      workView: null,
     });
   }
 
@@ -3646,40 +4149,10 @@ function App() {
     navigatePage(selectedSuggestion.pageId);
   }
 
-  function handlePrimaryAction() {
-    if (activePage === 'estimates') {
-      setIsEstimateRegistrationOpen(true);
-      return;
-    }
-
-    if (activePage === 'vehicles') {
-      setIsVehicleRegistrationOpen(true);
-      return;
-    }
-
-    if (activePage === 'work') {
-      setWorkRegistrationRequestId((current) => current + 1);
-      return;
-    }
-
-    if (activePage === 'sales') {
-      setSalesRegistrationRequestId((current) => current + 1);
-      return;
-    }
-
-    if (activePage === 'schedule') {
-      setPaymentRegistrationRequestId((current) => current + 1);
-      return;
-    }
-
-    if (activePage === 'priceBook') {
-      setPriceBookRegistrationRequestId((current) => current + 1);
-      return;
-    }
-
-    if (activePage === 'warranty') {
-      setWarrantyRegistrationRequestId((current) => current + 1);
-    }
+  function handleCustomerDetailNavigate(page: PageId) {
+    setAppMode(appModeForPage(page));
+    setCustomerModalId(null);
+    navigatePage(page);
   }
 
   function handleAddVehicle(draft: VehicleCatalogDraft) {
@@ -3741,9 +4214,22 @@ function App() {
             </button>
           ))}
         </nav>
-        <div className="app-header-actions">
-          <button>알림</button>
-          <button>내 정보</button>
+        <div className="app-header-tools">
+          <SearchInput
+            className="global-search-typeahead app-header-global-search"
+            label="빠른 검색"
+            labelHidden
+            listId="global-search"
+            onChange={setGlobalSearchQuery}
+            onSelect={handleGlobalSearchSelect}
+            placeholder="이름, 차량번호, 부품번호 검색"
+            suggestions={globalSearchOptions}
+            value={globalSearchQuery}
+          />
+          <div className="app-header-actions">
+            <button>알림</button>
+            <button>내 정보</button>
+          </div>
         </div>
       </header>
 
@@ -3817,33 +4303,22 @@ function App() {
               <span>{activeMode.label} 화면</span>
             </div>
           </div>
-          <div className="topbar-actions">
-            <SearchInput
-              className="global-search-typeahead"
-              label="빠른 검색"
-              labelHidden
-              listId="global-search"
-              onChange={setGlobalSearchQuery}
-              onSelect={handleGlobalSearchSelect}
-              placeholder="이름, 차량번호, 부품번호 검색"
-              suggestions={globalSearchOptions}
-              value={globalSearchQuery}
-            />
-            <button className="ghost-button">
-              <Bell size={18} />
-            </button>
-            {canShowPrimaryAction ? (
-              <button className="primary-button" onClick={handlePrimaryAction} type="button">
-                <Plus size={17} />
-                {primaryActionLabel}
-              </button>
-            ) : null}
-          </div>
         </header>
 
         {activePage === 'dashboard' && <Dashboard onOpenCustomer={() => navigatePage('customers')} />}
         {activePage === 'revenue' && <RevenuePage />}
-        {activePage === 'sales' && <SalesPage openRegistrationToken={salesRegistrationRequestId} />}
+        {activePage === 'sales' && <SalesPage />}
+        {activePage === 'purchase' && (
+          <PurchasePage
+            monthFilter={purchaseMonthFilter}
+            partnerFilter={purchasePartnerFilter}
+          />
+        )}
+        {activePage === 'paymentList' && (
+          <PaymentListPage
+            onOpenPurchasePartner={openPurchasePartner}
+          />
+        )}
         {activePage === 'ledger' && <LedgerWorkbookPage vehicleModelSuggestions={vehicleSuggestions.model} />}
         {activePage === 'estimates' && (
           <EstimatesPage
@@ -3854,15 +4329,13 @@ function App() {
         {activePage === 'work' && (
           <WorkPage
             mode={appMode === 'admin' ? 'admin' : 'worker'}
-            openRegistrationToken={workRegistrationRequestId}
             vehicleModelSuggestions={vehicleSuggestions.model}
           />
         )}
-        {activePage === 'schedule' && <SchedulePage openRegistrationToken={paymentRegistrationRequestId} />}
-        {activePage === 'priceBook' && <PriceBookPage openRegistrationToken={priceBookRegistrationRequestId} />}
+        {activePage === 'schedule' && <SchedulePage />}
+        {activePage === 'priceBook' && <PriceBookPage />}
         {activePage === 'warranty' && (
           <WarrantyPage
-            openRegistrationToken={warrantyRegistrationRequestId}
             vehicleModelSuggestions={vehicleSuggestions.model}
           />
         )}
@@ -3886,7 +4359,13 @@ function App() {
         {PLACEHOLDER_PAGE_IDS.has(activePage) && <PlaceholderPage item={activeNav} modeLabel={activeMode.label} />}
       </section>
     </main>
-    {modalCustomer ? <CustomerDetailModal customer={modalCustomer} onClose={() => setCustomerModalId(null)} /> : null}
+    {modalCustomer ? (
+      <CustomerDetailModal
+        customer={modalCustomer}
+        onClose={() => setCustomerModalId(null)}
+        onNavigate={handleCustomerDetailNavigate}
+      />
+    ) : null}
     {activePage === 'estimates' && isEstimateRegistrationOpen ? (
       <EstimateRegistrationModal
         onClose={() => setIsEstimateRegistrationOpen(false)}
@@ -4678,7 +5157,7 @@ function downloadProductImportTemplate() {
   URL.revokeObjectURL(url);
 }
 
-function SalesPage({ openRegistrationToken }: { openRegistrationToken: number }) {
+function SalesPage() {
   const [query, setQuery] = useState('');
   const [mode, setMode] = useState<'all' | 'sale' | 'purchase' | 'payment' | 'release'>('all');
   const [isSalesRegistrationOpen, setIsSalesRegistrationOpen] = useState(false);
@@ -4772,11 +5251,6 @@ function SalesPage({ openRegistrationToken }: { openRegistrationToken: number })
       }),
     [mode, normalizedQuery],
   );
-
-  useEffect(() => {
-    if (openRegistrationToken <= 0) return;
-    setIsSalesRegistrationOpen(true);
-  }, [openRegistrationToken]);
 
   return (
     <div className="page-stack sales-page">
@@ -5843,6 +6317,288 @@ function parseMoneyText(value: string) {
   return Number.isFinite(amount) ? amount : 0;
 }
 
+function parseDateInput(value: string) {
+  const match = value.trim().match(/^(\d{4})[-.](\d{1,2})[-.](\d{1,2})$/);
+  if (!match) return null;
+
+  const [, year, month, day] = match;
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatMonthKey(year: number, monthIndex: number) {
+  return `${year}.${String(monthIndex + 1).padStart(2, '0')}`;
+}
+
+function monthKeyFromDate(value: string) {
+  const date = parseDateInput(value);
+  return date ? formatMonthKey(date.getFullYear(), date.getMonth()) : '';
+}
+
+function monthIndexFromKey(monthKey: string) {
+  const [year = 2026, month = 1] = monthKey.split('.').map(Number);
+  if (!year || !month) return 0;
+
+  return year * 12 + month - 1;
+}
+
+function shiftMonthKey(monthKey: string, offset: number) {
+  const [year = 2026, month = 1] = monthKey.split('.').map(Number);
+  const date = new Date(year, month - 1 + offset, 1);
+  return formatMonthKey(date.getFullYear(), date.getMonth());
+}
+
+function formatMonthLabel(monthKey: string) {
+  const [year = '2026', month = '01'] = monthKey.split('.');
+  return `${year}년 ${Number(month)}월`;
+}
+
+function formatShortMonth(monthKey: string) {
+  const [year = '2026', month = '01'] = monthKey.split('.');
+  return `${year.slice(2)}.${month}`;
+}
+
+function formatDateInputFromMonth(monthKey: string, day: number) {
+  const [year = 2026, month = 1] = monthKey.split('.').map(Number);
+  const lastDay = new Date(year, month, 0).getDate();
+  return `${year}-${String(month).padStart(2, '0')}-${String(Math.min(day, lastDay)).padStart(2, '0')}`;
+}
+
+function formatDateInputValue(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function addDays(date: Date, amount: number) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + amount);
+  return nextDate;
+}
+
+function addMonths(date: Date, amount: number) {
+  const nextDate = new Date(date);
+  nextDate.setMonth(nextDate.getMonth() + amount);
+  return nextDate;
+}
+
+function formatDisplayDateFromInput(value: string) {
+  return normalizePaymentDate(value);
+}
+
+function summarizeValues(values: string[], maxItems = 2) {
+  const uniqueValues = Array.from(new Set(values.filter((value) => value.trim().length > 0)));
+  if (uniqueValues.length === 0) return '-';
+  if (uniqueValues.length <= maxItems) return uniqueValues.join(', ');
+  return `${uniqueValues.slice(0, maxItems).join(', ')} 외 ${uniqueValues.length - maxItems}`;
+}
+
+function createManualPaymentDraft(monthKey = '2026.05'): ManualPaymentDraft {
+  return {
+    startDate: formatDateInputFromMonth(monthKey, 21),
+    partner: '',
+    item: '',
+    amount: '',
+    paidAmount: '0',
+    variability: '고정',
+    category: '직접등록',
+    bank: '',
+    accountNumber: '',
+    invoiceIssued: 'N',
+    status: '결제예정',
+    repeat: 'none',
+    endDate: formatDateInputFromMonth(shiftMonthKey(monthKey, 12), 28),
+    memo: '',
+  };
+}
+
+function createManualPaymentRule(draft: ManualPaymentDraft): ManualPaymentRule {
+  const amount = parseMoneyText(draft.amount);
+  const paidAmount = draft.status === '결제완료' ? amount : parseMoneyText(draft.paidAmount);
+
+  return {
+    id: `manual-payment-${Date.now()}`,
+    startDate: draft.startDate,
+    partner: draft.partner.trim() || '거래처 미입력',
+    item: draft.item.trim() || '수기 결제',
+    amount,
+    paidAmount: Math.min(amount, Math.max(0, paidAmount)),
+    variability: draft.variability,
+    category: draft.category.trim() || '직접등록',
+    bank: draft.bank.trim() || '-',
+    accountNumber: draft.accountNumber.trim() || '-',
+    invoiceIssued: draft.invoiceIssued === 'Y',
+    status: draft.status,
+    repeat: draft.repeat,
+    endDate: draft.endDate,
+    memo: draft.memo.trim() || '수기 등록',
+  };
+}
+
+function manualRuleOccurrenceForMonth(rule: ManualPaymentRule, monthKey: string): PaymentListSourceItem | null {
+  const startDate = parseDateInput(rule.startDate);
+  if (!startDate) return null;
+
+  const startMonthKey = formatMonthKey(startDate.getFullYear(), startDate.getMonth());
+  const monthDelta = monthIndexFromKey(monthKey) - monthIndexFromKey(startMonthKey);
+  if (monthDelta < 0) return null;
+
+  const repeatOption = PAYMENT_REPEAT_OPTIONS.find((option) => option.id === rule.repeat);
+  if (rule.repeat === 'none' && monthDelta !== 0) return null;
+  if (repeatOption?.intervalMonths && monthDelta % repeatOption.intervalMonths !== 0) return null;
+
+  const [year = 2026, month = 1] = monthKey.split('.').map(Number);
+  const occurrenceDay = Math.min(startDate.getDate(), new Date(year, month, 0).getDate());
+  const occurrenceDate = `${year}-${String(month).padStart(2, '0')}-${String(occurrenceDay).padStart(2, '0')}`;
+  const endDate = parseDateInput(rule.endDate);
+  const occurrence = parseDateInput(occurrenceDate);
+  if (endDate && occurrence && occurrence > endDate) return null;
+
+  return {
+    id: `${rule.id}-${monthKey}`,
+    baseMonth: monthKey,
+    paymentMonth: monthKey,
+    dueDate: formatDisplayDateFromInput(occurrenceDate),
+    variability: rule.variability,
+    category: rule.category,
+    partner: rule.partner,
+    bank: rule.bank,
+    accountNumber: rule.accountNumber,
+    amount: rule.amount,
+    paidAmount: rule.paidAmount,
+    invoiceIssued: rule.invoiceIssued,
+    status: rule.status,
+    source: '수기등록',
+    memo: `${rule.item}${rule.repeat === 'none' ? '' : ` · 반복 ${repeatOption?.label ?? ''}`}${rule.memo ? ` · ${rule.memo}` : ''}`,
+  };
+}
+
+function buildPaymentListSourceItems(
+  monthKey: string,
+  manualRules: ManualPaymentRule[],
+  periodBasis: PaymentPeriodBasis = 'base',
+): PaymentListSourceItem[] {
+  const purchaseItems = purchaseEntries
+    .filter((entry) => (periodBasis === 'payment' ? entry.paymentMonth === monthKey : entry.baseMonth === monthKey))
+    .map((entry): PaymentListSourceItem => ({
+      id: entry.id,
+      baseMonth: entry.baseMonth,
+      paymentMonth: entry.paymentMonth,
+      dueDate: entry.dueDate,
+      variability: entry.variability,
+      category: entry.category,
+      partner: entry.partner,
+      bank: entry.bank,
+      accountNumber: entry.accountNumber,
+      amount: entry.amount,
+      paidAmount: entry.paidAmount,
+      invoiceIssued: entry.invoiceIssued,
+      status: entry.status,
+      source: '구매관리',
+      memo: entry.memo,
+    }));
+  const manualItems = manualRules
+    .map((rule) => manualRuleOccurrenceForMonth(rule, monthKey))
+    .filter((item): item is PaymentListSourceItem => Boolean(item));
+
+  return [...purchaseItems, ...manualItems];
+}
+
+function isDisplayDateInRange(displayDate: string, startDate: string, endDate: string) {
+  const date = parseDateInput(displayDate);
+  const start = parseDateInput(startDate);
+  const end = parseDateInput(endDate);
+  if (!date || !start || !end) return true;
+
+  return date >= start && date <= end;
+}
+
+function buildPaymentListSourceItemsForRange(
+  startDate: string,
+  endDate: string,
+  manualRules: ManualPaymentRule[],
+): PaymentListSourceItem[] {
+  const start = parseDateInput(startDate);
+  const end = parseDateInput(endDate);
+  if (!start || !end || start > end) return [];
+
+  const purchaseItems = purchaseEntries
+    .filter((entry) => isDisplayDateInRange(entry.dueDate, startDate, endDate))
+    .map((entry): PaymentListSourceItem => ({
+      id: entry.id,
+      baseMonth: entry.baseMonth,
+      paymentMonth: entry.paymentMonth,
+      dueDate: entry.dueDate,
+      variability: entry.variability,
+      category: entry.category,
+      partner: entry.partner,
+      bank: entry.bank,
+      accountNumber: entry.accountNumber,
+      amount: entry.amount,
+      paidAmount: entry.paidAmount,
+      invoiceIssued: entry.invoiceIssued,
+      status: entry.status,
+      source: '구매관리',
+      memo: entry.memo,
+    }));
+  const manualItems: PaymentListSourceItem[] = [];
+  const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+  const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+
+  while (cursor <= endMonth) {
+    const monthKey = formatMonthKey(cursor.getFullYear(), cursor.getMonth());
+    manualRules.forEach((rule) => {
+      const occurrence = manualRuleOccurrenceForMonth(rule, monthKey);
+      if (occurrence && isDisplayDateInRange(occurrence.dueDate, startDate, endDate)) {
+        manualItems.push(occurrence);
+      }
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return [...purchaseItems, ...manualItems];
+}
+
+function resolveAggregatePaymentStatus(entries: PaymentListSourceItem[]): PurchasePaymentStatus {
+  if (entries.some((entry) => entry.status === '연체')) return '연체';
+  if (entries.every((entry) => entry.status === '결제완료')) return '결제완료';
+  if (entries.some((entry) => entry.status === '부분결제' || entry.paidAmount > 0)) return '부분결제';
+  return '결제예정';
+}
+
+function buildPaymentPartnerAggregates(items: PaymentListSourceItem[]): PaymentPartnerAggregate[] {
+  const groups = new Map<string, PaymentListSourceItem[]>();
+
+  items.forEach((item) => {
+    const key = `${item.baseMonth}|${item.partner}`;
+    groups.set(key, [...(groups.get(key) ?? []), item]);
+  });
+
+  return Array.from(groups.entries()).map(([key, entries]) => {
+    const amount = entries.reduce((sum, entry) => sum + entry.amount, 0);
+    const paidAmount = entries.reduce((sum, entry) => sum + entry.paidAmount, 0);
+    const invoiceCount = entries.filter((entry) => entry.invoiceIssued).length;
+    const invoiceSummary =
+      invoiceCount === entries.length ? 'Y' : invoiceCount === 0 ? 'N' : `${invoiceCount}/${entries.length}`;
+
+    return {
+      key,
+      baseMonth: entries[0]!.baseMonth,
+      paymentMonth: summarizeValues(entries.map((entry) => formatShortMonth(entry.paymentMonth))),
+      partner: entries[0]!.partner,
+      amount,
+      paidAmount,
+      variability: summarizeValues(entries.map((entry) => entry.variability)),
+      category: summarizeValues(entries.map((entry) => entry.category)),
+      bank: summarizeValues(entries.map((entry) => entry.bank)),
+      accountNumber: summarizeValues(entries.map((entry) => entry.accountNumber), 1),
+      invoiceSummary,
+      status: resolveAggregatePaymentStatus(entries),
+      dueDateSummary: summarizeValues(entries.map((entry) => entry.dueDate), 2),
+      sourceSummary: summarizeValues(entries.map((entry) => entry.source)),
+      entries,
+    };
+  });
+}
+
 function paymentStatusTone(status: PaymentScheduleStatus): Tone {
   if (status === '결제완료') return 'green';
   if (status === '부분결제') return 'orange';
@@ -5876,7 +6632,672 @@ function createPaymentScheduleItem(draft: PaymentScheduleDraft): PaymentSchedule
   };
 }
 
-function SchedulePage({ openRegistrationToken }: { openRegistrationToken: number }) {
+function PurchasePage({
+  monthFilter,
+  partnerFilter,
+}: {
+  monthFilter: string;
+  partnerFilter: string;
+}) {
+  const [selectedMonth, setSelectedMonth] = useState(monthFilter || '2026.05');
+  const [query, setQuery] = useState(partnerFilter);
+  const [filter, setFilter] = useState<PurchaseFilter>('all');
+  const normalizedQuery = query.trim().toLowerCase();
+
+  useEffect(() => {
+    setQuery(partnerFilter);
+    if (monthFilter) setSelectedMonth(monthFilter);
+  }, [monthFilter, partnerFilter]);
+
+  const purchaseSuggestions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          purchaseEntries.flatMap((entry) => [
+            entry.partner,
+            entry.category,
+            entry.bank,
+            entry.accountNumber,
+            entry.status,
+          ]),
+        ),
+      ),
+    [],
+  );
+  const filteredPurchases = useMemo(
+    () =>
+      purchaseEntries.filter((entry) => {
+        const matchesMonth = entry.baseMonth === selectedMonth;
+        const matchesQuery =
+          normalizedQuery.length === 0 ||
+          [
+            entry.baseMonth,
+            entry.paymentMonth,
+            entry.dueDate,
+            entry.variability,
+            entry.category,
+            entry.partner,
+            entry.bank,
+            entry.accountNumber,
+            entry.status,
+            entry.memo,
+          ]
+            .join(' ')
+            .toLowerCase()
+            .includes(normalizedQuery);
+        const matchesFilter =
+          filter === 'all' ||
+          (filter === 'fixed' && entry.variability === '고정') ||
+          (filter === 'variable' && entry.variability === '변동') ||
+          (filter === 'unpaid' && entry.status !== '결제완료') ||
+          (filter === 'paid' && entry.status === '결제완료');
+
+        return matchesMonth && matchesQuery && matchesFilter;
+      }),
+    [filter, normalizedQuery, selectedMonth],
+  );
+  const totalAmount = filteredPurchases.reduce((sum, entry) => sum + entry.amount, 0);
+  const paidAmount = filteredPurchases.reduce((sum, entry) => sum + entry.paidAmount, 0);
+  const partnerCount = new Set(filteredPurchases.map((entry) => entry.partner)).size;
+  const invoicePendingCount = filteredPurchases.filter((entry) => !entry.invoiceIssued).length;
+
+  function changeMonth(offset: number) {
+    const nextMonth = shiftMonthKey(selectedMonth, offset);
+    setSelectedMonth(nextMonth);
+    updateUrlSearchParams({ purchaseMonth: nextMonth });
+  }
+
+  function clearLinkedFilter() {
+    setQuery('');
+    updateUrlSearchParams({ purchasePartner: null });
+  }
+
+  return (
+    <div className="page-stack purchase-page">
+      {partnerFilter ? (
+        <section className="purchase-linked-filter">
+          <div>
+            <strong>{partnerFilter}</strong>
+            <span>대금결제리스트 상세에서 이동한 거래처 필터가 적용되어 있습니다.</span>
+          </div>
+          <button className="secondary-button" onClick={clearLinkedFilter} type="button">
+            필터 해제
+          </button>
+        </section>
+      ) : null}
+
+      <section className="kpi-grid" aria-label="구매관리 요약">
+        <KpiCard icon={Package} label="매입/지출 합계" value={formatMoney(totalAmount)} detail={`${formatMonthLabel(selectedMonth)} 기준`} tone="blue" />
+        <KpiCard icon={CheckCircle2} label="지급 완료" value={formatMoney(paidAmount)} detail={`${filteredPurchases.filter((entry) => entry.status === '결제완료').length}건 완료`} tone="green" />
+        <KpiCard icon={AlertCircle} label="미지급 잔액" value={formatMoney(Math.max(0, totalAmount - paidAmount))} detail="결제예정/부분/연체 포함" tone="orange" />
+        <KpiCard icon={Building2} label="거래처" value={`${partnerCount}곳`} detail="기준월 내 매입처" tone="purple" />
+        <KpiCard icon={FileText} label="계산서 미수취" value={`${invoicePendingCount}건`} detail="계산서 N 또는 확인 필요" tone={invoicePendingCount > 0 ? 'red' : 'green'} />
+      </section>
+
+      <Panel
+        className="purchase-list-panel"
+        title="구매관리 리스트"
+        action={
+          <div className="payment-month-control compact-month-control">
+            <button className="ghost-button" title="이전 달" onClick={() => changeMonth(-1)} type="button">
+              <ChevronLeft size={16} />
+            </button>
+            <strong>{formatMonthLabel(selectedMonth)}</strong>
+            <button className="ghost-button" title="다음 달" onClick={() => changeMonth(1)} type="button">
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        }
+      >
+        <RecordToolbar
+          count={`총 ${filteredPurchases.length}건`}
+          filters={
+            <FilterTabs
+              ariaLabel="구매관리 필터"
+              onChange={(value) => setFilter(value as PurchaseFilter)}
+              options={PURCHASE_FILTER_OPTIONS}
+              value={filter}
+            />
+          }
+          search={
+            <SearchInput
+              label="구매관리 검색"
+              listId="purchase-search-suggestions"
+              onChange={setQuery}
+              placeholder="거래처, 구분, 은행, 계좌번호 검색"
+              suggestions={purchaseSuggestions}
+              value={query}
+            />
+          }
+        />
+        <DataTable
+          columns={['기준월', '결제월', '변동', '구분', '거래처', '은행', '계좌번호', '금액', '계산서', '결제여부', '메모']}
+          rows={filteredPurchases.map((entry) => [
+            formatShortMonth(entry.baseMonth),
+            formatShortMonth(entry.paymentMonth),
+            entry.variability,
+            entry.category,
+            <strong key={`${entry.id}-partner`}>{entry.partner}</strong>,
+            entry.bank,
+            entry.accountNumber,
+            formatMoney(entry.amount),
+            entry.invoiceIssued ? 'Y' : 'N',
+            <div className="payment-status-stack" key={`${entry.id}-status`}>
+              <span>{entry.dueDate}</span>
+              <StatusPill label={entry.status} tone={paymentStatusTone(entry.status)} />
+            </div>,
+            entry.memo,
+          ])}
+        />
+        {filteredPurchases.length === 0 ? (
+          <div className="empty-state">
+            <strong>구매관리 내역이 없습니다.</strong>
+            <span>기준월을 바꾸거나 검색 조건을 초기화해보세요.</span>
+          </div>
+        ) : null}
+      </Panel>
+    </div>
+  );
+}
+
+function PaymentListPage({
+  onOpenPurchasePartner,
+}: {
+  onOpenPurchasePartner: (partner: string, monthKey: string) => void;
+}) {
+  const [selectedMonth, setSelectedMonth] = useState('2026.05');
+  const [manualRules, setManualRules] = useState<ManualPaymentRule[]>([]);
+  const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
+  const [draft, setDraft] = useState<ManualPaymentDraft>(() => createManualPaymentDraft('2026.05'));
+  const [searchDraft, setSearchDraft] = useState({
+    periodBasis: 'base' as PaymentPeriodBasis,
+    periodStart: '2026-05-21',
+    periodEnd: '2026-05-28',
+    quickRange: '1week',
+    variability: 'all',
+    category: '',
+    partner: '',
+    invoice: 'all',
+    payment: 'all',
+    sort: 'dueAsc' as PaymentListSort,
+  });
+  const [appliedSearch, setAppliedSearch] = useState(searchDraft);
+  const appliedMonthKey = monthKeyFromDate(appliedSearch.periodStart) || selectedMonth;
+  const sourceItems = useMemo(
+    () =>
+      appliedSearch.periodBasis === 'custom'
+        ? buildPaymentListSourceItemsForRange(appliedSearch.periodStart, appliedSearch.periodEnd, manualRules)
+        : buildPaymentListSourceItems(appliedMonthKey, manualRules, appliedSearch.periodBasis),
+    [appliedMonthKey, appliedSearch.periodBasis, appliedSearch.periodEnd, appliedSearch.periodStart, manualRules],
+  );
+  const aggregates = useMemo(() => buildPaymentPartnerAggregates(sourceItems), [sourceItems]);
+  const filteredAggregates = useMemo(
+    () => {
+      const filtered = aggregates.filter((aggregate) => {
+        const categoryQuery = appliedSearch.category.trim().toLowerCase();
+        const partnerQuery = appliedSearch.partner.trim().toLowerCase();
+        const matchesVariability =
+          appliedSearch.variability === 'all' || aggregate.entries.some((entry) => entry.variability === appliedSearch.variability);
+        const matchesCategory =
+          categoryQuery.length === 0 ||
+          aggregate.entries.some((entry) => entry.category.toLowerCase().includes(categoryQuery));
+        const matchesPartner = partnerQuery.length === 0 || aggregate.partner.toLowerCase().includes(partnerQuery);
+        const matchesInvoice =
+          appliedSearch.invoice === 'all' ||
+          (appliedSearch.invoice === 'Y' && aggregate.entries.some((entry) => entry.invoiceIssued)) ||
+          (appliedSearch.invoice === 'N' && aggregate.entries.some((entry) => !entry.invoiceIssued));
+        const matchesPayment =
+          appliedSearch.payment === 'all' ||
+          (appliedSearch.payment === 'Y' && aggregate.status === '결제완료') ||
+          (appliedSearch.payment === 'N' && aggregate.status !== '결제완료');
+
+        return matchesVariability && matchesCategory && matchesPartner && matchesInvoice && matchesPayment;
+      });
+
+      return [...filtered].sort((left, right) => {
+        if (appliedSearch.sort === 'amountDesc') return right.amount - left.amount;
+        if (appliedSearch.sort === 'partnerAsc') return left.partner.localeCompare(right.partner, 'ko-KR');
+
+        const leftDate = parseDateInput(left.entries[0]?.dueDate ?? '')?.getTime() ?? 0;
+        const rightDate = parseDateInput(right.entries[0]?.dueDate ?? '')?.getTime() ?? 0;
+        return appliedSearch.sort === 'dueDesc' ? rightDate - leftDate : leftDate - rightDate;
+      });
+    },
+    [aggregates, appliedSearch],
+  );
+  const filteredListAmount = filteredAggregates.reduce((sum, aggregate) => sum + aggregate.amount, 0);
+  const monthlySummaryBasis = appliedSearch.periodBasis === 'payment' ? 'payment' : 'base';
+  const currentMonthItems = useMemo(
+    () => buildPaymentListSourceItems(appliedMonthKey, manualRules, monthlySummaryBasis),
+    [appliedMonthKey, manualRules, monthlySummaryBasis],
+  );
+  const currentMonthAmount = currentMonthItems.reduce((sum, item) => sum + item.amount, 0);
+  const previousMonthItems = useMemo(
+    () => buildPaymentListSourceItems(shiftMonthKey(appliedMonthKey, -1), manualRules, monthlySummaryBasis),
+    [appliedMonthKey, manualRules, monthlySummaryBasis],
+  );
+  const previousMonthAmount = previousMonthItems.reduce((sum, item) => sum + item.amount, 0);
+  const amountChange = currentMonthAmount - previousMonthAmount;
+  const partnerSuggestions = useMemo(
+    () => Array.from(new Set([...purchaseEntries.map((entry) => entry.partner), ...manualRules.map((rule) => rule.partner)])),
+    [manualRules],
+  );
+  const categorySuggestions = useMemo(
+    () => Array.from(new Set([...purchaseEntries.map((entry) => entry.category), ...manualRules.map((rule) => rule.category)])),
+    [manualRules],
+  );
+
+  function updateSearch<Key extends keyof typeof searchDraft>(key: Key, value: (typeof searchDraft)[Key]) {
+    setSearchDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  function resetSearch() {
+    const nextSearch = {
+      periodBasis: 'base' as const,
+      periodStart: '2026-05-21',
+      periodEnd: '2026-05-28',
+      quickRange: '1week',
+      variability: 'all',
+      category: '',
+      partner: '',
+      invoice: 'all',
+      payment: 'all',
+      sort: 'dueAsc' as const,
+    };
+    setSelectedMonth('2026.05');
+    setSearchDraft(nextSearch);
+    setAppliedSearch(nextSearch);
+  }
+
+  function applyQuickPeriod(kind: 'today' | '3days' | '1week' | '2weeks' | '1month' | '3months' | '6months' | '1year') {
+    const baseDate = parseDateInput(formatDateInputFromMonth(selectedMonth, 21)) ?? new Date(2026, 4, 21);
+    const range =
+      kind === 'today'
+        ? { start: baseDate, end: baseDate }
+        : kind === '3days'
+          ? { start: baseDate, end: addDays(baseDate, 2) }
+          : kind === '1week'
+            ? { start: baseDate, end: addDays(baseDate, 7) }
+            : kind === '2weeks'
+              ? { start: baseDate, end: addDays(baseDate, 13) }
+              : kind === '1month'
+                ? { start: baseDate, end: addMonths(baseDate, 1) }
+                : kind === '3months'
+                  ? { start: baseDate, end: addMonths(baseDate, 3) }
+                  : kind === '6months'
+                    ? { start: baseDate, end: addMonths(baseDate, 6) }
+                    : { start: baseDate, end: addMonths(baseDate, 12) };
+
+    setSearchDraft((current) => ({
+      ...current,
+      periodStart: formatDateInputValue(range.start),
+      periodEnd: formatDateInputValue(range.end),
+      quickRange: kind,
+    }));
+    setSelectedMonth(formatMonthKey(range.start.getFullYear(), range.start.getMonth()));
+  }
+
+  function updateDraft<Key extends keyof ManualPaymentDraft>(key: Key, value: ManualPaymentDraft[Key]) {
+    setDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  function addManualPayment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const nextRule = createManualPaymentRule(draft);
+
+    setManualRules((current) => [nextRule, ...current]);
+    setDraft(createManualPaymentDraft(selectedMonth));
+    setIsRegistrationOpen(false);
+  }
+
+  return (
+    <div className="page-stack payment-list-page">
+      <section className="payment-list-top-grid" aria-label="대금결제 검색 및 요약">
+        <div className="payment-list-search-panel" aria-label="대금결제 검색 조건">
+          <div className="payment-filter-line period">
+            <span className="payment-filter-label">기간</span>
+            <div className="payment-radio-group">
+              {[
+                { id: 'base', label: '기준월' },
+                { id: 'payment', label: '결제월' },
+                { id: 'custom', label: '기간' },
+              ].map((option) => (
+                <label key={option.id}>
+                  <input
+                    checked={searchDraft.periodBasis === option.id}
+                    onChange={() => {
+                      updateSearch('periodBasis', option.id as PaymentPeriodBasis);
+                      if (option.id !== 'custom') updateSearch('quickRange', '');
+                    }}
+                    type="radio"
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </div>
+            <div className="payment-date-range">
+              <input
+                aria-label="기간 시작일"
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  setSearchDraft((current) => ({ ...current, periodStart: nextValue, quickRange: '' }));
+                  setSelectedMonth(monthKeyFromDate(nextValue) || selectedMonth);
+                }}
+                type="date"
+                value={searchDraft.periodStart}
+              />
+              <span>~</span>
+              <input
+                aria-label="기간 종료일"
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  setSearchDraft((current) => ({ ...current, periodEnd: nextValue, quickRange: '' }));
+                }}
+                type="date"
+                value={searchDraft.periodEnd}
+              />
+            </div>
+            <div className="payment-quick-range">
+              {[
+                { id: 'today', label: '오늘' },
+                { id: '3days', label: '3일' },
+                { id: '1week', label: '1주' },
+                { id: '2weeks', label: '2주' },
+                { id: '1month', label: '1개월' },
+                { id: '3months', label: '3개월' },
+                { id: '6months', label: '6개월' },
+                { id: '1year', label: '1년' },
+              ].map((option) => (
+                <button
+                  className={searchDraft.quickRange === option.id ? 'active' : ''}
+                  key={option.id}
+                  onClick={() => applyQuickPeriod(option.id as Parameters<typeof applyQuickPeriod>[0])}
+                  type="button"
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="payment-filter-line">
+            <span className="payment-filter-label">변동</span>
+            <div className="payment-radio-group">
+              <label>
+                <input checked={searchDraft.variability === '고정'} onChange={() => updateSearch('variability', '고정')} type="radio" />
+                고정
+              </label>
+              <label>
+                <input checked={searchDraft.variability === '변동'} onChange={() => updateSearch('variability', '변동')} type="radio" />
+                변동
+              </label>
+            </div>
+            <label className="payment-icon-search">
+              <span>구분</span>
+              <div>
+                <button onClick={() => setAppliedSearch(searchDraft)} title="구분 검색" type="button">
+                  <Search size={16} />
+                </button>
+                <input
+                  list="payment-category-suggestions"
+                  onChange={(event) => updateSearch('category', event.target.value)}
+                  placeholder="구분"
+                  value={searchDraft.category}
+                />
+              </div>
+            </label>
+            <label className="payment-icon-search">
+              <span>거래처</span>
+              <div>
+                <button onClick={() => setAppliedSearch(searchDraft)} title="거래처 검색" type="button">
+                  <Search size={16} />
+                </button>
+                <input
+                  list="payment-partner-suggestions"
+                  onChange={(event) => updateSearch('partner', event.target.value)}
+                  placeholder="거래처명"
+                  value={searchDraft.partner}
+                />
+              </div>
+            </label>
+            <label className="payment-sort-field">
+              <span>정렬</span>
+              <select onChange={(event) => updateSearch('sort', event.target.value as PaymentListSort)} value={searchDraft.sort}>
+                <option value="dueAsc">결제일 빠른순</option>
+                <option value="dueDesc">결제일 늦은순</option>
+                <option value="amountDesc">금액 높은순</option>
+                <option value="partnerAsc">거래처 가나다순</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="payment-filter-line tail">
+            <span className="payment-filter-label">계산서</span>
+            <div className="payment-radio-group compact">
+              <label>
+                <input checked={searchDraft.invoice === 'Y'} onChange={() => updateSearch('invoice', 'Y')} type="radio" />
+                Y
+              </label>
+              <label>
+                <input checked={searchDraft.invoice === 'N'} onChange={() => updateSearch('invoice', 'N')} type="radio" />
+                N
+              </label>
+            </div>
+            <span className="payment-filter-label">결제여부</span>
+            <div className="payment-radio-group compact">
+              <label>
+                <input checked={searchDraft.payment === 'Y'} onChange={() => updateSearch('payment', 'Y')} type="radio" />
+                Y
+              </label>
+              <label>
+                <input checked={searchDraft.payment === 'N'} onChange={() => updateSearch('payment', 'N')} type="radio" />
+                N
+              </label>
+            </div>
+            <div className="payment-search-actions">
+              <button className="primary-button" onClick={() => setAppliedSearch(searchDraft)} type="button">
+                검색
+              </button>
+              <button className="secondary-button" onClick={resetSearch} type="button">
+                초기화
+              </button>
+            </div>
+          </div>
+
+          <datalist id="payment-category-suggestions">
+            {categorySuggestions.map((category) => (
+              <option key={category} value={category} />
+            ))}
+          </datalist>
+          <datalist id="payment-partner-suggestions">
+            {partnerSuggestions.map((partner) => (
+              <option key={partner} value={partner} />
+            ))}
+          </datalist>
+        </div>
+
+        <div className="payment-list-top-kpis">
+          <article>
+            <span className="inline-kpi-icon blue">
+              <ReceiptText size={18} />
+            </span>
+            <span>당월 지출</span>
+            <strong>{formatMoney(currentMonthAmount)}</strong>
+            <small>전월 대비 {amountChange >= 0 ? '+' : ''}{formatMoney(amountChange)}</small>
+          </article>
+          <article>
+            <span className="inline-kpi-icon gray">
+              <CalendarDays size={18} />
+            </span>
+            <span>전월 지출</span>
+            <strong>{formatMoney(previousMonthAmount)}</strong>
+            <small>비교 기준 매입</small>
+          </article>
+        </div>
+      </section>
+
+      <Panel
+        className="payment-list-table-panel"
+        title="전체 대금결제 리스트"
+        action={
+          <button className="primary-button" onClick={() => setIsRegistrationOpen(true)} type="button">
+            <Plus size={16} />
+            수기 결제 추가
+          </button>
+        }
+      >
+        <RecordToolbar count={`총 ${filteredAggregates.length}건 · 합계 ${filteredListAmount.toLocaleString('ko-KR')}원`} />
+        <DataTable
+          columns={['기준월', '결제월', '변동', '구분', '거래처', '은행', '계좌번호', '금액', '계산서', '결제여부', '상세']}
+          rows={filteredAggregates.map((aggregate) => [
+            formatShortMonth(aggregate.baseMonth),
+            aggregate.paymentMonth,
+            aggregate.variability,
+            aggregate.category,
+            <div className="payment-partner-cell" key={`${aggregate.key}-partner`}>
+              <strong>{aggregate.partner}</strong>
+              <span>{aggregate.sourceSummary}</span>
+            </div>,
+            aggregate.bank,
+            aggregate.accountNumber,
+            formatMoney(aggregate.amount),
+            aggregate.invoiceSummary,
+            <div className="payment-status-stack" key={`${aggregate.key}-status`}>
+              <span>{aggregate.dueDateSummary}</span>
+              <StatusPill label={aggregate.status} tone={paymentStatusTone(aggregate.status)} />
+            </div>,
+            <button
+              className="mini-button"
+              key={`${aggregate.key}-detail`}
+              onClick={() => onOpenPurchasePartner(aggregate.partner, aggregate.baseMonth)}
+              type="button"
+            >
+              상세
+            </button>,
+          ])}
+        />
+        {filteredAggregates.length === 0 ? (
+          <div className="empty-state">
+            <strong>검색 결과가 없습니다.</strong>
+            <span>기간이나 거래처 조건을 바꿔 다시 검색해보세요.</span>
+          </div>
+        ) : null}
+      </Panel>
+
+      {isRegistrationOpen ? (
+        <DetailDrawer
+          eyebrow="대금결제"
+          onClose={() => setIsRegistrationOpen(false)}
+          title="수기 대금결제 추가"
+          variant="modal"
+        >
+          <form className="payment-registration-form" onSubmit={addManualPayment}>
+            <div className="sales-form-grid">
+              <label className="estimate-control">
+                <span>
+                  시작 결제일
+                  <em>필수</em>
+                </span>
+                <input onChange={(event) => updateDraft('startDate', event.target.value)} required type="date" value={draft.startDate} />
+              </label>
+              <label className="estimate-control">
+                <span>
+                  거래처
+                  <em>필수</em>
+                </span>
+                <input onChange={(event) => updateDraft('partner', event.target.value)} placeholder="거래처명" required value={draft.partner} />
+              </label>
+              <label className="estimate-control">
+                <span>반복</span>
+                <select onChange={(event) => updateDraft('repeat', event.target.value as PaymentRepeat)} value={draft.repeat}>
+                  {PAYMENT_REPEAT_OPTIONS.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="estimate-control">
+                <span>종료일</span>
+                <input onChange={(event) => updateDraft('endDate', event.target.value)} type="date" value={draft.endDate} />
+              </label>
+              <label className="estimate-control">
+                <span>변동</span>
+                <select onChange={(event) => updateDraft('variability', event.target.value as PurchaseVariability)} value={draft.variability}>
+                  <option>고정</option>
+                  <option>변동</option>
+                </select>
+              </label>
+              <label className="estimate-control">
+                <span>구분</span>
+                <input onChange={(event) => updateDraft('category', event.target.value)} placeholder="급여, 임대료, 매입(유리)" value={draft.category} />
+              </label>
+              <label className="estimate-control full">
+                <span>
+                  결제항목
+                  <em>필수</em>
+                </span>
+                <input onChange={(event) => updateDraft('item', event.target.value)} placeholder="정기 지출 또는 수기 결제 항목" required value={draft.item} />
+              </label>
+              <label className="estimate-control">
+                <span>
+                  금액
+                  <em>필수</em>
+                </span>
+                <input inputMode="numeric" onChange={(event) => updateDraft('amount', event.target.value)} placeholder="1,000,000" required value={draft.amount} />
+              </label>
+              <label className="estimate-control">
+                <span>지급액</span>
+                <input inputMode="numeric" onChange={(event) => updateDraft('paidAmount', event.target.value)} placeholder="0" value={draft.paidAmount} />
+              </label>
+              <label className="estimate-control">
+                <span>은행</span>
+                <input onChange={(event) => updateDraft('bank', event.target.value)} placeholder="국민, 농협" value={draft.bank} />
+              </label>
+              <label className="estimate-control">
+                <span>계좌번호</span>
+                <input onChange={(event) => updateDraft('accountNumber', event.target.value)} placeholder="000000000000" value={draft.accountNumber} />
+              </label>
+              <label className="estimate-control">
+                <span>계산서</span>
+                <select onChange={(event) => updateDraft('invoiceIssued', event.target.value as 'Y' | 'N')} value={draft.invoiceIssued}>
+                  <option>Y</option>
+                  <option>N</option>
+                </select>
+              </label>
+              <label className="estimate-control">
+                <span>결제여부</span>
+                <select onChange={(event) => updateDraft('status', event.target.value as PaymentScheduleStatus)} value={draft.status}>
+                  {PAYMENT_SCHEDULE_STATUS_OPTIONS.map((status) => (
+                    <option key={status}>{status}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="estimate-control full">
+                <span>메모</span>
+                <textarea onChange={(event) => updateDraft('memo', event.target.value)} placeholder="반복 조건, 증빙, 확인 메모" value={draft.memo} />
+              </label>
+            </div>
+            <div className="payment-repeat-note">
+              <strong>반복 자동 반영</strong>
+              <span>선택한 반복 주기와 종료일에 맞는 월에만 이 수기 결제 건이 대금결제 리스트에 합산됩니다.</span>
+            </div>
+            <div className="estimate-save-row">
+              <button className="secondary-button" onClick={() => setIsRegistrationOpen(false)} type="button">
+                닫기
+              </button>
+              <button className="primary-button" type="submit">
+                수기 결제 저장
+              </button>
+            </div>
+          </form>
+        </DetailDrawer>
+      ) : null}
+    </div>
+  );
+}
+
+function SchedulePage() {
   const [payments, setPayments] = useState<PaymentScheduleItem[]>(paymentScheduleSeed);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<PaymentScheduleFilter>('all');
@@ -5947,11 +7368,6 @@ function SchedulePage({ openRegistrationToken }: { openRegistrationToken: number
     ],
     [payments],
   );
-
-  useEffect(() => {
-    if (openRegistrationToken <= 0) return;
-    setIsRegistrationOpen(true);
-  }, [openRegistrationToken]);
 
   function updateDraft<Key extends keyof PaymentScheduleDraft>(key: Key, value: PaymentScheduleDraft[Key]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -6228,11 +7644,9 @@ function SchedulePage({ openRegistrationToken }: { openRegistrationToken: number
 
 function WorkPage({
   mode,
-  openRegistrationToken,
   vehicleModelSuggestions,
 }: {
   mode: WorkAppMode;
-  openRegistrationToken: number;
   vehicleModelSuggestions: string[];
 }) {
   const [calendarView, setCalendarView] = useState<CalendarView>('day');
@@ -6468,11 +7882,6 @@ function WorkPage({
       ...(selectedWorkRecordId ? { workItem: selectedWorkRecordId } : {}),
     });
   }, [currentWorkView, selectedWorkRecordId, workListPage, workPageSize]);
-
-  useEffect(() => {
-    if (openRegistrationToken <= 0) return;
-    setIsWorkRegistrationOpen(true);
-  }, [openRegistrationToken]);
 
   function handleWorkSort(nextKey: WorkerWorkSortKey) {
     if (workSortKey === nextKey) {
@@ -9432,27 +10841,23 @@ function CustomersPage({ onOpenCustomer }: { onOpenCustomer: (customerId: string
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<CustomerFilter>('all');
   const normalizedQuery = query.trim().toLowerCase();
+  const linkedSectionsByCustomerId = useMemo(
+    () => new Map(customers.map((customer) => [customer.id, buildCustomerLinkedSections(customer)])),
+    [],
+  );
   const searchSuggestions = useMemo(
     () =>
       Array.from(
         new Set(
-          customers.flatMap((customer) => [
-            customer.name,
-            customer.phone,
-            customer.vehicle,
-            customer.vin,
-            customer.memo,
-          ]),
+          customers.flatMap((customer) => buildCustomerSearchTokens(customer, linkedSectionsByCustomerId.get(customer.id))),
         ),
       ),
-    [],
+    [linkedSectionsByCustomerId],
   );
   const filteredCustomers = useMemo(
     () =>
       customers.filter((customer) => {
-        const target = [customer.name, customer.phone, customer.vehicle, customer.vin, customer.memo, customer.lastWork]
-          .join(' ')
-          .toLowerCase();
+        const target = buildCustomerSearchTokens(customer, linkedSectionsByCustomerId.get(customer.id)).join(' ').toLowerCase();
         const matchesQuery = normalizedQuery.length === 0 || target.includes(normalizedQuery);
         const matchesFilter =
           filter === 'all' ||
@@ -9462,7 +10867,7 @@ function CustomersPage({ onOpenCustomer }: { onOpenCustomer: (customerId: string
 
         return matchesQuery && matchesFilter;
       }),
-    [filter, normalizedQuery],
+    [filter, linkedSectionsByCustomerId, normalizedQuery],
   );
 
   return (
@@ -9504,27 +10909,34 @@ function CustomersPage({ onOpenCustomer }: { onOpenCustomer: (customerId: string
 
       {filteredCustomers.length > 0 ? (
         <DataTable
-          columns={['고객명', '연락처', '차량', '차대번호', '매출', '미수', '최근 작업', '상태', '상세']}
-          rows={filteredCustomers.map((customer) => [
-            <button className="customer-name-button" key={`${customer.id}-name`} onClick={() => onOpenCustomer(customer.id)}>
-              <strong>{customer.name}</strong>
-              <span>{customer.memo}</span>
-            </button>,
-            customer.phone,
-            customer.vehicle,
-            customer.vin,
-            formatMoney(customer.totalSales),
-            formatMoney(customer.unpaid),
-            customer.lastWork,
-            <StatusPill
-              key={`${customer.id}-status`}
-              label={customer.unpaid > 0 ? '미수' : '정상'}
-              tone={customer.unpaid > 0 ? 'red' : 'green'}
-            />,
-            <button className="mini-button" key={`${customer.id}-open`} onClick={() => onOpenCustomer(customer.id)}>
-              보기
-            </button>,
-          ])}
+          columns={['고객명', '연락처', '차량', '연결 업무', '매출', '미수', '최근 작업', '상태', '상세']}
+          rows={filteredCustomers.map((customer) => {
+            const linkedSections = linkedSectionsByCustomerId.get(customer.id) ?? buildCustomerLinkedSections(customer);
+
+            return [
+              <button className="customer-name-button" key={`${customer.id}-name`} onClick={() => onOpenCustomer(customer.id)}>
+                <strong>{customer.name}</strong>
+                <span>{customer.memo}</span>
+              </button>,
+              customer.phone,
+              <span className="customer-vehicle-cell" key={`${customer.id}-vehicle`}>
+                <strong>{customer.vehicle}</strong>
+                <small>{customer.vin}</small>
+              </span>,
+              <CustomerLinkedMiniSummary key={`${customer.id}-linked`} sections={linkedSections} />,
+              formatMoney(customer.totalSales),
+              formatMoney(customer.unpaid),
+              customer.lastWork,
+              <StatusPill
+                key={`${customer.id}-status`}
+                label={customer.unpaid > 0 ? '미수' : '정상'}
+                tone={customer.unpaid > 0 ? 'red' : 'green'}
+              />,
+              <button className="mini-button" key={`${customer.id}-open`} onClick={() => onOpenCustomer(customer.id)}>
+                보기
+              </button>,
+            ];
+          })}
         />
       ) : (
         <div className="empty-state">
@@ -9536,7 +10948,130 @@ function CustomersPage({ onOpenCustomer }: { onOpenCustomer: (customerId: string
   );
 }
 
-function CustomerDetailModal({ customer, onClose }: { customer: Customer; onClose: () => void }) {
+function CustomerLinkedMiniSummary({ sections }: { sections: CustomerLinkedSection[] }) {
+  const visibleSections = sections.filter((section) => section.id !== 'vehicle' && section.items.length > 0);
+
+  if (visibleSections.length === 0) {
+    return <span className="customer-linked-empty">연결 업무 없음</span>;
+  }
+
+  return (
+    <div className="customer-linked-mini">
+      {visibleSections.slice(0, 4).map((section) => {
+        const Icon = section.icon;
+
+        return (
+          <span key={section.id}>
+            <Icon size={13} />
+            {section.title} {section.items.length}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function CustomerLinkedWorkPanel({
+  sections,
+  onNavigate,
+}: {
+  sections: CustomerLinkedSection[];
+  onNavigate: (page: PageId) => void;
+}) {
+  const totalLinkedItems = sections.reduce((sum, section) => sum + section.items.length, 0);
+
+  return (
+    <section className="customer-linked-panel">
+      <div className="customer-linked-heading">
+        <div>
+          <h3 className="section-title">연결 정보</h3>
+          <p>고객명, 차량명, 차량번호, 차대번호로 연결된 업무를 한 번에 모았습니다.</p>
+        </div>
+        <strong>{totalLinkedItems}건</strong>
+      </div>
+
+      <div className="customer-linked-summary-grid">
+        {sections.map((section) => {
+          const Icon = section.icon;
+
+          return (
+            <button
+              className="customer-linked-summary-card"
+              key={section.id}
+              onClick={() => onNavigate(section.pageId)}
+              type="button"
+            >
+              <Icon size={18} />
+              <span>{section.title}</span>
+              <strong>{section.countLabel}</strong>
+              <small>{section.detail}</small>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="customer-linked-section-list">
+        {sections.map((section) => {
+          const Icon = section.icon;
+
+          return (
+            <section className="customer-linked-section" key={section.id}>
+              <header>
+                <div>
+                  <Icon size={17} />
+                  <div>
+                    <h4>{section.title}</h4>
+                    <span>{section.countLabel}</span>
+                  </div>
+                </div>
+                <button className="text-button" onClick={() => onNavigate(section.pageId)} type="button">
+                  <ExternalLink size={14} />
+                  페이지로 이동
+                </button>
+              </header>
+
+              {section.items.length > 0 ? (
+                <div className="customer-linked-items">
+                  {section.items.slice(0, 4).map((item) => (
+                    <button
+                      className="customer-linked-item"
+                      key={item.id}
+                      onClick={() => onNavigate(item.pageId)}
+                      type="button"
+                    >
+                      <div>
+                        <strong>{item.title}</strong>
+                        <span>{item.detail}</span>
+                      </div>
+                      <div className="customer-linked-item-meta">
+                        {item.meta ? <em>{item.meta}</em> : null}
+                        {item.status ? <StatusPill label={item.status} tone={item.tone ?? 'gray'} /> : null}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="customer-linked-empty-box">{section.emptyLabel}</div>
+              )}
+            </section>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function CustomerDetailModal({
+  customer,
+  onClose,
+  onNavigate,
+}: {
+  customer: Customer;
+  onClose: () => void;
+  onNavigate: (page: PageId) => void;
+}) {
+  const linkedSections = useMemo(() => buildCustomerLinkedSections(customer), [customer]);
+
   return (
     <DetailDrawer
       eyebrow="고객 상세"
@@ -9545,15 +11080,7 @@ function CustomerDetailModal({ customer, onClose }: { customer: Customer; onClos
       title={customer.name}
     >
       <CustomerSnapshot customer={customer} />
-      <section>
-        <h3 className="section-title">업무 이력</h3>
-        <div className="history-grid">
-          <HistoryItem icon={FileText} title="견적" value="3건" detail="최근 EST-2026-0017" />
-          <HistoryItem icon={Wrench} title="작업" value="2건" detail={customer.lastWork} />
-          <HistoryItem icon={ReceiptText} title="청구" value={formatMoney(customer.unpaid)} detail="미수 기준" />
-          <HistoryItem icon={FolderOpen} title="자료" value={`${customer.files.length}개`} detail={customer.files.join(', ')} />
-        </div>
-      </section>
+      <CustomerLinkedWorkPanel sections={linkedSections} onNavigate={onNavigate} />
     </DetailDrawer>
   );
 }
@@ -10024,7 +11551,7 @@ function parseProductListImportText(text: string): ProductListRow[] {
     .filter((row) => productListColumns.some((column) => row[column.key].trim().length > 0));
 }
 
-function PriceBookPage({ openRegistrationToken }: { openRegistrationToken: number }) {
+function PriceBookPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [productRows, setProductRows] = useState<ProductListRow[]>(initialProductListRows);
@@ -10054,11 +11581,6 @@ function PriceBookPage({ openRegistrationToken }: { openRegistrationToken: numbe
   const outboundPriceCount = productRows.filter((row) => row.outboundPrice.trim().length > 0).length;
   const exchangePriceCount = productRows.filter((row) => row.exchangePrice.trim().length > 0).length;
   const memoCount = productRows.filter((row) => row.note.trim().length > 0).length;
-
-  useEffect(() => {
-    if (openRegistrationToken <= 0) return;
-    setIsRegistrationOpen(true);
-  }, [openRegistrationToken]);
 
   useEffect(() => {
     if (!selectedRow) return;
@@ -10311,10 +11833,8 @@ function WarrantyCertificatePreview({ draft }: { draft: WarrantyDraft }) {
 
 function WarrantyPage({
   vehicleModelSuggestions,
-  openRegistrationToken,
 }: {
   vehicleModelSuggestions: string[];
-  openRegistrationToken: number;
 }) {
   const [records, setRecords] = useState<WarrantyRecord[]>(warrantyRecords);
   const [query, setQuery] = useState('');
@@ -10324,13 +11844,6 @@ function WarrantyPage({
   const [previewDraft, setPreviewDraft] = useState<WarrantyDraft | null>(null);
   const [pdfDraft, setPdfDraft] = useState<WarrantyDraft | null>(null);
   const normalizedQuery = query.trim().toLowerCase();
-
-  useEffect(() => {
-    if (openRegistrationToken === 0) return;
-
-    setDraft(createWarrantyDraft());
-    setIsEditorOpen(true);
-  }, [openRegistrationToken]);
 
   const filteredRecords = useMemo(
     () =>
