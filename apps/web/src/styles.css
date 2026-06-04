@@ -1129,6 +1129,36 @@ h2 {
   grid-column: 1 / -1;
 }
 
+.estimate-auto-work-card {
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid #d6e7ff;
+  border-radius: 8px;
+  background: #f6faff;
+}
+
+.estimate-auto-work-card label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1b64da;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.estimate-auto-work-card input {
+  width: 16px;
+  height: 16px;
+  accent-color: #3182f6;
+}
+
+.estimate-auto-work-card p {
+  color: #4e5968;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .estimate-control {
   display: grid;
   gap: 6px;
@@ -1257,6 +1287,12 @@ h2 {
 .estimate-save-row .primary-button,
 .estimate-save-row .secondary-button {
   width: 100%;
+}
+
+.estimate-followup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .attachment-dropzone {
@@ -2128,6 +2164,202 @@ tbody tr:hover {
   width: 100%;
 }
 
+.settlement-filter-bar {
+  display: grid;
+  grid-template-columns: auto minmax(130px, 0.35fr) minmax(260px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  padding: 14px;
+  border: 1px solid #e5e8eb;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.payment-month-control {
+  display: grid;
+  grid-template-columns: auto 44px minmax(150px, auto) 44px;
+  gap: 8px;
+  align-items: center;
+}
+
+.payment-month-control > span,
+.settlement-status-filter > span,
+.settlement-memo-box > span {
+  color: #4e5968;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.payment-month-control strong {
+  display: inline-grid;
+  place-items: center;
+  height: 44px;
+  padding: 0 16px;
+  border: 1px solid #d9e0e8;
+  border-radius: 6px;
+  background: #fbfcfd;
+  color: #191f28;
+  font-size: 15px;
+}
+
+.settlement-status-filter {
+  display: grid;
+  gap: 6px;
+}
+
+.settlement-status-filter select,
+.settlement-memo-box textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #d9e0e8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #191f28;
+  font-size: 13px;
+  outline: 0;
+}
+
+.settlement-status-filter select {
+  height: 44px;
+  padding: 0 11px;
+}
+
+.settlement-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.85fr) minmax(0, 1.75fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.payment-calendar-weekdays,
+.payment-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.payment-calendar-weekdays {
+  margin-bottom: 8px;
+  color: #4e5968;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.payment-calendar-day {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 46px;
+  border: 1px solid #edf0f2;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #191f28;
+  font-weight: 800;
+}
+
+.payment-calendar-day:disabled {
+  background: transparent;
+  cursor: default;
+}
+
+.payment-calendar-day.selected {
+  border-color: #3182f6;
+  background: #eaf3ff;
+  color: #1b64da;
+}
+
+.payment-calendar-day.has-overdue {
+  border-color: #ffd1d1;
+  color: #e42939;
+}
+
+.payment-calendar-day em {
+  position: absolute;
+  right: 5px;
+  bottom: 4px;
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  border-radius: 999px;
+  background: #3182f6;
+  color: #ffffff;
+  font-size: 10px;
+  font-style: normal;
+}
+
+.payment-calendar-day.has-overdue em {
+  background: #e42939;
+}
+
+.payment-day-summary {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 6px;
+  background: #f7f8fa;
+}
+
+.payment-day-summary span {
+  color: #6b7684;
+  font-size: 13px;
+}
+
+.settlement-bottom-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.settlement-shortcut-list {
+  display: grid;
+  gap: 8px;
+}
+
+.settlement-shortcut-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 54px;
+  padding: 10px 12px;
+  border: 1px solid #edf0f2;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1f2a44;
+  text-align: left;
+}
+
+.settlement-shortcut-list button > span {
+  display: grid;
+  gap: 4px;
+}
+
+.settlement-shortcut-list small {
+  color: #6b7684;
+  font-size: 12px;
+}
+
+.settlement-memo-box {
+  display: grid;
+  gap: 8px;
+}
+
+.settlement-memo-box textarea {
+  min-height: 160px;
+  padding: 12px;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.payment-registration-form {
+  display: grid;
+  gap: 16px;
+}
+
 .admin-check-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2307,6 +2539,23 @@ tbody tr:hover {
   padding-left: 10px;
 }
 
+.calendar-drop-target.drag-ready {
+  outline: 1px dashed #8bbcff;
+  outline-offset: -3px;
+}
+
+.calendar-time-row.drag-ready .calendar-time-cell,
+.calendar-day-column.drag-ready .calendar-day-jobs,
+.calendar-month-cell.drag-ready {
+  background: #fbfdff;
+}
+
+.calendar-drop-target.drag-ready:hover,
+.calendar-drop-target.drag-ready:focus-within {
+  outline-color: #3182f6;
+  background: #f6faff;
+}
+
 .calendar-week-view {
   display: grid;
   grid-template-columns: repeat(7, minmax(120px, 1fr));
@@ -2406,6 +2655,10 @@ tbody tr:hover {
   background: #f6faff;
 }
 
+.calendar-month-cell.empty {
+  background: #fbfcfd;
+}
+
 .calendar-month-cell.today time {
   display: grid;
   place-items: center;
@@ -2476,6 +2729,20 @@ tbody tr:hover {
   background: #eef6ff;
 }
 
+.calendar-job[draggable='true'] {
+  cursor: grab;
+}
+
+.calendar-job[draggable='true']:active,
+.calendar-job.dragging {
+  cursor: grabbing;
+}
+
+.calendar-job.dragging {
+  opacity: 0.58;
+  box-shadow: 0 12px 24px rgb(25 31 40 / 14%);
+}
+
 .calendar-job.todo {
   border-left-color: #00a661;
   background: #f6fdf9;
@@ -2503,6 +2770,15 @@ tbody tr:hover {
 .calendar-job.mini .meta-line {
   margin-top: 3px;
   font-size: 11px;
+}
+
+.schedule-move-dialog {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.schedule-move-summary {
+  display: grid;
+  gap: 8px;
 }
 
 .completion-grid {
@@ -3327,7 +3603,221 @@ tbody tr:hover {
 }
 
 .sales-page .table-wrap table {
-  min-width: 1050px;
+  min-width: 1180px;
+}
+
+.sales-ops-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.55fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.sales-side-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.sales-status-cell,
+.sales-product-cell {
+  display: grid;
+  gap: 5px;
+}
+
+.sales-product-cell strong {
+  color: #191f28;
+}
+
+.sales-status-cell span,
+.sales-product-cell span {
+  color: #6b7684;
+  font-size: 12px;
+}
+
+.sales-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sales-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.secondary-button.compact {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.sales-stage-list {
+  display: grid;
+  gap: 9px;
+}
+
+.sales-stage-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px 10px;
+  padding: 12px;
+  border: 1px solid #edf0f2;
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.sales-stage-card span,
+.sales-stage-card small {
+  color: #6b7684;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.sales-stage-card strong {
+  color: #191f28;
+  font-size: 18px;
+}
+
+.sales-stage-card small {
+  grid-column: 1 / -1;
+}
+
+.sales-stage-card.blue {
+  border-left-color: #3182f6;
+}
+
+.sales-stage-card.green {
+  border-left-color: #00a86b;
+}
+
+.sales-stage-card.orange {
+  border-left-color: #f08c00;
+}
+
+.sales-stage-card.red {
+  border-left-color: #e42939;
+}
+
+.sales-stage-card.purple {
+  border-left-color: #6b3fd1;
+}
+
+.stock-alert-list {
+  display: grid;
+  gap: 10px;
+}
+
+.stock-alert-list article {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #edf0f2;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.stock-alert-list p,
+.stock-alert-list small {
+  color: #6b7684;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.status-pair {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.sales-bottom-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.product-import-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.product-import-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.template-column-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.template-column-list span {
+  padding: 6px 8px;
+  border: 1px solid #e5e8eb;
+  border-radius: 999px;
+  background: #fbfcfd;
+  color: #4e5968;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.excel-paste-box {
+  display: grid;
+  gap: 6px;
+}
+
+.excel-paste-box > span {
+  color: #8b95a1;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.excel-paste-box textarea {
+  width: 100%;
+  min-height: 156px;
+  resize: vertical;
+  padding: 10px;
+  border: 1px solid #e5e8eb;
+  border-radius: 8px;
+  color: #333d4b;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.import-rule-list,
+.sales-note-list {
+  display: grid;
+  gap: 8px;
+}
+
+.import-rule-list article,
+.sales-note-list article {
+  display: grid;
+  gap: 4px;
+  padding: 11px;
+  border: 1px solid #edf0f2;
+  border-radius: 8px;
+  background: #fbfcfd;
+}
+
+.import-rule-list strong,
+.sales-note-list strong {
+  color: #191f28;
+  font-size: 13px;
+}
+
+.import-rule-list span,
+.sales-note-list span {
+  color: #6b7684;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .sales-layout {
@@ -3658,6 +4148,393 @@ tbody tr:hover {
   line-height: 1.45;
 }
 
+.warranty-page .table-wrap table {
+  min-width: 1160px;
+}
+
+.warranty-table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.warranty-action-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.7fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.warranty-action-footer .primary-button,
+.warranty-action-footer .secondary-button {
+  width: 100%;
+}
+
+.warranty-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.warranty-form-grid label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.warranty-form-grid label.wide {
+  grid-column: 1 / -1;
+}
+
+.warranty-form-grid span {
+  color: #8b95a1;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.warranty-form-grid input,
+.warranty-form-grid select,
+.warranty-form-grid textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #d9e0e8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #191f28;
+  font-size: 13px;
+  outline: 0;
+}
+
+.warranty-form-grid input,
+.warranty-form-grid select {
+  height: 40px;
+  padding: 0 11px;
+}
+
+.warranty-form-grid textarea {
+  min-height: 92px;
+  padding: 10px 11px;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.warranty-form-grid input:focus,
+.warranty-form-grid select:focus,
+.warranty-form-grid textarea:focus {
+  border-color: #3182f6;
+  box-shadow: 0 0 0 3px rgb(49 130 246 / 10%);
+}
+
+.warranty-preview-shell {
+  display: grid;
+  justify-items: center;
+  min-width: 0;
+  padding: 24px;
+  overflow: auto;
+  border-radius: 8px;
+  background: #f2f4f6;
+}
+
+.warranty-pdf-viewer-shell {
+  display: grid;
+  justify-items: center;
+  min-width: 0;
+  padding: 16px;
+  overflow: auto;
+  border-radius: 8px;
+  background: #f2f4f6;
+}
+
+.warranty-pdf-frame {
+  width: min(100%, 860px);
+  height: min(920px, calc(100vh - 220px));
+  min-height: 620px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.warranty-paper {
+  width: min(100%, 794px);
+  min-height: 1123px;
+  padding: 46px 44px;
+  border: 1px solid #d8dee8;
+  background: #ffffff;
+  box-shadow: 0 18px 50px rgb(25 31 40 / 12%);
+  color: #1f2937;
+  font-family: "Malgun Gothic", Arial, sans-serif;
+}
+
+.warranty-paper-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 16px;
+  border-bottom: 4px solid #283592;
+}
+
+.warranty-company {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.warranty-company strong {
+  color: #283592;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.warranty-company span,
+.warranty-meta {
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.warranty-meta {
+  display: grid;
+  justify-items: end;
+  min-width: 180px;
+  text-align: right;
+}
+
+.warranty-title {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 28px 0 22px;
+  text-align: center;
+}
+
+.warranty-title h3 {
+  margin: 0;
+  color: #283592;
+  font-size: 34px;
+  line-height: 1.16;
+  letter-spacing: 0;
+}
+
+.warranty-title p {
+  margin: 0;
+  color: #98a2b3;
+  font-size: 17px;
+}
+
+.warranty-title span {
+  color: #4e5968;
+  font-size: 14px;
+}
+
+.warranty-paper table,
+.warranty-certificate-table {
+  width: 100%;
+  min-width: 0;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.warranty-certificate-table th,
+.warranty-certificate-table td {
+  min-height: 46px;
+  padding: 12px 10px;
+  border: 1px solid #222222;
+  font-size: 14px;
+  line-height: 1.55;
+  vertical-align: middle;
+}
+
+.warranty-certificate-table th {
+  width: 18%;
+  background: #f1f3f5;
+  color: #4e5968;
+  text-align: center;
+  font-weight: 900;
+}
+
+.warranty-certificate-table td {
+  color: #111827;
+  white-space: pre-line;
+}
+
+.warranty-notice-title {
+  margin-top: 18px;
+  padding: 10px;
+  border: 1px solid #222222;
+  border-bottom: 0;
+  background: #f1f3f5;
+  color: #333d4b;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.warranty-notice-box {
+  min-height: 180px;
+  padding: 18px;
+  border: 1px solid #222222;
+  color: #333d4b;
+  font-size: 13px;
+  line-height: 1.9;
+  white-space: pre-line;
+}
+
+.warranty-sign {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin-top: 32px;
+  text-align: center;
+}
+
+.warranty-sign strong {
+  color: #333d4b;
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.warranty-seal-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #4e5968;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.warranty-seal {
+  display: inline-grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border: 2px solid #d92d20;
+  border-radius: 50%;
+  color: #d92d20;
+  font-weight: 900;
+}
+
+.warranty-sign > span:last-child {
+  color: #4e5968;
+  font-size: 13px;
+}
+
+.price-book-page .table-wrap table {
+  min-width: 1120px;
+}
+
+.price-book-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.price-detail-panel .panel-body {
+  display: grid;
+  gap: 12px;
+}
+
+.price-detail-card,
+.linked-film-cut-box {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid #edf0f2;
+  border-radius: 8px;
+  background: #fbfdff;
+}
+
+.price-detail-card p {
+  color: #4e5968;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.price-detail-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.price-detail-grid .info-item {
+  grid-template-columns: 18px minmax(0, 72px) minmax(0, 1fr);
+}
+
+.linked-film-cut-box .row-title > span {
+  color: #8b95a1;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.film-cut-match-list {
+  display: grid;
+  gap: 8px;
+}
+
+.film-cut-match-list button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #edf0f2;
+  border-radius: 8px;
+  background: #ffffff;
+  text-align: left;
+}
+
+.film-cut-match-list button:hover {
+  border-color: #c9dcff;
+  background: #f6faff;
+}
+
+.film-cut-match-list span {
+  min-width: 0;
+  color: #191f28;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.film-cut-match-list strong {
+  color: #1b64da;
+  font-size: 13px;
+}
+
+.film-cut-match-list em {
+  grid-column: 1 / -1;
+  color: #6b7684;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.4;
+}
+
+.price-rule-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.price-rule-grid article {
+  display: grid;
+  gap: 6px;
+  min-height: 82px;
+  padding: 12px;
+  border: 1px solid #edf0f2;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.price-rule-grid strong {
+  color: #191f28;
+  font-size: 13px;
+}
+
+.price-rule-grid span {
+  color: #6b7684;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .sheet-import-page .table-wrap table {
   min-width: 920px;
 }
@@ -3819,6 +4696,23 @@ tbody tr:hover {
   letter-spacing: 0.08em;
 }
 
+@media (max-width: 1500px) {
+  .sales-ops-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-side-stack {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sales-orders-panel .filter-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+    padding-bottom: 2px;
+  }
+}
+
 @media (max-width: 1240px) {
   .kpi-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3838,13 +4732,18 @@ tbody tr:hover {
   .import-flow,
   .model-candidate-grid,
   .ledger-module-grid,
-  .sale-flow {
+  .sale-flow,
+  .price-rule-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .revenue-controls,
   .revenue-chart-grid,
   .sales-layout,
+  .sales-ops-grid,
+  .sales-bottom-grid,
+  .settlement-layout,
+  .settlement-bottom-grid,
   .ledger-compose-grid {
     grid-template-columns: 1fr;
   }
@@ -3924,6 +4823,8 @@ tbody tr:hover {
 
   .filter-bar,
   .record-toolbar,
+  .settlement-filter-bar,
+  .payment-month-control,
   .work-list-advanced-filters,
   .customer-list-header,
   .info-grid,
@@ -3931,6 +4832,8 @@ tbody tr:hover {
   .revenue-option-grid.stream,
   .revenue-date-range,
   .sales-form-grid,
+  .warranty-form-grid,
+  .warranty-action-footer,
   .ledger-entry-grid,
   .schedule-layout,
   .detail-edit-grid,
@@ -3963,6 +4866,20 @@ tbody tr:hover {
 
   .ledger-entry-grid label.wide {
     grid-column: auto;
+  }
+
+  .warranty-form-grid label.wide {
+    grid-column: auto;
+  }
+
+  .sales-side-stack {
+    grid-template-columns: 1fr;
+  }
+
+  .settlement-filter-bar > .primary-button,
+  .price-book-actions .primary-button,
+  .price-book-actions .secondary-button {
+    width: 100%;
   }
 }
 
@@ -4028,7 +4945,8 @@ tbody tr:hover {
   .import-flow,
   .model-candidate-grid,
   .ledger-module-grid,
-  .sale-flow {
+  .sale-flow,
+  .price-rule-grid {
     grid-template-columns: 1fr;
   }
 
@@ -4064,6 +4982,10 @@ tbody tr:hover {
   .calendar-register-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
+  }
+
+  .price-book-actions {
+    width: 100%;
   }
 
   .work-view-switch-row {
@@ -4127,8 +5049,30 @@ tbody tr:hover {
   }
 
   .action-footer,
+  .warranty-action-footer,
   .work-detail-footer {
     grid-template-columns: 1fr;
+  }
+
+  .warranty-preview-shell {
+    justify-items: start;
+    padding: 12px;
+  }
+
+  .warranty-pdf-viewer-shell {
+    justify-items: start;
+    padding: 12px;
+  }
+
+  .warranty-pdf-frame {
+    width: 720px;
+    min-width: 720px;
+  }
+
+  .warranty-paper {
+    width: 720px;
+    min-width: 720px;
+    padding: 36px;
   }
 
   .work-list-pagination-row {

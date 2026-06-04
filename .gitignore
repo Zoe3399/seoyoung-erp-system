@@ -2,6 +2,7 @@ node_modules
 dist
 build
 .turbo
+artifacts
 .env
 .env.local
 .env.*.local

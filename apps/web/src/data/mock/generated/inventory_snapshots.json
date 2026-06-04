@@ -1,0 +1,3202 @@
+[
+  {
+    "sourceRow": 2,
+    "itemCode": "ITEM-0001",
+    "itemName": "???? ?? 0001",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 3,
+    "itemCode": "ITEM-0002",
+    "itemName": "???? ?? 0002",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 4,
+    "itemCode": "ITEM-0003",
+    "itemName": "???? ?? 0003",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 5,
+    "itemCode": "ITEM-0004",
+    "itemName": "???? ?? 0004",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 6,
+    "itemCode": "ITEM-0005",
+    "itemName": "???? ?? 0005",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 7,
+    "itemCode": "ITEM-0006",
+    "itemName": "???? ?? 0006",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 8,
+    "itemCode": "ITEM-0007",
+    "itemName": "???? ?? 0007",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 9,
+    "itemCode": "ITEM-0008",
+    "itemName": "???? ?? 0008",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 10,
+    "itemCode": "ITEM-0009",
+    "itemName": "???? ?? 0009",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 11,
+    "itemCode": "ITEM-0010",
+    "itemName": "???? ?? 0010",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 12,
+    "itemCode": "ITEM-0011",
+    "itemName": "???? ?? 0011",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 13,
+    "itemCode": "ITEM-0012",
+    "itemName": "???? ?? 0012",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 14,
+    "itemCode": "ITEM-0013",
+    "itemName": "???? ?? 0013",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 15,
+    "itemCode": "ITEM-0014",
+    "itemName": "???? ?? 0014",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 16,
+    "itemCode": "ITEM-0015",
+    "itemName": "???? ?? 0015",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 17,
+    "itemCode": "ITEM-0016",
+    "itemName": "???? ?? 0016",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 18,
+    "itemCode": "ITEM-0017",
+    "itemName": "???? ?? 0017",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 19,
+    "itemCode": "ITEM-0018",
+    "itemName": "???? ?? 0018",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 20,
+    "itemCode": "ITEM-0019",
+    "itemName": "???? ?? 0019",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 21,
+    "itemCode": "ITEM-0020",
+    "itemName": "???? ?? 0020",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 22,
+    "itemCode": "ITEM-0021",
+    "itemName": "???? ?? 0021",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 23,
+    "itemCode": "ITEM-0022",
+    "itemName": "???? ?? 0022",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 24,
+    "itemCode": "ITEM-0023",
+    "itemName": "???? ?? 0023",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 25,
+    "itemCode": "ITEM-0024",
+    "itemName": "???? ?? 0024",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 26,
+    "itemCode": "ITEM-0025",
+    "itemName": "???? ?? 0025",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 27,
+    "itemCode": "ITEM-0026",
+    "itemName": "???? ?? 0026",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 28,
+    "itemCode": "ITEM-0027",
+    "itemName": "???? ?? 0027",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 29,
+    "itemCode": "ITEM-0028",
+    "itemName": "???? ?? 0028",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 30,
+    "itemCode": "ITEM-0029",
+    "itemName": "???? ?? 0029",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 31,
+    "itemCode": "ITEM-0030",
+    "itemName": "???? ?? 0030",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 32,
+    "itemCode": "ITEM-0031",
+    "itemName": "???? ?? 0031",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 33,
+    "itemCode": "ITEM-0032",
+    "itemName": "???? ?? 0032",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 34,
+    "itemCode": "ITEM-0033",
+    "itemName": "???? ?? 0033",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 35,
+    "itemCode": "ITEM-0034",
+    "itemName": "???? ?? 0034",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 36,
+    "itemCode": "ITEM-0035",
+    "itemName": "???? ?? 0035",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 37,
+    "itemCode": "ITEM-0036",
+    "itemName": "???? ?? 0036",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 38,
+    "itemCode": "ITEM-0037",
+    "itemName": "???? ?? 0037",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 39,
+    "itemCode": "ITEM-0038",
+    "itemName": "???? ?? 0038",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 40,
+    "itemCode": "ITEM-0039",
+    "itemName": "???? ?? 0039",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 41,
+    "itemCode": "ITEM-0040",
+    "itemName": "???? ?? 0040",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 42,
+    "itemCode": "ITEM-0041",
+    "itemName": "???? ?? 0041",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 43,
+    "itemCode": "ITEM-0042",
+    "itemName": "???? ?? 0042",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 44,
+    "itemCode": "ITEM-0043",
+    "itemName": "???? ?? 0043",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 45,
+    "itemCode": "ITEM-0044",
+    "itemName": "???? ?? 0044",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 46,
+    "itemCode": "ITEM-0045",
+    "itemName": "???? ?? 0045",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 47,
+    "itemCode": "ITEM-0046",
+    "itemName": "???? ?? 0046",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 48,
+    "itemCode": "ITEM-0047",
+    "itemName": "???? ?? 0047",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 49,
+    "itemCode": "ITEM-0048",
+    "itemName": "???? ?? 0048",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 50,
+    "itemCode": "ITEM-0049",
+    "itemName": "???? ?? 0049",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 51,
+    "itemCode": "ITEM-0050",
+    "itemName": "???? ?? 0050",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 52,
+    "itemCode": "ITEM-0051",
+    "itemName": "???? ?? 0051",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 53,
+    "itemCode": "ITEM-0052",
+    "itemName": "???? ?? 0052",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 54,
+    "itemCode": "ITEM-0053",
+    "itemName": "???? ?? 0053",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 55,
+    "itemCode": "ITEM-0054",
+    "itemName": "???? ?? 0054",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 56,
+    "itemCode": "ITEM-0055",
+    "itemName": "???? ?? 0055",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 57,
+    "itemCode": "ITEM-0056",
+    "itemName": "???? ?? 0056",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 58,
+    "itemCode": "ITEM-0057",
+    "itemName": "???? ?? 0057",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 59,
+    "itemCode": "ITEM-0058",
+    "itemName": "???? ?? 0058",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 60,
+    "itemCode": "ITEM-0059",
+    "itemName": "???? ?? 0059",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 61,
+    "itemCode": "ITEM-0060",
+    "itemName": "???? ?? 0060",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 62,
+    "itemCode": "ITEM-0061",
+    "itemName": "???? ?? 0061",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 63,
+    "itemCode": "ITEM-0062",
+    "itemName": "???? ?? 0062",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 64,
+    "itemCode": "ITEM-0063",
+    "itemName": "???? ?? 0063",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 65,
+    "itemCode": "ITEM-0064",
+    "itemName": "???? ?? 0064",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 66,
+    "itemCode": "ITEM-0065",
+    "itemName": "???? ?? 0065",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 67,
+    "itemCode": "ITEM-0066",
+    "itemName": "???? ?? 0066",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 68,
+    "itemCode": "ITEM-0067",
+    "itemName": "???? ?? 0067",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 69,
+    "itemCode": "ITEM-0068",
+    "itemName": "???? ?? 0068",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 70,
+    "itemCode": "ITEM-0069",
+    "itemName": "???? ?? 0069",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 71,
+    "itemCode": "ITEM-0070",
+    "itemName": "???? ?? 0070",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 72,
+    "itemCode": "ITEM-0071",
+    "itemName": "???? ?? 0071",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 73,
+    "itemCode": "ITEM-0072",
+    "itemName": "???? ?? 0072",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 74,
+    "itemCode": "ITEM-0073",
+    "itemName": "???? ?? 0073",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 75,
+    "itemCode": "ITEM-0074",
+    "itemName": "???? ?? 0074",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 76,
+    "itemCode": "ITEM-0075",
+    "itemName": "???? ?? 0075",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 77,
+    "itemCode": "ITEM-0076",
+    "itemName": "???? ?? 0076",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 78,
+    "itemCode": "ITEM-0077",
+    "itemName": "???? ?? 0077",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 79,
+    "itemCode": "ITEM-0078",
+    "itemName": "???? ?? 0078",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 80,
+    "itemCode": "ITEM-0079",
+    "itemName": "???? ?? 0079",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 81,
+    "itemCode": "ITEM-0080",
+    "itemName": "???? ?? 0080",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 82,
+    "itemCode": "ITEM-0081",
+    "itemName": "???? ?? 0081",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 83,
+    "itemCode": "ITEM-0082",
+    "itemName": "???? ?? 0082",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 84,
+    "itemCode": "ITEM-0083",
+    "itemName": "???? ?? 0083",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 85,
+    "itemCode": "ITEM-0084",
+    "itemName": "???? ?? 0084",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 86,
+    "itemCode": "ITEM-0085",
+    "itemName": "???? ?? 0085",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 87,
+    "itemCode": "ITEM-0086",
+    "itemName": "???? ?? 0086",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 88,
+    "itemCode": "ITEM-0087",
+    "itemName": "???? ?? 0087",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 89,
+    "itemCode": "ITEM-0088",
+    "itemName": "???? ?? 0088",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 90,
+    "itemCode": "ITEM-0089",
+    "itemName": "???? ?? 0089",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 91,
+    "itemCode": "ITEM-0090",
+    "itemName": "???? ?? 0090",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 92,
+    "itemCode": "ITEM-0091",
+    "itemName": "???? ?? 0091",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 93,
+    "itemCode": "ITEM-0092",
+    "itemName": "???? ?? 0092",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 94,
+    "itemCode": "ITEM-0093",
+    "itemName": "???? ?? 0093",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 95,
+    "itemCode": "ITEM-0094",
+    "itemName": "???? ?? 0094",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 96,
+    "itemCode": "ITEM-0095",
+    "itemName": "???? ?? 0095",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 97,
+    "itemCode": "ITEM-0096",
+    "itemName": "???? ?? 0096",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 98,
+    "itemCode": "ITEM-0097",
+    "itemName": "???? ?? 0097",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 99,
+    "itemCode": "ITEM-0098",
+    "itemName": "???? ?? 0098",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 100,
+    "itemCode": "ITEM-0099",
+    "itemName": "???? ?? 0099",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 101,
+    "itemCode": "ITEM-0100",
+    "itemName": "???? ?? 0100",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 102,
+    "itemCode": "ITEM-0101",
+    "itemName": "???? ?? 0101",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 103,
+    "itemCode": "ITEM-0102",
+    "itemName": "???? ?? 0102",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 104,
+    "itemCode": "ITEM-0103",
+    "itemName": "???? ?? 0103",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 105,
+    "itemCode": "ITEM-0104",
+    "itemName": "???? ?? 0104",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 106,
+    "itemCode": "ITEM-0105",
+    "itemName": "???? ?? 0105",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 107,
+    "itemCode": "ITEM-0106",
+    "itemName": "???? ?? 0106",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 108,
+    "itemCode": "ITEM-0107",
+    "itemName": "???? ?? 0107",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 109,
+    "itemCode": "ITEM-0108",
+    "itemName": "???? ?? 0108",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 110,
+    "itemCode": "ITEM-0109",
+    "itemName": "???? ?? 0109",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 111,
+    "itemCode": "ITEM-0110",
+    "itemName": "???? ?? 0110",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 112,
+    "itemCode": "ITEM-0111",
+    "itemName": "???? ?? 0111",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 113,
+    "itemCode": "ITEM-0112",
+    "itemName": "???? ?? 0112",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 114,
+    "itemCode": "ITEM-0113",
+    "itemName": "???? ?? 0113",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 115,
+    "itemCode": "ITEM-0114",
+    "itemName": "???? ?? 0114",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 116,
+    "itemCode": "ITEM-0115",
+    "itemName": "???? ?? 0115",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 117,
+    "itemCode": "ITEM-0116",
+    "itemName": "???? ?? 0116",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 118,
+    "itemCode": "ITEM-0117",
+    "itemName": "???? ?? 0117",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 119,
+    "itemCode": "ITEM-0118",
+    "itemName": "???? ?? 0118",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 120,
+    "itemCode": "ITEM-0119",
+    "itemName": "???? ?? 0119",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 121,
+    "itemCode": "ITEM-0120",
+    "itemName": "???? ?? 0120",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 122,
+    "itemCode": "ITEM-0121",
+    "itemName": "???? ?? 0121",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 123,
+    "itemCode": "ITEM-0122",
+    "itemName": "???? ?? 0122",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 124,
+    "itemCode": "ITEM-0123",
+    "itemName": "???? ?? 0123",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 125,
+    "itemCode": "ITEM-0124",
+    "itemName": "???? ?? 0124",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 126,
+    "itemCode": "ITEM-0125",
+    "itemName": "???? ?? 0125",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 127,
+    "itemCode": "ITEM-0126",
+    "itemName": "???? ?? 0126",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 128,
+    "itemCode": "ITEM-0127",
+    "itemName": "???? ?? 0127",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 129,
+    "itemCode": "ITEM-0128",
+    "itemName": "???? ?? 0128",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 130,
+    "itemCode": "ITEM-0129",
+    "itemName": "???? ?? 0129",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 131,
+    "itemCode": "ITEM-0130",
+    "itemName": "???? ?? 0130",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 132,
+    "itemCode": "ITEM-0131",
+    "itemName": "???? ?? 0131",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 133,
+    "itemCode": "ITEM-0132",
+    "itemName": "???? ?? 0132",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 134,
+    "itemCode": "ITEM-0133",
+    "itemName": "???? ?? 0133",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 135,
+    "itemCode": "ITEM-0134",
+    "itemName": "???? ?? 0134",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 136,
+    "itemCode": "ITEM-0135",
+    "itemName": "???? ?? 0135",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 137,
+    "itemCode": "ITEM-0136",
+    "itemName": "???? ?? 0136",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 138,
+    "itemCode": "ITEM-0137",
+    "itemName": "???? ?? 0137",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 139,
+    "itemCode": "ITEM-0138",
+    "itemName": "???? ?? 0138",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 140,
+    "itemCode": "ITEM-0139",
+    "itemName": "???? ?? 0139",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 141,
+    "itemCode": "ITEM-0140",
+    "itemName": "???? ?? 0140",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 142,
+    "itemCode": "ITEM-0141",
+    "itemName": "???? ?? 0141",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 143,
+    "itemCode": "ITEM-0142",
+    "itemName": "???? ?? 0142",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 144,
+    "itemCode": "ITEM-0143",
+    "itemName": "???? ?? 0143",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 145,
+    "itemCode": "ITEM-0144",
+    "itemName": "???? ?? 0144",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 146,
+    "itemCode": "ITEM-0145",
+    "itemName": "???? ?? 0145",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 147,
+    "itemCode": "ITEM-0146",
+    "itemName": "???? ?? 0146",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 148,
+    "itemCode": "ITEM-0147",
+    "itemName": "???? ?? 0147",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 149,
+    "itemCode": "ITEM-0148",
+    "itemName": "???? ?? 0148",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 150,
+    "itemCode": "ITEM-0149",
+    "itemName": "???? ?? 0149",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 151,
+    "itemCode": "ITEM-0150",
+    "itemName": "???? ?? 0150",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 152,
+    "itemCode": "ITEM-0151",
+    "itemName": "???? ?? 0151",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 153,
+    "itemCode": "ITEM-0152",
+    "itemName": "???? ?? 0152",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 154,
+    "itemCode": "ITEM-0153",
+    "itemName": "???? ?? 0153",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 155,
+    "itemCode": "ITEM-0154",
+    "itemName": "???? ?? 0154",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 156,
+    "itemCode": "ITEM-0155",
+    "itemName": "???? ?? 0155",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 157,
+    "itemCode": "ITEM-0156",
+    "itemName": "???? ?? 0156",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 158,
+    "itemCode": "ITEM-0157",
+    "itemName": "???? ?? 0157",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 159,
+    "itemCode": "ITEM-0158",
+    "itemName": "???? ?? 0158",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 160,
+    "itemCode": "ITEM-0159",
+    "itemName": "???? ?? 0159",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 161,
+    "itemCode": "ITEM-0160",
+    "itemName": "???? ?? 0160",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 162,
+    "itemCode": "ITEM-0161",
+    "itemName": "???? ?? 0161",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 163,
+    "itemCode": "ITEM-0162",
+    "itemName": "???? ?? 0162",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 164,
+    "itemCode": "ITEM-0163",
+    "itemName": "???? ?? 0163",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 165,
+    "itemCode": "ITEM-0164",
+    "itemName": "???? ?? 0164",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 166,
+    "itemCode": "ITEM-0165",
+    "itemName": "???? ?? 0165",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 167,
+    "itemCode": "ITEM-0166",
+    "itemName": "???? ?? 0166",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 168,
+    "itemCode": "ITEM-0167",
+    "itemName": "???? ?? 0167",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 169,
+    "itemCode": "ITEM-0168",
+    "itemName": "???? ?? 0168",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 170,
+    "itemCode": "ITEM-0169",
+    "itemName": "???? ?? 0169",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 171,
+    "itemCode": "ITEM-0170",
+    "itemName": "???? ?? 0170",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 172,
+    "itemCode": "ITEM-0171",
+    "itemName": "???? ?? 0171",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 173,
+    "itemCode": "ITEM-0172",
+    "itemName": "???? ?? 0172",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 174,
+    "itemCode": "ITEM-0173",
+    "itemName": "???? ?? 0173",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 175,
+    "itemCode": "ITEM-0174",
+    "itemName": "???? ?? 0174",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 176,
+    "itemCode": "ITEM-0175",
+    "itemName": "???? ?? 0175",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 177,
+    "itemCode": "ITEM-0176",
+    "itemName": "???? ?? 0176",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 178,
+    "itemCode": "ITEM-0177",
+    "itemName": "???? ?? 0177",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 179,
+    "itemCode": "ITEM-0178",
+    "itemName": "???? ?? 0178",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 180,
+    "itemCode": "ITEM-0179",
+    "itemName": "???? ?? 0179",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 181,
+    "itemCode": "ITEM-0180",
+    "itemName": "???? ?? 0180",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 182,
+    "itemCode": "ITEM-0181",
+    "itemName": "???? ?? 0181",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 183,
+    "itemCode": "ITEM-0182",
+    "itemName": "???? ?? 0182",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 184,
+    "itemCode": "ITEM-0183",
+    "itemName": "???? ?? 0183",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 185,
+    "itemCode": "ITEM-0184",
+    "itemName": "???? ?? 0184",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 186,
+    "itemCode": "ITEM-0185",
+    "itemName": "???? ?? 0185",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 187,
+    "itemCode": "ITEM-0186",
+    "itemName": "???? ?? 0186",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 188,
+    "itemCode": "ITEM-0187",
+    "itemName": "???? ?? 0187",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 189,
+    "itemCode": "ITEM-0188",
+    "itemName": "???? ?? 0188",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 190,
+    "itemCode": "ITEM-0189",
+    "itemName": "???? ?? 0189",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 191,
+    "itemCode": "ITEM-0190",
+    "itemName": "???? ?? 0190",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 192,
+    "itemCode": "ITEM-0191",
+    "itemName": "???? ?? 0191",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 193,
+    "itemCode": "ITEM-0192",
+    "itemName": "???? ?? 0192",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 194,
+    "itemCode": "ITEM-0193",
+    "itemName": "???? ?? 0193",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 195,
+    "itemCode": "ITEM-0194",
+    "itemName": "???? ?? 0194",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 196,
+    "itemCode": "ITEM-0195",
+    "itemName": "???? ?? 0195",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 197,
+    "itemCode": "ITEM-0196",
+    "itemName": "???? ?? 0196",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 198,
+    "itemCode": "ITEM-0197",
+    "itemName": "???? ?? 0197",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 199,
+    "itemCode": "ITEM-0198",
+    "itemName": "???? ?? 0198",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 200,
+    "itemCode": "ITEM-0199",
+    "itemName": "???? ?? 0199",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 201,
+    "itemCode": "ITEM-0200",
+    "itemName": "???? ?? 0200",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 202,
+    "itemCode": "ITEM-0201",
+    "itemName": "???? ?? 0201",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 203,
+    "itemCode": "ITEM-0202",
+    "itemName": "???? ?? 0202",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 204,
+    "itemCode": "ITEM-0203",
+    "itemName": "???? ?? 0203",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 205,
+    "itemCode": "ITEM-0204",
+    "itemName": "???? ?? 0204",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 206,
+    "itemCode": "ITEM-0205",
+    "itemName": "???? ?? 0205",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 207,
+    "itemCode": "ITEM-0206",
+    "itemName": "???? ?? 0206",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 208,
+    "itemCode": "ITEM-0207",
+    "itemName": "???? ?? 0207",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 209,
+    "itemCode": "ITEM-0208",
+    "itemName": "???? ?? 0208",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 210,
+    "itemCode": "ITEM-0209",
+    "itemName": "???? ?? 0209",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 211,
+    "itemCode": "ITEM-0210",
+    "itemName": "???? ?? 0210",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 212,
+    "itemCode": "ITEM-0211",
+    "itemName": "???? ?? 0211",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 213,
+    "itemCode": "ITEM-0212",
+    "itemName": "???? ?? 0212",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 214,
+    "itemCode": "ITEM-0213",
+    "itemName": "???? ?? 0213",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 215,
+    "itemCode": "ITEM-0214",
+    "itemName": "???? ?? 0214",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 216,
+    "itemCode": "ITEM-0215",
+    "itemName": "???? ?? 0215",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 217,
+    "itemCode": "ITEM-0216",
+    "itemName": "???? ?? 0216",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 218,
+    "itemCode": "ITEM-0217",
+    "itemName": "???? ?? 0217",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 219,
+    "itemCode": "ITEM-0218",
+    "itemName": "???? ?? 0218",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 220,
+    "itemCode": "ITEM-0219",
+    "itemName": "???? ?? 0219",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 221,
+    "itemCode": "ITEM-0220",
+    "itemName": "???? ?? 0220",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 222,
+    "itemCode": "ITEM-0221",
+    "itemName": "???? ?? 0221",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 223,
+    "itemCode": "ITEM-0222",
+    "itemName": "???? ?? 0222",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 224,
+    "itemCode": "ITEM-0223",
+    "itemName": "???? ?? 0223",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 225,
+    "itemCode": "ITEM-0224",
+    "itemName": "???? ?? 0224",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 226,
+    "itemCode": "ITEM-0225",
+    "itemName": "???? ?? 0225",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 227,
+    "itemCode": "ITEM-0226",
+    "itemName": "???? ?? 0226",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 228,
+    "itemCode": "ITEM-0227",
+    "itemName": "???? ?? 0227",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 229,
+    "itemCode": "ITEM-0228",
+    "itemName": "???? ?? 0228",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 230,
+    "itemCode": "ITEM-0229",
+    "itemName": "???? ?? 0229",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 231,
+    "itemCode": "ITEM-0230",
+    "itemName": "???? ?? 0230",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 232,
+    "itemCode": "ITEM-0231",
+    "itemName": "???? ?? 0231",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 233,
+    "itemCode": "ITEM-0232",
+    "itemName": "???? ?? 0232",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 234,
+    "itemCode": "ITEM-0233",
+    "itemName": "???? ?? 0233",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 235,
+    "itemCode": "ITEM-0234",
+    "itemName": "???? ?? 0234",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 236,
+    "itemCode": "ITEM-0235",
+    "itemName": "???? ?? 0235",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 237,
+    "itemCode": "ITEM-0236",
+    "itemName": "???? ?? 0236",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 238,
+    "itemCode": "ITEM-0237",
+    "itemName": "???? ?? 0237",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 239,
+    "itemCode": "ITEM-0238",
+    "itemName": "???? ?? 0238",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 240,
+    "itemCode": "ITEM-0239",
+    "itemName": "???? ?? 0239",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 241,
+    "itemCode": "ITEM-0240",
+    "itemName": "???? ?? 0240",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 242,
+    "itemCode": "ITEM-0241",
+    "itemName": "???? ?? 0241",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 243,
+    "itemCode": "ITEM-0242",
+    "itemName": "???? ?? 0242",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 244,
+    "itemCode": "ITEM-0243",
+    "itemName": "???? ?? 0243",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 245,
+    "itemCode": "ITEM-0244",
+    "itemName": "???? ?? 0244",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 246,
+    "itemCode": "ITEM-0245",
+    "itemName": "???? ?? 0245",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 247,
+    "itemCode": "ITEM-0246",
+    "itemName": "???? ?? 0246",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 248,
+    "itemCode": "ITEM-0247",
+    "itemName": "???? ?? 0247",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 249,
+    "itemCode": "ITEM-0248",
+    "itemName": "???? ?? 0248",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 250,
+    "itemCode": "ITEM-0249",
+    "itemName": "???? ?? 0249",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 251,
+    "itemCode": "ITEM-0250",
+    "itemName": "???? ?? 0250",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 252,
+    "itemCode": "ITEM-0251",
+    "itemName": "???? ?? 0251",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 253,
+    "itemCode": "ITEM-0252",
+    "itemName": "???? ?? 0252",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 254,
+    "itemCode": "ITEM-0253",
+    "itemName": "???? ?? 0253",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 255,
+    "itemCode": "ITEM-0254",
+    "itemName": "???? ?? 0254",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 256,
+    "itemCode": "ITEM-0255",
+    "itemName": "???? ?? 0255",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 257,
+    "itemCode": "ITEM-0256",
+    "itemName": "???? ?? 0256",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 258,
+    "itemCode": "ITEM-0257",
+    "itemName": "???? ?? 0257",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 259,
+    "itemCode": "ITEM-0258",
+    "itemName": "???? ?? 0258",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 260,
+    "itemCode": "ITEM-0259",
+    "itemName": "???? ?? 0259",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 261,
+    "itemCode": "ITEM-0260",
+    "itemName": "???? ?? 0260",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 262,
+    "itemCode": "ITEM-0261",
+    "itemName": "???? ?? 0261",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 263,
+    "itemCode": "ITEM-0262",
+    "itemName": "???? ?? 0262",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 264,
+    "itemCode": "ITEM-0263",
+    "itemName": "???? ?? 0263",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 265,
+    "itemCode": "ITEM-0264",
+    "itemName": "???? ?? 0264",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 266,
+    "itemCode": "ITEM-0265",
+    "itemName": "???? ?? 0265",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 267,
+    "itemCode": "ITEM-0266",
+    "itemName": "???? ?? 0266",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 268,
+    "itemCode": "ITEM-0267",
+    "itemName": "???? ?? 0267",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 269,
+    "itemCode": "ITEM-0268",
+    "itemName": "???? ?? 0268",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 270,
+    "itemCode": "ITEM-0269",
+    "itemName": "???? ?? 0269",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 271,
+    "itemCode": "ITEM-0270",
+    "itemName": "???? ?? 0270",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 272,
+    "itemCode": "ITEM-0271",
+    "itemName": "???? ?? 0271",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 273,
+    "itemCode": "ITEM-0272",
+    "itemName": "???? ?? 0272",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 274,
+    "itemCode": "ITEM-0273",
+    "itemName": "???? ?? 0273",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 275,
+    "itemCode": "ITEM-0274",
+    "itemName": "???? ?? 0274",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 276,
+    "itemCode": "ITEM-0275",
+    "itemName": "???? ?? 0275",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 277,
+    "itemCode": "ITEM-0276",
+    "itemName": "???? ?? 0276",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 278,
+    "itemCode": "ITEM-0277",
+    "itemName": "???? ?? 0277",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 279,
+    "itemCode": "ITEM-0278",
+    "itemName": "???? ?? 0278",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 280,
+    "itemCode": "ITEM-0279",
+    "itemName": "???? ?? 0279",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 281,
+    "itemCode": "ITEM-0280",
+    "itemName": "???? ?? 0280",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 282,
+    "itemCode": "ITEM-0281",
+    "itemName": "???? ?? 0281",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 283,
+    "itemCode": "ITEM-0282",
+    "itemName": "???? ?? 0282",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 284,
+    "itemCode": "ITEM-0283",
+    "itemName": "???? ?? 0283",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 285,
+    "itemCode": "ITEM-0284",
+    "itemName": "???? ?? 0284",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 286,
+    "itemCode": "ITEM-0285",
+    "itemName": "???? ?? 0285",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 287,
+    "itemCode": "ITEM-0286",
+    "itemName": "???? ?? 0286",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 288,
+    "itemCode": "ITEM-0287",
+    "itemName": "???? ?? 0287",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 289,
+    "itemCode": "ITEM-0288",
+    "itemName": "???? ?? 0288",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 290,
+    "itemCode": "ITEM-0289",
+    "itemName": "???? ?? 0289",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 291,
+    "itemCode": "ITEM-0290",
+    "itemName": "???? ?? 0290",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 292,
+    "itemCode": "ITEM-0291",
+    "itemName": "???? ?? 0291",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 293,
+    "itemCode": "ITEM-0292",
+    "itemName": "???? ?? 0292",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 294,
+    "itemCode": "ITEM-0293",
+    "itemName": "???? ?? 0293",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 295,
+    "itemCode": "ITEM-0294",
+    "itemName": "???? ?? 0294",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 296,
+    "itemCode": "ITEM-0295",
+    "itemName": "???? ?? 0295",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 297,
+    "itemCode": "ITEM-0296",
+    "itemName": "???? ?? 0296",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 298,
+    "itemCode": "ITEM-0297",
+    "itemName": "???? ?? 0297",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 299,
+    "itemCode": "ITEM-0298",
+    "itemName": "???? ?? 0298",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 300,
+    "itemCode": "ITEM-0299",
+    "itemName": "???? ?? 0299",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 301,
+    "itemCode": "ITEM-0300",
+    "itemName": "???? ?? 0300",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 302,
+    "itemCode": "ITEM-0301",
+    "itemName": "???? ?? 0301",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 303,
+    "itemCode": "ITEM-0302",
+    "itemName": "???? ?? 0302",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 304,
+    "itemCode": "ITEM-0303",
+    "itemName": "???? ?? 0303",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 305,
+    "itemCode": "ITEM-0304",
+    "itemName": "???? ?? 0304",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 306,
+    "itemCode": "ITEM-0305",
+    "itemName": "???? ?? 0305",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 307,
+    "itemCode": "ITEM-0306",
+    "itemName": "???? ?? 0306",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 308,
+    "itemCode": "ITEM-0307",
+    "itemName": "???? ?? 0307",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "1",
+    "stockQty": "1"
+  },
+  {
+    "sourceRow": 309,
+    "itemCode": "ITEM-0308",
+    "itemName": "???? ?? 0308",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "0",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 310,
+    "itemCode": "ITEM-0309",
+    "itemName": "???? ?? 0309",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "3",
+    "outboundQty": "",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 311,
+    "itemCode": "ITEM-0310",
+    "itemName": "???? ?? 0310",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "0",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 312,
+    "itemCode": "ITEM-0311",
+    "itemName": "???? ?? 0311",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 313,
+    "itemCode": "ITEM-0312",
+    "itemName": "???? ?? 0312",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "0",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 314,
+    "itemCode": "ITEM-0313",
+    "itemName": "???? ?? 0313",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 315,
+    "itemCode": "ITEM-0314",
+    "itemName": "???? ?? 0314",
+    "spec": "?? ? ??",
+    "previousQty": "",
+    "inboundQty": "2",
+    "outboundQty": "",
+    "stockQty": "2"
+  },
+  {
+    "sourceRow": 316,
+    "itemCode": "ITEM-0315",
+    "itemName": "???? ?? 0315",
+    "spec": "?? ? ??",
+    "previousQty": "5",
+    "inboundQty": "3",
+    "outboundQty": "1",
+    "stockQty": "3"
+  },
+  {
+    "sourceRow": 317,
+    "itemCode": "ITEM-0316",
+    "itemName": "???? ?? 0316",
+    "spec": "?? ???",
+    "previousQty": "",
+    "inboundQty": "1",
+    "outboundQty": "0",
+    "stockQty": "4"
+  },
+  {
+    "sourceRow": 318,
+    "itemCode": "ITEM-0317",
+    "itemName": "???? ?? 0317",
+    "spec": "?? ? ?? ? ??",
+    "previousQty": "",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": "5"
+  },
+  {
+    "sourceRow": 319,
+    "itemCode": "ITEM-0318",
+    "itemName": "???? ?? 0318",
+    "spec": "?? ? ??",
+    "previousQty": "2",
+    "inboundQty": "",
+    "outboundQty": "",
+    "stockQty": "6"
+  },
+  {
+    "sourceRow": 320,
+    "itemCode": "ITEM-0319",
+    "itemName": "???? ?? 0319",
+    "spec": "?? ? ??",
+    "previousQty": "3",
+    "inboundQty": "",
+    "outboundQty": "1",
+    "stockQty": ""
+  },
+  {
+    "sourceRow": 321,
+    "itemCode": "ITEM-0320",
+    "itemName": "???? ?? 0320",
+    "spec": "?? ???",
+    "previousQty": "4",
+    "inboundQty": "2",
+    "outboundQty": "0",
+    "stockQty": "2"
+  }
+]

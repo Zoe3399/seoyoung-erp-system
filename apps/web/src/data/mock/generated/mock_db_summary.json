@@ -1,0 +1,14 @@
+{
+  "product_items": 5030,
+  "inventory_snapshots": 320,
+  "partners": 164,
+  "sourceFiles": {
+    "product_items": "품목리스트.csv",
+    "inventory_snapshots": "재고리스트.csv",
+    "partners": "정비소(거래처) 리스트.csv"
+  },
+  "generatedAt": "2026-06-01",
+  "source": "artifacts/google-sheet-extract",
+  "redactedForPublicDeploy": true,
+  "redactionNote": "Public deployment data keeps table shape and row counts only; identifiers, names, contacts, and prices are masked."
+}
