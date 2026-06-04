@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useId, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Plus, Search, X, type LucideIcon } from 'lucide-react';
 import { formatMoney } from '../lib/format';
 
@@ -71,43 +71,159 @@ export function RecordToolbar({
   );
 }
 
+export type SearchSuggestion = string | { id?: string; value: string; label?: string; detail?: string };
+
+function normalizeSearchSuggestion(suggestion: SearchSuggestion) {
+  return typeof suggestion === 'string' ? { value: suggestion, label: suggestion } : suggestion;
+}
+
 export function SearchInput({
   label,
   value,
   placeholder,
   onChange,
+  onSelect,
   suggestions = [],
   listId,
+  className = '',
+  labelHidden = false,
 }: {
   label: string;
   value: string;
   placeholder: string;
   onChange: (value: string) => void;
-  suggestions?: string[];
+  onSelect?: (value: string) => void;
+  suggestions?: SearchSuggestion[];
   listId?: string;
+  className?: string;
+  labelHidden?: boolean;
 }) {
-  const suggestionId = listId ?? `${label.replace(/\s+/g, '-')}-suggestions`;
+  const generatedId = useId();
+  const baseId = listId ?? `${label.replace(/\s+/g, '-') || generatedId}-suggestions`;
+  const inputId = `${baseId}-input`;
+  const labelId = `${baseId}-label`;
+  const suggestionId = `${baseId}-listbox`;
+  const normalizedSuggestions = useMemo(() => {
+    const seen = new Set<string>();
+
+    return suggestions
+      .map(normalizeSearchSuggestion)
+      .filter((suggestion) => suggestion.value.trim().length > 0)
+      .filter((suggestion) => {
+        const key = `${suggestion.id ?? ''}|${suggestion.value}|${suggestion.label ?? ''}|${suggestion.detail ?? ''}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }, [suggestions]);
+  const normalizedQuery = value.trim().toLowerCase();
+  const visibleSuggestions = useMemo(() => {
+    const matches = normalizedSuggestions.filter((suggestion) => {
+      if (normalizedQuery.length === 0) return true;
+
+      return [suggestion.value, suggestion.label, suggestion.detail]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(normalizedQuery);
+    });
+
+    return matches.slice(0, 8);
+  }, [normalizedQuery, normalizedSuggestions]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const hasSuggestions = visibleSuggestions.length > 0;
+  const showEmptyState = normalizedQuery.length > 0 && normalizedSuggestions.length > 0 && !hasSuggestions;
+  const shouldShowDropdown = isOpen && (hasSuggestions || showEmptyState);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [normalizedQuery, visibleSuggestions.length]);
+
+  function selectSuggestion(suggestion: ReturnType<typeof normalizeSearchSuggestion>) {
+    onChange(suggestion.value);
+    onSelect?.(suggestion.value);
+    setIsOpen(false);
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Escape') {
+      setIsOpen(false);
+      return;
+    }
+
+    if (!hasSuggestions) return;
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setIsOpen(true);
+      setActiveIndex((current) => (current + 1) % visibleSuggestions.length);
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setIsOpen(true);
+      setActiveIndex((current) => (current - 1 + visibleSuggestions.length) % visibleSuggestions.length);
+      return;
+    }
+
+    if (event.key === 'Enter' && isOpen) {
+      event.preventDefault();
+      selectSuggestion(visibleSuggestions[activeIndex] ?? visibleSuggestions[0]!);
+    }
+  }
 
   return (
-    <label className="search-input">
-      <span>{label}</span>
-      <div>
+    <div className={`search-input ${labelHidden ? 'search-input-label-hidden' : ''} ${className}`.trim()}>
+      <label className={labelHidden ? 'visually-hidden' : undefined} htmlFor={inputId} id={labelId}>
+        {label}
+      </label>
+      <div className="search-input-control">
         <Search size={16} />
         <input
-          list={suggestions.length > 0 ? suggestionId : undefined}
+          aria-activedescendant={
+            shouldShowDropdown && hasSuggestions ? `${suggestionId}-${activeIndex}` : undefined
+          }
+          aria-autocomplete="list"
+          aria-controls={shouldShowDropdown ? suggestionId : undefined}
+          aria-expanded={shouldShowDropdown}
+          aria-labelledby={labelId}
           onChange={(event) => onChange(event.target.value)}
+          onBlur={() => setIsOpen(false)}
+          onFocus={() => setIsOpen(true)}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
+          role="combobox"
           value={value}
         />
       </div>
-      {suggestions.length > 0 ? (
-        <datalist id={suggestionId}>
-          {suggestions.map((suggestion) => (
-            <option key={suggestion} value={suggestion} />
-          ))}
-        </datalist>
+      {shouldShowDropdown ? (
+        <div className="search-input-menu" id={suggestionId} role="listbox">
+          {hasSuggestions ? (
+            visibleSuggestions.map((suggestion, index) => (
+              <button
+                aria-selected={activeIndex === index}
+                className={activeIndex === index ? 'active' : undefined}
+                id={`${suggestionId}-${index}`}
+                key={suggestion.id ?? `${suggestion.value}-${index}`}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  selectSuggestion(suggestion);
+                }}
+                role="option"
+                type="button"
+              >
+                <span>{suggestion.label ?? suggestion.value}</span>
+                {suggestion.detail ? <small>{suggestion.detail}</small> : null}
+              </button>
+            ))
+          ) : (
+            <div className="search-input-empty">검색 결과가 없습니다.</div>
+          )}
+        </div>
       ) : null}
-    </label>
+    </div>
   );
 }
 

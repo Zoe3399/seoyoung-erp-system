@@ -1,4 +1,5 @@
 :root {
+  --sidebar-width: 280px;
   color: #191f28;
   background: #ffffff;
   font-family:
@@ -250,7 +251,7 @@ p {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 252px minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   grid-template-rows: 48px minmax(0, 1fr);
   min-height: 100vh;
   background: #ffffff;
@@ -262,7 +263,7 @@ p {
   z-index: 20;
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: 252px minmax(0, 1fr) auto;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) auto;
   align-items: center;
   height: 48px;
   border-bottom: 1px solid #edf0f2;
@@ -365,6 +366,7 @@ p {
   align-content: start;
   gap: 14px;
   min-width: 0;
+  min-height: 0;
   overflow-y: auto;
   padding: 14px 10px 18px;
 }
@@ -394,6 +396,26 @@ p {
   min-width: 0;
 }
 
+.nav-tree {
+  gap: 5px;
+}
+
+.nav-tree-group,
+.nav-tree-node {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.nav-tree-children {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  margin-left: 16px;
+  padding-left: 8px;
+  border-left: 1px solid #edf0f2;
+}
+
 .nav-section-title {
   margin: 0 0 2px 10px;
   color: #b0b8c1;
@@ -414,6 +436,18 @@ p {
   color: #6b7684;
   text-align: left;
   font-size: 13px;
+}
+
+.nav-tree-level-4 {
+  min-height: 32px;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  color: #7b8591;
+  font-size: 12px;
+}
+
+.nav-tree-level-4 svg {
+  width: 15px;
+  height: 15px;
 }
 
 .nav-item:hover {
@@ -446,6 +480,39 @@ p {
   color: #ffffff;
 }
 
+.nav-item span:not(.nav-trailing) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-trailing {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  min-width: 0;
+}
+
+.nav-chevron {
+  transition: transform 0.16s ease;
+}
+
+.nav-item.has-children .nav-trailing svg,
+.nav-tree-item .nav-trailing svg {
+  color: #b0b8c1;
+}
+
+.nav-item.open .nav-chevron {
+  transform: rotate(90deg);
+}
+
+.nav-item.has-children.active .nav-trailing svg,
+.nav-tree-item.active .nav-trailing svg {
+  color: #1b64da;
+}
+
 .workspace {
   grid-row: 2;
   min-width: 0;
@@ -453,14 +520,53 @@ p {
   background: #f5f6f8;
 }
 
+.placeholder-page {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 180px;
+  padding: 22px;
+  border: 1px solid #e5e8eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.placeholder-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: #eef6ff;
+  color: #1b64da;
+}
+
+.placeholder-page h2 {
+  margin-bottom: 6px;
+  font-size: 20px;
+}
+
+.placeholder-page span {
+  color: #6b7684;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 18px;
   margin-bottom: 16px;
   padding-bottom: 12px;
   border-bottom: 1px solid #edf0f2;
+}
+
+.topbar > div:first-child {
+  flex: 1 1 180px;
+  min-width: 0;
 }
 
 .topbar-title-row {
@@ -491,6 +597,11 @@ h1 {
   color: #191f28;
   font-size: 28px;
   line-height: 1.2;
+  word-break: keep-all;
+}
+
+.topbar-title-row h1 {
+  white-space: nowrap;
 }
 
 h2 {
@@ -502,20 +613,37 @@ h2 {
 .topbar-actions {
   display: flex;
   align-items: center;
+  flex: 1 1 420px;
+  justify-content: flex-end;
   gap: 8px;
+  min-width: 0;
 }
 
 .global-search {
   display: flex;
   align-items: center;
+  flex: 1 1 240px;
   gap: 9px;
-  width: min(430px, 38vw);
+  width: auto;
+  max-width: 430px;
+  min-width: 220px;
   height: 44px;
   padding: 0 14px;
   border: 1px solid #e5e8eb;
   border-radius: 8px;
   background: #ffffff;
   color: #8b95a1;
+}
+
+.global-search-typeahead {
+  flex: 1 1 240px;
+  width: auto;
+  max-width: 430px;
+  min-width: 220px;
+}
+
+.global-search-typeahead .search-input-control {
+  height: 44px;
 }
 
 .global-search input,
@@ -587,6 +715,15 @@ h2 {
 
 .full {
   width: 100%;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .page-stack {
@@ -814,18 +951,19 @@ h2 {
 }
 
 .search-input {
+  position: relative;
   display: grid;
   gap: 6px;
 }
 
-.search-input > span,
+.search-input > label,
 .form-section h3 {
   color: #8b95a1;
   font-size: 12px;
   font-weight: 800;
 }
 
-.search-input > div {
+.search-input-control {
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr);
   gap: 8px;
@@ -838,12 +976,81 @@ h2 {
   color: #8b95a1;
 }
 
+.search-input-control:focus-within {
+  border-color: #3182f6;
+  box-shadow: 0 0 0 3px rgb(49 130 246 / 10%);
+}
+
 .search-input input {
   min-width: 0;
   outline: 0;
   border: 0;
   background: transparent;
   color: #191f28;
+}
+
+.search-input-menu {
+  position: absolute;
+  z-index: 35;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  display: grid;
+  gap: 2px;
+  max-height: 236px;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  border: 1px solid #d9e0e8;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 16px 36px rgb(25 31 40 / 14%);
+  list-style: none;
+}
+
+.search-input-menu button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 9px;
+  border-radius: 6px;
+  background: transparent;
+  color: #333d4b;
+  text-align: left;
+}
+
+.search-input-menu button:hover,
+.search-input-menu button.active {
+  background: #eef6ff;
+  color: #1b64da;
+}
+
+.search-input-menu button span,
+.search-input-menu button small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-input-menu button span {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.search-input-menu button small {
+  color: #6b7684;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.search-input-empty {
+  padding: 10px 9px;
+  color: #8b95a1;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .filter-tabs {
@@ -3930,7 +4137,105 @@ tbody tr:hover {
 }
 
 .ledger-workbook-page .table-wrap table {
-  min-width: 1120px;
+  min-width: 1480px;
+}
+
+.ledger-sheet-panel .panel-body {
+  display: grid;
+  gap: 12px;
+}
+
+.ledger-sheet-tabs {
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.ledger-sheet-tabs .filter-tabs {
+  flex-wrap: nowrap;
+  min-width: max-content;
+}
+
+.ledger-sheet-tabs .filter-tabs button {
+  border-radius: 6px;
+}
+
+.ledger-source-chip,
+.ledger-sheet-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #6b7684;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ledger-source-chip {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid #e5e8eb;
+  border-radius: 6px;
+  background: #f7f8fa;
+}
+
+.ledger-sheet-meta {
+  flex-wrap: wrap;
+}
+
+.ledger-sheet-meta span {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid #edf0f2;
+  border-radius: 6px;
+  background: #ffffff;
+  line-height: 28px;
+}
+
+.ledger-sheet-panel .table-wrap {
+  max-height: calc(100vh - 320px);
+  min-height: 360px;
+  border: 1px solid #edf0f2;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.ledger-sheet-panel .table-wrap th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-bottom-color: #d1d6db;
+  background: #f7f8fa;
+}
+
+.ledger-sheet-panel .table-wrap th,
+.ledger-sheet-panel .table-wrap td {
+  padding: 9px 10px;
+}
+
+.ledger-sheet-panel .table-wrap th:first-child,
+.ledger-sheet-panel .table-wrap td:first-child {
+  width: 52px;
+  min-width: 52px;
+  text-align: center;
+}
+
+.ledger-row-number {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 24px;
+  border-radius: 4px;
+  background: #f2f4f6;
+  color: #6b7684;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ledger-sheet-money {
+  display: block;
+  color: #191f28;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  text-align: right;
 }
 
 .ledger-compose-grid {
@@ -4428,6 +4733,50 @@ tbody tr:hover {
   gap: 8px;
 }
 
+.product-list-panel .panel-body {
+  display: grid;
+  gap: 12px;
+}
+
+.product-list-panel .table-wrap {
+  max-height: calc(100vh - 332px);
+  min-height: 520px;
+  border: 1px solid #edf0f2;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.product-list-panel .table-wrap table {
+  min-width: 1040px;
+}
+
+.product-list-panel .table-wrap th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-bottom-color: #d1d6db;
+  background: #f7f8fa;
+}
+
+.product-list-panel .table-wrap td {
+  vertical-align: top;
+}
+
+.product-list-panel .table-wrap td:first-child strong {
+  color: #1b64da;
+  font-weight: 900;
+}
+
+.product-edit-panel .panel-body,
+.product-list-edit-form {
+  display: grid;
+  gap: 10px;
+}
+
+.product-list-edit-form .estimate-control textarea {
+  min-height: 92px;
+}
+
 .price-detail-panel .panel-body {
   display: grid;
   gap: 12px;
@@ -4697,6 +5046,10 @@ tbody tr:hover {
 }
 
 @media (max-width: 1500px) {
+  .kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .sales-ops-grid {
     grid-template-columns: 1fr;
   }
@@ -4767,13 +5120,12 @@ tbody tr:hover {
 }
 
 @media (max-width: 920px) {
-  .app-shell {
-    grid-template-columns: 76px minmax(0, 1fr);
-    grid-template-rows: 48px minmax(0, 1fr);
+  :root {
+    --sidebar-width: 76px;
   }
 
-  .app-header {
-    grid-template-columns: 76px minmax(0, 1fr) auto;
+  .app-shell {
+    grid-template-rows: 48px minmax(0, 1fr);
   }
 
   .app-header-brand {
@@ -4789,7 +5141,9 @@ tbody tr:hover {
   .nav-item em,
   .mode-context,
   .nav-section-title,
-  .sidebar-rail {
+  .sidebar-rail,
+  .sidebar-depth-primary,
+  .sidebar-depth-empty {
     display: none;
   }
 
@@ -4799,7 +5153,13 @@ tbody tr:hover {
   }
 
   .nav-list {
+    grid-template-columns: 1fr;
     padding: 0;
+  }
+
+  .sidebar-depth {
+    padding: 0;
+    border-right: 0;
   }
 
   .nav-item {
@@ -4813,8 +5173,10 @@ tbody tr:hover {
     flex-direction: column;
   }
 
-  .global-search {
+  .global-search,
+  .global-search-typeahead {
     width: 100%;
+    max-width: none;
   }
 
   .customer-layout {
@@ -4884,6 +5246,10 @@ tbody tr:hover {
 }
 
 @media (max-width: 680px) {
+  :root {
+    --sidebar-width: 100%;
+  }
+
   .app-shell {
     display: block;
   }
@@ -4922,6 +5288,14 @@ tbody tr:hover {
   .nav-list {
     display: flex;
     gap: 6px;
+  }
+
+  .sidebar-depth {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 6px;
+    padding: 0;
+    overflow: visible;
   }
 
   .nav-section {

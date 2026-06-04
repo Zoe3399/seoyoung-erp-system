@@ -120,6 +120,14 @@ function resolveInventoryStatus(stock: number, minimum: number): MockInventorySt
   return '정상';
 }
 
+function resolveInventoryName(row: MockInventorySnapshotRow, product?: MockProductItemRow) {
+  return row.spec || product?.spec || row.itemName || product?.itemName || row.itemCode;
+}
+
+function resolveCompatibleVehicle(row: MockInventorySnapshotRow, product?: MockProductItemRow) {
+  return row.itemName || product?.itemName || '차종 미분류';
+}
+
 function resolvePartnerType(partnerName: string) {
   if (/보험|화재|해상|손해|렌터|렌트/.test(partnerName)) return '보험사';
   if (/유리|글라스|모비스|부품|상사|상회|도매|대리점/.test(partnerName)) return '매입처';
@@ -140,9 +148,9 @@ export function buildActualInventoryItems(): MockInventoryItem[] {
 
       return {
         partNo: row.itemCode,
-        name: row.itemName || product?.itemName || row.itemCode,
+        name: resolveInventoryName(row, product),
         usageScope: resolveUsageScope(product),
-        compatible: row.itemName || product?.itemName || '차종 미분류',
+        compatible: resolveCompatibleVehicle(row, product),
         location: `실재고-${String(index + 1).padStart(3, '0')}`,
         stock,
         minimum,

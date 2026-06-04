@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent, type TextareaHTMLAttributes } from 'react';
+import { StrictMode, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent, type ReactNode, type TextareaHTMLAttributes } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   AlertCircle,
@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Clock3,
   CreditCard,
+  Database,
   Download,
   FileText,
   FolderOpen,
@@ -23,6 +24,7 @@ import {
   ReceiptText,
   Search,
   ShieldCheck,
+  Upload,
   UserRound,
   UsersRound,
   WalletCards,
@@ -49,9 +51,10 @@ import {
   SearchInput,
   SettingRow,
   StatusPill,
+  type SearchSuggestion,
   type Tone,
 } from './components/common';
-import { buildActualInventoryItems, buildActualPartners } from './data/mock/database';
+import { buildActualInventoryItems, buildActualPartners, selectMockRows, type MockProductItemRow } from './data/mock/database';
 import { formatMoney } from './lib/format';
 import './styles.css';
 
@@ -139,14 +142,28 @@ type PageId =
   | 'dashboard'
   | 'revenue'
   | 'sales'
+  | 'purchase'
+  | 'cardSales'
+  | 'paymentList'
   | 'ledger'
   | 'warranty'
   | 'priceBook'
   | 'estimates'
   | 'work'
+  | 'workKp'
+  | 'workInsurance'
+  | 'workBest'
+  | 'workInbound'
   | 'schedule'
   | 'claims'
   | 'inventory'
+  | 'statisticsKp'
+  | 'statisticsBest'
+  | 'statisticsInsurance'
+  | 'statisticsInbound'
+  | 'bulkManagementList'
+  | 'integratedList'
+  | 'partNumberList'
   | 'vehicles'
   | 'customers'
   | 'partners'
@@ -161,13 +178,30 @@ type NavItem = {
   count?: string;
 };
 
-type NavSection = {
-  title: string;
+type SidebarNavNode = {
+  id: string;
+  label: string;
   icon: LucideIcon;
-  items: NavItem[];
+  pageId?: PageId;
+  count?: string;
+  children?: SidebarNavNode[];
 };
 
-type AppMode = 'worker' | 'admin';
+type SidebarNavGroup = {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  items: SidebarNavNode[];
+};
+
+type SidebarNavPath = {
+  group: SidebarNavGroup;
+  node: SidebarNavNode;
+  leaf?: SidebarNavNode;
+};
+
+type AppMode = 'worker' | 'admin' | 'db';
+type WorkAppMode = Extract<AppMode, 'worker' | 'admin'>;
 
 type ModeOption = {
   id: AppMode;
@@ -457,11 +491,11 @@ type InventoryFilter = 'all' | 'shortage' | 'check' | 'normal';
 type PartnerFilter = 'all' | 'shop' | 'insurer' | 'supplier';
 type AttachmentFilter = 'all' | 'estimate' | 'claim' | 'work' | 'base';
 type SheetImportFilter = 'all' | 'core' | 'reference' | 'finance' | 'document' | 'secure';
-type LedgerFilter = 'all' | 'sales' | 'kp' | 'insurance' | 'best' | 'inbound' | 'estimate' | 'card';
+type LedgerSheetId = 'salesLedger' | 'kp' | 'insurance' | 'estimate' | 'best' | 'inbound' | 'repairShop' | 'cardLedger';
 type WarrantyFilter = 'all' | 'pending' | 'issued' | 'check';
 type PriceBookFilter = 'all' | 'best' | 'service' | 'tint' | 'filmCut';
 type WarrantyStatus = '발행대기' | '발행완료' | '확인필요';
-type LedgerCategory = '일반' | 'KP' | '보험' | '베스트' | '입고지원' | '견적' | '카드';
+type LedgerCategory = '일반' | 'KP' | '보험' | '베스트' | '입고지원' | '견적' | '정비공장' | '카드';
 type CalendarView = 'day' | 'week' | 'month' | 'year';
 
 type DashboardShortcut = {
@@ -537,13 +571,12 @@ type LedgerRecord = {
   tone: Tone;
 };
 
-type WorkbookModule = {
-  name: string;
-  source: string;
-  role: string;
-  fields: string[];
+type LedgerSheetRow = {
+  key: string;
+  searchText: string;
+  cells: ReactNode[];
+  amount: number;
   status: string;
-  tone: Tone;
 };
 
 type CardSettlement = {
@@ -594,6 +627,14 @@ type PriceBookRow = {
   memo?: string;
   tone: Tone;
 };
+
+type ProductListField = 'itemCode' | 'itemName' | 'spec' | 'inboundPrice' | 'outboundPrice' | 'exchangePrice' | 'note';
+
+type ProductListRow = MockProductItemRow & {
+  id: string;
+};
+
+type ProductListDraft = Record<ProductListField, string>;
 
 type EstimateConversion = {
   date: string;
@@ -648,102 +689,328 @@ type VehicleSuggestionSet = {
   yearRange: string[];
 };
 
-const WORKER_NAV_SECTIONS: NavSection[] = [
+type GlobalSearchSuggestion = {
+  id: string;
+  value: string;
+  label: string;
+  detail: string;
+  pageId: PageId;
+  customerId?: string;
+};
+
+function compactTextParts(parts: Array<string | number | undefined | null>) {
+  return parts
+    .map((part) => String(part ?? '').trim())
+    .filter(Boolean)
+    .join(' · ');
+}
+
+function buildGlobalSearchSuggestions(vehicleSuggestions: VehicleSuggestionSet): GlobalSearchSuggestion[] {
+  const suggestions: GlobalSearchSuggestion[] = [];
+  const seen = new Set<string>();
+
+  function addSuggestion(suggestion: GlobalSearchSuggestion) {
+    const key = `${suggestion.pageId}|${suggestion.value}|${suggestion.label}|${suggestion.detail}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    suggestions.push(suggestion);
+  }
+
+  ALL_NAV_ITEMS.forEach((item) => {
+    addSuggestion({
+      id: `page-${item.id}`,
+      value: item.label,
+      label: item.label,
+      detail: '화면 바로가기',
+      pageId: item.id,
+    });
+  });
+
+  customers.forEach((customer) => {
+    addSuggestion({
+      id: `customer-${customer.id}`,
+      value: customer.name,
+      label: customer.name,
+      detail: compactTextParts(['고객', customer.phone, customer.vehicle]),
+      pageId: 'customers',
+      customerId: customer.id,
+    });
+  });
+
+  estimates.forEach((estimate) => {
+    addSuggestion({
+      id: `estimate-${estimate.no}`,
+      value: estimate.no,
+      label: compactTextParts([estimate.no, estimate.customer]),
+      detail: compactTextParts(['견적', estimate.vehicle, estimate.repair]),
+      pageId: 'estimates',
+    });
+  });
+
+  workerWorkListRecords.forEach((record) => {
+    addSuggestion({
+      id: `work-${record.id}`,
+      value: record.plateNumber || record.customer,
+      label: compactTextParts([record.customer, record.plateNumber]),
+      detail: compactTextParts(['작업', record.date, record.vehicle, record.title]),
+      pageId: 'work',
+    });
+  });
+
+  claims.forEach((claim) => {
+    addSuggestion({
+      id: `claim-${claim.no}`,
+      value: claim.no,
+      label: compactTextParts([claim.no, claim.customer]),
+      detail: compactTextParts(['청구', claim.vehicle, claim.insurer, claim.status]),
+      pageId: 'claims',
+    });
+  });
+
+  productSales.forEach((sale) => {
+    addSuggestion({
+      id: `sale-${sale.no}`,
+      value: sale.partNo,
+      label: compactTextParts([sale.partNo, sale.itemName]),
+      detail: compactTextParts(['판매', sale.customer, sale.status]),
+      pageId: 'sales',
+    });
+  });
+
+  inventory.slice(0, 40).forEach((item) => {
+    addSuggestion({
+      id: `inventory-${item.partNo}`,
+      value: item.partNo,
+      label: compactTextParts([item.partNo, item.name]),
+      detail: compactTextParts(['재고', item.compatible, `${item.stock}개`]),
+      pageId: 'inventory',
+    });
+  });
+
+  partners.slice(0, 40).forEach((partner, index) => {
+    addSuggestion({
+      id: `partner-${index}-${partner.name}`,
+      value: partner.name,
+      label: partner.name,
+      detail: compactTextParts(['거래처', partner.type, partner.manager, partner.phone]),
+      pageId: 'partners',
+    });
+  });
+
+  attachments.forEach((file) => {
+    addSuggestion({
+      id: `attachment-${file.name}`,
+      value: file.name,
+      label: file.name,
+      detail: compactTextParts(['자료', file.target, file.owner]),
+      pageId: 'attachments',
+    });
+  });
+
+  vehicleSuggestions.lookup.slice(0, 24).forEach((vehicle, index) => {
+    addSuggestion({
+      id: `vehicle-${index}-${vehicle}`,
+      value: vehicle,
+      label: vehicle,
+      detail: '차량 정보 후보',
+      pageId: 'vehicles',
+    });
+  });
+
+  return suggestions;
+}
+
+const WORKER_NAV_GROUPS: SidebarNavGroup[] = [
   {
-    title: '개요',
+    id: 'overview',
+    label: '홈',
     icon: LayoutDashboard,
-    items: [{ id: 'dashboard', label: '홈', icon: LayoutDashboard }],
+    items: [{ id: 'worker-dashboard', label: '홈', icon: LayoutDashboard, pageId: 'dashboard' }],
   },
   {
-    title: '업무 흐름',
+    id: 'work',
+    label: '작업',
     icon: Wrench,
     items: [
-      { id: 'estimates', label: '견적', icon: FileText, count: '7' },
-      { id: 'work', label: '작업', icon: CalendarDays, count: '7' },
-      { id: 'sales', label: '판매관리', icon: WalletCards, count: '4' },
+      { id: 'worker-estimates', label: '견적', icon: FileText, pageId: 'estimates', count: '7' },
+      {
+        id: 'worker-work',
+        label: '작업',
+        icon: CalendarDays,
+        pageId: 'work',
+        count: '7',
+        children: [
+          { id: 'worker-work-integrated', label: '통합', icon: LayoutDashboard, pageId: 'work' },
+          { id: 'worker-work-kp', label: 'KP', icon: ReceiptText, pageId: 'workKp' },
+          { id: 'worker-work-insurance', label: '보험', icon: ShieldCheck, pageId: 'workInsurance' },
+          { id: 'worker-work-best', label: '베스트', icon: CheckCircle2, pageId: 'workBest' },
+          { id: 'worker-work-inbound', label: '입고지원', icon: Package, pageId: 'workInbound' },
+        ],
+      },
+      { id: 'worker-claims', label: '청구', icon: ReceiptText, pageId: 'claims', count: '4' },
     ],
   },
   {
-    title: '처리/문서',
+    id: 'sales',
+    label: '판매',
+    icon: WalletCards,
+    items: [
+      { id: 'worker-sales', label: '판매 관리', icon: WalletCards, pageId: 'sales', count: '4' },
+      { id: 'worker-purchase', label: '구매관리', icon: Package, pageId: 'purchase', count: '2' },
+    ],
+  },
+  {
+    id: 'statistics',
+    label: '통계',
     icon: ReceiptText,
     items: [
-      { id: 'inventory', label: '재고/입고', icon: Package, count: '2' },
-      { id: 'warranty', label: '보증서', icon: ShieldCheck, count: '3' },
-      { id: 'claims', label: '청구', icon: ReceiptText, count: '4' },
-      { id: 'priceBook', label: '단가/기준정보', icon: ReceiptText, count: '3' },
-      { id: 'customers', label: '고객', icon: UsersRound },
+      { id: 'worker-revenue', label: '매출', icon: ReceiptText, pageId: 'revenue', count: '월' },
+      { id: 'worker-statistics-kp', label: 'KP', icon: ReceiptText, pageId: 'statisticsKp' },
+      { id: 'worker-statistics-best', label: '베스트', icon: CheckCircle2, pageId: 'statisticsBest' },
+      { id: 'worker-statistics-insurance', label: '보험', icon: ShieldCheck, pageId: 'statisticsInsurance' },
+      { id: 'worker-statistics-inbound', label: '입고지원', icon: Package, pageId: 'statisticsInbound' },
     ],
   },
 ];
 
-const ADMIN_NAV_SECTIONS: NavSection[] = [
+const ADMIN_NAV_GROUPS: SidebarNavGroup[] = [
   {
-    title: '개요',
+    id: 'overview',
+    label: '홈',
     icon: LayoutDashboard,
-    items: [{ id: 'dashboard', label: '홈', icon: LayoutDashboard }],
+    items: [{ id: 'admin-dashboard', label: '홈', icon: LayoutDashboard, pageId: 'dashboard' }],
   },
   {
-    title: '업무 흐름',
-    icon: Wrench,
-    items: [
-      { id: 'estimates', label: '견적', icon: FileText, count: '7' },
-      { id: 'work', label: '작업', icon: CalendarDays, count: '7' },
-      { id: 'sales', label: '판매관리', icon: WalletCards, count: '4' },
-    ],
-  },
-  {
-    title: '정산/장부',
-    icon: ReceiptText,
-    items: [
-      { id: 'schedule', label: '대금결제', icon: CalendarDays, count: '5' },
-      { id: 'revenue', label: '매출', icon: ReceiptText, count: '월' },
-      { id: 'claims', label: '청구', icon: ReceiptText, count: '4' },
-      { id: 'ledger', label: '장부', icon: ReceiptText, count: '9' },
-    ],
-  },
-  {
-    title: '기준정보',
+    id: 'management',
+    label: '관리',
     icon: ShieldCheck,
     items: [
-      { id: 'priceBook', label: '단가/기준정보', icon: ReceiptText, count: '3' },
-      { id: 'inventory', label: '재고/입고', icon: Package, count: '2' },
-      { id: 'vehicles', label: '차량 정보', icon: Car },
-      { id: 'partners', label: '거래처', icon: Building2 },
-      { id: 'customers', label: '고객', icon: UsersRound },
-    ],
-  },
-  {
-    title: '문서/자료',
-    icon: FolderOpen,
-    items: [
-      { id: 'warranty', label: '보증서', icon: ShieldCheck, count: '3' },
-      { id: 'attachments', label: '자료', icon: FolderOpen },
-      { id: 'sheetImport', label: '시트 전환', icon: Download, count: '16' },
-    ],
-  },
-  {
-    title: '시스템',
-    icon: ShieldCheck,
-    items: [
-      { id: 'settings', label: '설정', icon: ShieldCheck },
+      { id: 'admin-schedule', label: '일정 관리', icon: CalendarDays, pageId: 'schedule', count: '5' },
+      { id: 'admin-card-sales', label: '카드매출', icon: CreditCard, pageId: 'cardSales' },
+      { id: 'admin-payment-list', label: '대금결제리스트', icon: Database, pageId: 'paymentList' },
+      { id: 'admin-warranty', label: '보증서', icon: ShieldCheck, pageId: 'warranty', count: '3' },
     ],
   },
 ];
+
+const DB_NAV_GROUPS: SidebarNavGroup[] = [
+  {
+    id: 'inventory',
+    label: '재고',
+    icon: Package,
+    items: [{ id: 'db-inventory', label: '재고', icon: Package, pageId: 'inventory', count: '2' }],
+  },
+  {
+    id: 'part-number-list',
+    label: '품번리스트',
+    icon: FileText,
+    items: [{ id: 'db-part-number-list', label: '품번리스트', icon: FileText, pageId: 'partNumberList' }],
+  },
+  {
+    id: 'vehicles',
+    label: '차량 정보',
+    icon: Car,
+    items: [{ id: 'db-vehicles', label: '차량 정보', icon: Car, pageId: 'vehicles' }],
+  },
+  {
+    id: 'attachments',
+    label: '자료',
+    icon: FolderOpen,
+    items: [{ id: 'db-attachments', label: '자료', icon: FolderOpen, pageId: 'attachments' }],
+  },
+  {
+    id: 'customers',
+    label: '고객',
+    icon: UsersRound,
+    items: [{ id: 'db-customers', label: '고객', icon: UsersRound, pageId: 'customers' }],
+  },
+];
+
+function sidebarGroupsForMode(mode: AppMode) {
+  if (mode === 'worker') return WORKER_NAV_GROUPS;
+  if (mode === 'admin') return ADMIN_NAV_GROUPS;
+  return DB_NAV_GROUPS;
+}
+
+function collectSidebarNavItems(groups: SidebarNavGroup[]) {
+  const items: NavItem[] = [];
+
+  function collectNode(node: SidebarNavNode) {
+    if (node.pageId) {
+      const item: NavItem = { id: node.pageId, label: node.label, icon: node.icon };
+      if (node.count !== undefined) item.count = node.count;
+      items.push(item);
+    }
+
+    node.children?.forEach(collectNode);
+  }
+
+  groups.forEach((group) => group.items.forEach(collectNode));
+  return items;
+}
+
+function findNodeByPageId(nodes: SidebarNavNode[] | undefined, pageId: PageId): SidebarNavNode | null {
+  if (!nodes) return null;
+
+  for (const node of nodes) {
+    const child = findNodeByPageId(node.children, pageId);
+    if (child) return child;
+    if (node.pageId === pageId) return node;
+  }
+
+  return null;
+}
+
+function findSidebarNavPath(mode: AppMode, pageId: PageId): SidebarNavPath | null {
+  for (const group of sidebarGroupsForMode(mode)) {
+    for (const node of group.items) {
+      const leaf = findNodeByPageId(node.children, pageId);
+      if (leaf) return { group, node, leaf };
+      if (node.pageId === pageId) return { group, node };
+    }
+  }
+
+  return null;
+}
+
+function nodeContainsPage(node: SidebarNavNode, pageId: PageId) {
+  return node.pageId === pageId || Boolean(findNodeByPageId(node.children, pageId));
+}
 
 const ALL_NAV_ITEMS: NavItem[] = Array.from(
   new Map(
-    [...WORKER_NAV_SECTIONS, ...ADMIN_NAV_SECTIONS]
-      .flatMap((section) => section.items)
-      .map((item) => [item.id, item]),
+    [
+      ...collectSidebarNavItems(WORKER_NAV_GROUPS),
+      ...collectSidebarNavItems(ADMIN_NAV_GROUPS),
+      ...collectSidebarNavItems(DB_NAV_GROUPS),
+    ].map((item) => [item.id, item]),
   ).values(),
 );
 
 const MODE_OPTIONS: ModeOption[] = [
   { id: 'worker', label: '작업자', icon: UserRound, defaultPage: 'work' },
   { id: 'admin', label: '관리자', icon: ShieldCheck, defaultPage: 'dashboard' },
+  { id: 'db', label: 'DB', icon: Database, defaultPage: 'inventory' },
 ];
 
-const TOP_NAV_PAGE_IDS: PageId[] = ['dashboard', 'estimates', 'work', 'sales', 'schedule'];
+const TOP_NAV_PAGE_IDS: PageId[] = ['dashboard', 'revenue', 'sales', 'estimates', 'work'];
+
+const PLACEHOLDER_PAGE_IDS = new Set<PageId>([
+  'purchase',
+  'cardSales',
+  'paymentList',
+  'workKp',
+  'workInsurance',
+  'workBest',
+  'workInbound',
+  'statisticsKp',
+  'statisticsBest',
+  'statisticsInsurance',
+  'statisticsInbound',
+  'bulkManagementList',
+  'integratedList',
+  'partNumberList',
+]);
 
 const ESTIMATOR_OPTIONS = ['정보경', '정원철', '박승주'];
 const INQUIRY_SOURCE_OPTIONS = ['전화', '문자', '정비소 소개', '거래처', '방문', '글로벌 홈페이지'];
@@ -1721,15 +1988,15 @@ const modelCandidates: ModelCandidate[] = [
   },
 ];
 
-const ledgerFilterOptions: Array<{ id: LedgerFilter; label: string }> = [
-  { id: 'all', label: '전체' },
-  { id: 'sales', label: '매출' },
-  { id: 'kp', label: 'KP' },
-  { id: 'insurance', label: '보험' },
-  { id: 'best', label: '베스트' },
-  { id: 'inbound', label: '입고지원' },
-  { id: 'estimate', label: '견적' },
-  { id: 'card', label: '카드' },
+const ledgerSheetTabs: Array<{ id: LedgerSheetId; label: string; source: string; tone: Tone }> = [
+  { id: 'salesLedger', label: '매출장부', source: 'Google Sheet · 2026 장부', tone: 'blue' },
+  { id: 'kp', label: 'KP', source: 'Google Sheet · KP', tone: 'purple' },
+  { id: 'insurance', label: '보험', source: 'Google Sheet · 보험', tone: 'orange' },
+  { id: 'estimate', label: '견적', source: 'Google Sheet · 견적', tone: 'yellow' },
+  { id: 'best', label: '베스트', source: 'Google Sheet · 베스트', tone: 'green' },
+  { id: 'inbound', label: '입고지원', source: 'Google Sheet · 입고지원', tone: 'blue' },
+  { id: 'repairShop', label: '정비공장', source: 'Google Sheet · 정비공장', tone: 'red' },
+  { id: 'cardLedger', label: '카드 장부', source: 'Google Sheet · 카드', tone: 'green' },
 ];
 
 const warrantyFilterOptions: Array<{ id: WarrantyFilter; label: string }> = [
@@ -1745,6 +2012,16 @@ const priceBookFilterOptions: Array<{ id: PriceBookFilter; label: string }> = [
   { id: 'service', label: '작업 단가' },
   { id: 'tint', label: '썬팅' },
   { id: 'filmCut', label: '필름 재단' },
+];
+
+const productListColumns: Array<{ key: ProductListField; label: string }> = [
+  { key: 'itemCode', label: '품목코드' },
+  { key: 'itemName', label: '품목명' },
+  { key: 'spec', label: '규격정보' },
+  { key: 'inboundPrice', label: '입고단가' },
+  { key: 'outboundPrice', label: '출고단가' },
+  { key: 'exchangePrice', label: '교환단가' },
+  { key: 'note', label: '적요' },
 ];
 
 const bestVehiclePriceSeed: Array<[string, string, number]> = [
@@ -1946,6 +2223,11 @@ const priceBookRows: PriceBookRow[] = [
   })),
 ];
 
+const initialProductListRows: ProductListRow[] = selectMockRows('product_items').map((row, index) => ({
+  ...row,
+  id: `product-${row.sourceRow ?? index + 2}-${row.itemCode || index}`,
+}));
+
 const ledgerRecords: LedgerRecord[] = [
   {
     no: 'KP01',
@@ -2088,6 +2370,46 @@ const ledgerRecords: LedgerRecord[] = [
     tone: 'blue',
   },
   {
+    no: '정비01',
+    date: '26.04.09',
+    time: '-',
+    category: '정비공장',
+    company: '-',
+    partner: '대성모터스',
+    vehicle: '카니발 KA4',
+    work: '전면유리 교환',
+    partNo: '86111-R0000',
+    plate: '177허2238',
+    claimAmount: 0,
+    dueDate: '26.04.30',
+    depositAmount: 0,
+    paymentAmount: 260000,
+    paymentMethod: '계좌/월말',
+    memo: '정비공장 월말 정산',
+    status: '미수',
+    tone: 'red',
+  },
+  {
+    no: '정비02',
+    date: '26.04.12',
+    time: '입고 10:30',
+    category: '정비공장',
+    company: '현대해상',
+    partner: '상북현대',
+    vehicle: '쏘렌토 MQ4',
+    work: '전면유리 교체 보험건',
+    partNo: '86111-P2100',
+    plate: '201나9044',
+    claimAmount: 385000,
+    dueDate: '26.04.25',
+    depositAmount: 385000,
+    paymentAmount: 0,
+    paymentMethod: '보험입금',
+    memo: '계산서 발행 완료',
+    status: '입금완료',
+    tone: 'green',
+  },
+  {
     no: '견적-12',
     date: '26.05.11',
     time: '예약 전',
@@ -2126,57 +2448,6 @@ const ledgerRecords: LedgerRecord[] = [
     memo: '수수료율 자동 계산',
     status: '정산완료',
     tone: 'green',
-  },
-];
-
-const workbookModules: WorkbookModule[] = [
-  {
-    name: '2026 장부',
-    source: '마스터 입력',
-    role: '작업일, 구분, 업체, 거래처, 차종, 작업내용, 품번, 차량번호, 금액을 한 번만 입력',
-    fields: ['작업일', '구분', '업체', '거래처', '차종', '작업내용', '차량번호', '보험입금', '결제금액'],
-    status: '입력폼',
-    tone: 'blue',
-  },
-  {
-    name: '매출',
-    source: '2026 장부',
-    role: '일/월별 총합계와 KP, 보험, 베스트, 입고지원, 일반 매출을 자동 집계',
-    fields: ['총합계', 'KP', '보험', '베스트', '입고지원', '전월대비'],
-    status: '대시보드',
-    tone: 'green',
-  },
-  {
-    name: 'KP',
-    source: '2026 장부',
-    role: '지급일, 유리지급가, 썬팅지급, 추가지급, 공제 금액을 정산',
-    fields: ['입금금액', '유리지급가', '썬팅지급', '공제', '면책금+썬팅'],
-    status: '정산뷰',
-    tone: 'purple',
-  },
-  {
-    name: '보험',
-    source: '2026 장부',
-    role: '보험사, 담당자, 청구경로, 접수번호, 면책금, 지급률까지 관리',
-    fields: ['보험사', '접수번호', '청구금액', '입금금액', '면책금', '지급률'],
-    status: '청구뷰',
-    tone: 'orange',
-  },
-  {
-    name: '베스트/입고지원',
-    source: '2026 장부',
-    role: '협력 채널 입금액과 지급일을 별도 정산 목록으로 분리',
-    fields: ['작업일', '품번', '차량번호', '입금금액', '비고'],
-    status: '거래처뷰',
-    tone: 'yellow',
-  },
-  {
-    name: '견적/카드',
-    source: '견적, 카드',
-    role: '견적은 장부 전환 대기열로, 카드는 지급금액/수수료율 정산으로 처리',
-    fields: ['견적내용', '최종견적', '카드사', '지급금액', '수수료율'],
-    status: '보조업무',
-    tone: 'red',
   },
 ];
 
@@ -2271,11 +2542,280 @@ const estimateConversions: EstimateConversion[] = [
   },
 ];
 
+const ledgerSheetColumns: Record<LedgerSheetId, string[]> = {
+  salesLedger: ['번호', '작업일', '구분', '업체', '거래처', '차량번호', '차종', '작업내용', '청구금액', '입금액', '결제금액', '상태'],
+  kp: ['번호', '작업일', '업체', '차량번호', '차종', '작업내용', '지급일', '입금액', '결제금액', '비고', '상태'],
+  insurance: ['번호', '작업일', '보험사', '정비공장', '차량번호', '차종', '작업내용', '접수/품번', '청구금액', '입금액', '상태'],
+  estimate: ['번호', '견적일', '고객/거래처', '차량번호', '차종', '견적내용', '견적금액', '다음 처리', '상태'],
+  best: ['번호', '작업일', '거래처', '차량번호', '차종', '품번', '작업내용', '입금금액', '비고', '상태'],
+  inbound: ['번호', '작업일', '입고지원처', '거래처', '차량번호', '차종', '품번', '작업내용', '결제금액', '비고', '상태'],
+  repairShop: ['번호', '작업일', '정비공장', '보험/업체', '차량번호', '차종', '작업내용', '청구/결제', '계산서/메모', '상태'],
+  cardLedger: ['전표', '결제일', '카드사', '차량번호', '매출금액', '입금금액', '수수료율', '수수료', '상태'],
+};
+
+function LedgerMoneyCell({ value }: { value: number }) {
+  return <span className="ledger-sheet-money">{value > 0 ? formatMoney(value) : '-'}</span>;
+}
+
+function ledgerRecordAmount(record: LedgerRecord) {
+  return record.depositAmount + record.paymentAmount;
+}
+
+function ledgerSearchParts(record: LedgerRecord) {
+  return [
+    record.no,
+    record.date,
+    record.time,
+    record.category,
+    record.company,
+    record.partner,
+    record.vehicle,
+    record.work,
+    record.partNo,
+    record.plate,
+    record.paymentMethod,
+    record.memo,
+    record.status,
+    record.claimAmount,
+    record.depositAmount,
+    record.paymentAmount,
+  ];
+}
+
+function createLedgerSheetRow({
+  key,
+  cells,
+  status,
+  amount,
+  searchParts,
+}: {
+  key: string;
+  cells: ReactNode[];
+  status: string;
+  amount: number;
+  searchParts: Array<string | number>;
+}): LedgerSheetRow {
+  return {
+    key,
+    cells,
+    status,
+    amount,
+    searchText: searchParts.join(' ').toLowerCase(),
+  };
+}
+
+function estimateAmountFromText(value: string) {
+  const tenThousandMatch = value.match(/(\d+)\s*만/);
+  if (!tenThousandMatch?.[1]) return 0;
+  return Number(tenThousandMatch[1]) * 10000;
+}
+
+const repairShopPartners = new Set(['대성모터스', '상북현대', '글로벌']);
+
+const salesLedgerRows = ledgerRecords
+  .filter((record) => record.category !== '견적')
+  .map((record) =>
+    createLedgerSheetRow({
+      key: `${record.no}-sales-ledger`,
+      cells: [
+        record.no,
+        `${record.date}\n${record.time}`,
+        record.category,
+        record.company,
+        record.partner,
+        record.plate,
+        record.vehicle,
+        `${record.work}\n${record.partNo}`,
+        <LedgerMoneyCell key={`${record.no}-claim`} value={record.claimAmount} />,
+        <LedgerMoneyCell key={`${record.no}-deposit`} value={record.depositAmount} />,
+        <LedgerMoneyCell key={`${record.no}-payment`} value={record.paymentAmount} />,
+        <StatusPill key={`${record.no}-status`} label={record.status} tone={record.tone} />,
+      ],
+      status: record.status,
+      amount: ledgerRecordAmount(record),
+      searchParts: ledgerSearchParts(record),
+    }),
+  );
+
+const kpLedgerRows = ledgerRecords
+  .filter((record) => record.category === 'KP')
+  .map((record) =>
+    createLedgerSheetRow({
+      key: `${record.no}-kp`,
+      cells: [
+        record.no,
+        `${record.date}\n${record.time}`,
+        record.company,
+        record.plate,
+        record.vehicle,
+        `${record.work}\n${record.partNo}`,
+        record.dueDate,
+        <LedgerMoneyCell key={`${record.no}-kp-deposit`} value={record.depositAmount} />,
+        <LedgerMoneyCell key={`${record.no}-kp-payment`} value={record.paymentAmount} />,
+        record.memo,
+        <StatusPill key={`${record.no}-kp-status`} label={record.status} tone={record.tone} />,
+      ],
+      status: record.status,
+      amount: ledgerRecordAmount(record),
+      searchParts: ledgerSearchParts(record),
+    }),
+  );
+
+const insuranceLedgerRows = ledgerRecords
+  .filter((record) => record.category === '보험' || (record.category === '정비공장' && record.claimAmount > 0))
+  .map((record) =>
+    createLedgerSheetRow({
+      key: `${record.no}-insurance`,
+      cells: [
+        record.no,
+        `${record.date}\n${record.time}`,
+        record.company,
+        record.partner,
+        record.plate,
+        record.vehicle,
+        record.work,
+        record.partNo,
+        <LedgerMoneyCell key={`${record.no}-insurance-claim`} value={record.claimAmount} />,
+        <LedgerMoneyCell key={`${record.no}-insurance-deposit`} value={record.depositAmount} />,
+        <StatusPill key={`${record.no}-insurance-status`} label={record.status} tone={record.tone} />,
+      ],
+      status: record.status,
+      amount: record.claimAmount,
+      searchParts: ledgerSearchParts(record),
+    }),
+  );
+
+const estimateLedgerRows = estimateConversions.map((item, index) => {
+  const amount = estimateAmountFromText(item.estimate);
+
+  return createLedgerSheetRow({
+    key: `${item.date}-${item.plate}-estimate`,
+    cells: [
+      `견적-${String(index + 1).padStart(2, '0')}`,
+      item.date,
+      item.owner,
+      item.plate,
+      item.vehicle,
+      item.estimate,
+      <LedgerMoneyCell key={`${item.date}-${item.plate}-estimate-amount`} value={amount} />,
+      item.next,
+      <StatusPill key={`${item.date}-${item.plate}-estimate-status`} label="전환대기" tone={item.tone} />,
+    ],
+    status: '전환대기',
+    amount,
+    searchParts: [item.date, item.owner, item.vehicle, item.plate, item.estimate, item.next, amount],
+  });
+});
+
+const bestLedgerRows = ledgerRecords
+  .filter((record) => record.category === '베스트')
+  .map((record) =>
+    createLedgerSheetRow({
+      key: `${record.no}-best`,
+      cells: [
+        record.no,
+        `${record.date}\n${record.time}`,
+        record.partner,
+        record.plate,
+        record.vehicle,
+        record.partNo,
+        record.work,
+        <LedgerMoneyCell key={`${record.no}-best-deposit`} value={record.depositAmount} />,
+        record.memo,
+        <StatusPill key={`${record.no}-best-status`} label={record.status} tone={record.tone} />,
+      ],
+      status: record.status,
+      amount: record.depositAmount,
+      searchParts: ledgerSearchParts(record),
+    }),
+  );
+
+const inboundLedgerRows = ledgerRecords
+  .filter((record) => record.category === '입고지원')
+  .map((record) =>
+    createLedgerSheetRow({
+      key: `${record.no}-inbound`,
+      cells: [
+        record.no,
+        `${record.date}\n${record.time}`,
+        record.company,
+        record.partner,
+        record.plate,
+        record.vehicle,
+        record.partNo,
+        record.work,
+        <LedgerMoneyCell key={`${record.no}-inbound-payment`} value={record.paymentAmount + record.depositAmount} />,
+        record.memo,
+        <StatusPill key={`${record.no}-inbound-status`} label={record.status} tone={record.tone} />,
+      ],
+      status: record.status,
+      amount: ledgerRecordAmount(record),
+      searchParts: ledgerSearchParts(record),
+    }),
+  );
+
+const repairShopLedgerRows = ledgerRecords
+  .filter((record) => record.category === '정비공장' || repairShopPartners.has(record.partner))
+  .map((record) =>
+    createLedgerSheetRow({
+      key: `${record.no}-repair-shop`,
+      cells: [
+        record.no,
+        `${record.date}\n${record.time}`,
+        record.partner,
+        record.company,
+        record.plate,
+        record.vehicle,
+        `${record.work}\n${record.partNo}`,
+        `${record.claimAmount ? `청구 ${formatMoney(record.claimAmount)}\n` : ''}${ledgerRecordAmount(record) ? `결제 ${formatMoney(ledgerRecordAmount(record))}` : '-'}`,
+        record.memo,
+        <StatusPill key={`${record.no}-repair-status`} label={record.status} tone={record.tone} />,
+      ],
+      status: record.status,
+      amount: record.claimAmount || ledgerRecordAmount(record),
+      searchParts: ledgerSearchParts(record),
+    }),
+  );
+
+const cardLedgerRows = cardSettlements.map((item, index) => {
+  const fee = item.amount - item.paid;
+
+  return createLedgerSheetRow({
+    key: `${item.date}-${item.brand}-${item.plate}-card-ledger`,
+    cells: [
+      `카드-${String(index + 1).padStart(2, '0')}`,
+      item.date,
+      item.brand,
+      item.plate,
+      <LedgerMoneyCell key={`${item.date}-${item.brand}-${item.plate}-amount`} value={item.amount} />,
+      <LedgerMoneyCell key={`${item.date}-${item.brand}-${item.plate}-paid`} value={item.paid} />,
+      item.feeRate,
+      <LedgerMoneyCell key={`${item.date}-${item.brand}-${item.plate}-fee`} value={fee} />,
+      <StatusPill key={`${item.date}-${item.brand}-${item.plate}-status`} label={item.status} tone={item.tone} />,
+    ],
+    status: item.status,
+    amount: item.paid,
+    searchParts: [item.date, item.brand, item.plate, item.amount, item.paid, item.feeRate, item.status],
+  });
+});
+
+const ledgerSheetRowsById: Record<LedgerSheetId, LedgerSheetRow[]> = {
+  salesLedger: salesLedgerRows,
+  kp: kpLedgerRows,
+  insurance: insuranceLedgerRows,
+  estimate: estimateLedgerRows,
+  best: bestLedgerRows,
+  inbound: inboundLedgerRows,
+  repairShop: repairShopLedgerRows,
+  cardLedger: cardLedgerRows,
+};
+
 const defaultDashboardShortcuts: DashboardShortcut[] = [
   { title: '보험 청구 사이트', url: 'https://example.com/claim' },
   { title: '부품 주문 사이트', url: 'https://example.com/parts' },
   { title: '세금계산서 보관함', url: 'https://example.com/tax' },
 ];
+const defaultPaymentShortcuts: DashboardShortcut[] = [...defaultDashboardShortcuts];
 
 const vehicleCatalogSeed: Omit<VehicleCatalogItem, 'source' | 'updatedAt' | 'usageCount'>[] = [
   {
@@ -2945,23 +3485,39 @@ function buildWarrantyPrintHtml(draft: WarrantyDraft) {
 </html>`;
 }
 
-function isAdminOnlyPage(page: PageId | null) {
-  if (!page) return false;
+function appModeForPage(page: PageId | null): AppMode {
+  if (!page) return 'worker';
 
-  const workerPageIds = new Set(WORKER_NAV_SECTIONS.flatMap((section) => section.items.map((item) => item.id)));
-  const adminPageIds = new Set(ADMIN_NAV_SECTIONS.flatMap((section) => section.items.map((item) => item.id)));
-  return adminPageIds.has(page) && !workerPageIds.has(page);
+  const workerPageIds = new Set(collectSidebarNavItems(WORKER_NAV_GROUPS).map((item) => item.id));
+  const adminPageIds = new Set(collectSidebarNavItems(ADMIN_NAV_GROUPS).map((item) => item.id));
+  const dbPageIds = new Set(collectSidebarNavItems(DB_NAV_GROUPS).map((item) => item.id));
+
+  if (dbPageIds.has(page) && !workerPageIds.has(page)) return 'db';
+  if (adminPageIds.has(page) && !workerPageIds.has(page)) return 'admin';
+  return 'worker';
+}
+
+function modeDetailLabel(mode: AppMode) {
+  if (mode === 'worker') return '현장 업무 중심';
+  if (mode === 'admin') return '전체 관리 중심';
+  return '기준 데이터 중심';
 }
 
 function App() {
   const initialPage = readPageSearchParam();
+  const initialMode = appModeForPage(initialPage);
+  const initialActivePage = initialPage ?? 'dashboard';
+  const initialSidebarPath = findSidebarNavPath(initialMode, initialActivePage);
   const [isAuthenticated, setIsAuthenticated] = useState(
     () =>
       readLoginStorageValue(LOGIN_STORAGE_KEYS.autoLogin) === 'true' &&
       Boolean(readLoginStorageValue(LOGIN_STORAGE_KEYS.rememberedId)),
   );
-  const [appMode, setAppMode] = useState<AppMode>(() => (isAdminOnlyPage(initialPage) ? 'admin' : 'worker'));
-  const [activePage, setActivePage] = useState<PageId>(() => initialPage ?? 'dashboard');
+  const [appMode, setAppMode] = useState<AppMode>(() => initialMode);
+  const [activePage, setActivePage] = useState<PageId>(() => initialActivePage);
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+  const [activeGroupId, setActiveGroupId] = useState(() => initialSidebarPath?.group.id ?? 'overview');
+  const [activeNodeId, setActiveNodeId] = useState(() => initialSidebarPath?.node.id ?? null);
   const [customerModalId, setCustomerModalId] = useState<string | null>(null);
   const [isEstimateRegistrationOpen, setIsEstimateRegistrationOpen] = useState(false);
   const [isVehicleRegistrationOpen, setIsVehicleRegistrationOpen] = useState(false);
@@ -2974,12 +3530,26 @@ function App() {
   const [priceBookRegistrationRequestId, setPriceBookRegistrationRequestId] = useState(0);
   const [warrantyRegistrationRequestId, setWarrantyRegistrationRequestId] = useState(0);
   const vehicleSuggestions = useMemo(() => buildVehicleSuggestions(vehicleCatalog), [vehicleCatalog]);
-  const navSections = appMode === 'worker' ? WORKER_NAV_SECTIONS : ADMIN_NAV_SECTIONS;
-  const navItems = navSections.flatMap((section) => section.items);
+  const globalSearchSuggestions = useMemo(() => buildGlobalSearchSuggestions(vehicleSuggestions), [vehicleSuggestions]);
+  const globalSearchOptions = useMemo<SearchSuggestion[]>(
+    () =>
+      globalSearchSuggestions.map((suggestion) => ({
+        id: suggestion.id,
+        value: suggestion.value,
+        label: suggestion.label,
+        detail: suggestion.detail,
+      })),
+    [globalSearchSuggestions],
+  );
+  const navGroups = sidebarGroupsForMode(appMode);
+  const navItems = collectSidebarNavItems(navGroups);
+  const activeGroup = navGroups.find((group) => group.id === activeGroupId) ?? navGroups[0]!;
+  const activeNode = activeGroup.items.find((item) => item.id === activeNodeId) ?? activeGroup.items[0] ?? null;
   const topNavItems = TOP_NAV_PAGE_IDS.map((id) => navItems.find((item) => item.id === id)).filter(
     (item): item is NavItem => Boolean(item),
   );
   const activeMode = MODE_OPTIONS.find((mode) => mode.id === appMode) ?? MODE_OPTIONS[0]!;
+  const activeModeDetail = modeDetailLabel(appMode);
   const modalCustomer = useMemo(
     () => customers.find((customer) => customer.id === customerModalId) ?? null,
     [customerModalId],
@@ -2998,23 +3568,61 @@ function App() {
           ? '예외 작업 등록'
         : activePage === 'schedule'
             ? '결제 등록'
+            : activePage === 'ledger'
+              ? '행 추가'
             : activePage === 'priceBook'
               ? '기준정보 등록'
             : activePage === 'warranty'
               ? '보증서 등록'
             : '견적 등록';
+  const canShowPrimaryAction =
+    !PLACEHOLDER_PAGE_IDS.has(activePage) && activePage !== 'priceBook' && activePage !== 'vehicles';
 
   useEffect(() => {
     writeVehicleCatalogStorage(vehicleCatalog);
   }, [vehicleCatalog]);
 
+  useEffect(() => {
+    const path = findSidebarNavPath(appMode, activePage);
+    if (!path) return;
+
+    setActiveGroupId(path.group.id);
+    setActiveNodeId(path.node.id);
+  }, [activePage, appMode]);
+
   function handleModeChange(nextMode: AppMode) {
     const nextModeOption = MODE_OPTIONS.find((mode) => mode.id === nextMode) ?? MODE_OPTIONS[0]!;
-    const nextSections = nextMode === 'worker' ? WORKER_NAV_SECTIONS : ADMIN_NAV_SECTIONS;
-    const nextItems = nextSections.flatMap((section) => section.items);
+    const nextGroups = sidebarGroupsForMode(nextMode);
+    const nextItems = collectSidebarNavItems(nextGroups);
     setAppMode(nextMode);
+    setActiveGroupId(nextGroups[0]?.id ?? 'overview');
+    setActiveNodeId(nextGroups[0]?.items[0]?.id ?? null);
     if (!nextItems.some((item) => item.id === activePage)) {
       navigatePage(nextModeOption.defaultPage);
+    }
+  }
+
+  function handleGroupSelect(group: SidebarNavGroup) {
+    const firstNode = group.items[0] ?? null;
+    setActiveGroupId(group.id);
+    setActiveNodeId(null);
+
+    if (group.items.length === 1 && firstNode?.pageId && !firstNode.children?.length) {
+      navigatePage(firstNode.pageId);
+    }
+  }
+
+  function handleNodeSelect(node: SidebarNavNode) {
+    setActiveNodeId(node.id);
+
+    if (node.pageId) {
+      navigatePage(node.pageId);
+      return;
+    }
+
+    const firstChildPage = findNodeByPageId(node.children, activePage)?.pageId ?? node.children?.find((child) => child.pageId)?.pageId;
+    if (firstChildPage) {
+      navigatePage(firstChildPage);
     }
   }
 
@@ -3026,6 +3634,16 @@ function App() {
       page: nextPage,
       ...(nextPage === 'work' ? {} : { workItem: null, workPage: null, workPageSize: null, workView: null }),
     });
+  }
+
+  function handleGlobalSearchSelect(value: string) {
+    const selectedSuggestion = globalSearchSuggestions.find((suggestion) => suggestion.value === value);
+    if (!selectedSuggestion) return;
+
+    const nextMode = appModeForPage(selectedSuggestion.pageId);
+    setAppMode(nextMode);
+    setCustomerModalId(selectedSuggestion.customerId ?? null);
+    navigatePage(selectedSuggestion.pageId);
   }
 
   function handlePrimaryAction() {
@@ -3067,6 +3685,38 @@ function App() {
   function handleAddVehicle(draft: VehicleCatalogDraft) {
     const vehicle = createVehicleCatalogItem(draft);
     setVehicleCatalog((current) => mergeVehicleCatalog(current, [vehicle]));
+  }
+
+  function renderSidebarNode(node: SidebarNavNode, depth: 3 | 4): ReactNode {
+    const Icon = node.icon;
+    const hasChildren = Boolean(node.children?.length);
+    const isOpen = hasChildren && (activeNodeId === node.id || nodeContainsPage(node, activePage));
+    const isActive = node.pageId === activePage || nodeContainsPage(node, activePage);
+
+    return (
+      <div className="nav-tree-node" key={node.id}>
+        <button
+          className={`nav-item nav-tree-item nav-tree-level-${depth} ${hasChildren ? 'has-children' : ''} ${
+            isActive ? 'active' : ''
+          } ${isOpen ? 'open' : ''}`}
+          onClick={() => handleNodeSelect(node)}
+          title={node.label}
+          type="button"
+        >
+          <Icon size={16} />
+          <span>{node.label}</span>
+          <span className="nav-trailing">
+            {node.count ? <em>{node.count}</em> : null}
+            {hasChildren ? <ChevronRight className="nav-chevron" size={14} /> : null}
+          </span>
+        </button>
+        {isOpen ? (
+          <div className="nav-tree-children">
+            {node.children?.map((child) => renderSidebarNode(child, 4))}
+          </div>
+        ) : null}
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
@@ -3114,32 +3764,47 @@ function App() {
             );
           })}
         </div>
-        <nav className="nav-list">
-          <div className="mode-context">
-            <span>{activeMode.label} 화면</span>
-            <strong>{appMode === 'worker' ? '현장 업무 중심' : '전체 관리 중심'}</strong>
-          </div>
-          {navSections.map((section) => (
-            <section className="nav-section" key={section.title}>
-              <p className="nav-section-title">{section.title}</p>
-              {section.items.map((item) => {
-                const Icon = item.icon;
-                return (
+        <nav className="nav-list" aria-label={`${activeMode.label} 메뉴`}>
+            <div className="mode-context">
+              <span>{activeMode.label} 화면</span>
+              <strong>{activeModeDetail}</strong>
+            </div>
+          <section className="nav-section nav-tree">
+            <p className="nav-section-title">2차 메뉴</p>
+            {navGroups.map((group) => {
+              const Icon = group.icon;
+              const isOpen = activeGroup.id === group.id;
+              const isSinglePageGroup = group.items.length === 1 && !group.items[0]?.children?.length;
+              const isActive =
+                isOpen || group.items.some((item) => item.pageId === activePage || nodeContainsPage(item, activePage));
+
+              return (
+                <div className="nav-tree-group" key={group.id}>
                   <button
-                    className={`nav-item ${activePage === item.id ? 'active' : ''}`}
-                    key={item.id}
-                    onClick={() => navigatePage(item.id)}
-                    title={item.label}
+                    className={`nav-item nav-tree-item nav-tree-level-2 ${isActive ? 'active' : ''} ${
+                      isOpen ? 'open' : ''
+                    }`}
+                    onClick={() => handleGroupSelect(group)}
+                    title={group.label}
                     type="button"
                   >
                     <Icon size={17} />
-                    <span>{item.label}</span>
-                    {item.count ? <em>{item.count}</em> : null}
+                    <span>{group.label}</span>
+                    {!isSinglePageGroup ? (
+                      <span className="nav-trailing">
+                        <ChevronRight className="nav-chevron" size={14} />
+                      </span>
+                    ) : null}
                   </button>
-                );
-              })}
-            </section>
-          ))}
+                  {!isSinglePageGroup && isOpen ? (
+                    <div className="nav-tree-children">
+                      {group.items.map((item) => renderSidebarNode(item, 3))}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </section>
         </nav>
       </aside>
 
@@ -3153,17 +3818,26 @@ function App() {
             </div>
           </div>
           <div className="topbar-actions">
-            <label className="global-search">
-              <Search size={18} />
-              <input placeholder="이름, 차량번호, 부품번호 검색" />
-            </label>
+            <SearchInput
+              className="global-search-typeahead"
+              label="빠른 검색"
+              labelHidden
+              listId="global-search"
+              onChange={setGlobalSearchQuery}
+              onSelect={handleGlobalSearchSelect}
+              placeholder="이름, 차량번호, 부품번호 검색"
+              suggestions={globalSearchOptions}
+              value={globalSearchQuery}
+            />
             <button className="ghost-button">
               <Bell size={18} />
             </button>
-            <button className="primary-button" onClick={handlePrimaryAction} type="button">
-              <Plus size={17} />
-              {primaryActionLabel}
-            </button>
+            {canShowPrimaryAction ? (
+              <button className="primary-button" onClick={handlePrimaryAction} type="button">
+                <Plus size={17} />
+                {primaryActionLabel}
+              </button>
+            ) : null}
           </div>
         </header>
 
@@ -3179,7 +3853,7 @@ function App() {
         )}
         {activePage === 'work' && (
           <WorkPage
-            mode={appMode}
+            mode={appMode === 'admin' ? 'admin' : 'worker'}
             openRegistrationToken={workRegistrationRequestId}
             vehicleModelSuggestions={vehicleSuggestions.model}
           />
@@ -3209,6 +3883,7 @@ function App() {
         {activePage === 'attachments' && <AttachmentsPage />}
         {activePage === 'sheetImport' && <SheetImportPage />}
         {activePage === 'settings' && <SettingsPage />}
+        {PLACEHOLDER_PAGE_IDS.has(activePage) && <PlaceholderPage item={activeNav} modeLabel={activeMode.label} />}
       </section>
     </main>
     {modalCustomer ? <CustomerDetailModal customer={modalCustomer} onClose={() => setCustomerModalId(null)} /> : null}
@@ -3219,6 +3894,23 @@ function App() {
       />
     ) : null}
     </>
+  );
+}
+
+function PlaceholderPage({ item, modeLabel }: { item: NavItem; modeLabel: string }) {
+  const Icon = item.icon;
+
+  return (
+    <section className="placeholder-page">
+      <div className="placeholder-icon">
+        <Icon size={22} />
+      </div>
+      <div>
+        <p className="eyebrow">{modeLabel} 화면</p>
+        <h2>{item.label}</h2>
+        <span>세부 화면 준비중</span>
+      </div>
+    </section>
   );
 }
 
@@ -5191,7 +5883,11 @@ function SchedulePage({ openRegistrationToken }: { openRegistrationToken: number
   const [selectedDate, setSelectedDate] = useState('2026.05.21');
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
   const [draft, setDraft] = useState<PaymentScheduleDraft>(() => createPaymentScheduleDraft());
+  const [shortcutTitle, setShortcutTitle] = useState('');
+  const [shortcutUrl, setShortcutUrl] = useState('');
+  const [shortcuts, setShortcuts] = useState<DashboardShortcut[]>(defaultPaymentShortcuts);
   const normalizedQuery = query.trim().toLowerCase();
+  const canAddShortcut = shortcutTitle.trim().length > 0 && shortcutUrl.trim().length > 0;
   const totalScheduledAmount = payments.reduce((sum, payment) => sum + payment.amount, 0);
   const completedAmount = payments.reduce((sum, payment) => sum + payment.paidAmount, 0);
   const unpaidAmount = payments.reduce((sum, payment) => sum + Math.max(0, payment.amount - payment.paidAmount), 0);
@@ -5269,6 +5965,21 @@ function SchedulePage({ openRegistrationToken }: { openRegistrationToken: number
     setSelectedDate(nextPayment.date);
     setDraft(createPaymentScheduleDraft());
     setIsRegistrationOpen(false);
+  }
+
+  function handleAddShortcut(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!canAddShortcut) return;
+
+    setShortcuts((current) => [
+      ...current,
+      {
+        title: shortcutTitle.trim(),
+        url: normalizeUrl(shortcutUrl),
+      },
+    ]);
+    setShortcutTitle('');
+    setShortcutUrl('');
   }
 
   return (
@@ -5385,21 +6096,38 @@ function SchedulePage({ openRegistrationToken }: { openRegistrationToken: number
 
       <section className="settlement-bottom-grid">
         <Panel title="업무 바로가기">
-          <div className="settlement-shortcut-list">
-            {[
-              ['보험 청구 사이트', '청구/보험 접수 확인'],
-              ['부품 주문 사이트', '유리·부자재 매입 확인'],
-              ['세금계산서 보관함', '거래처 증빙 첨부'],
-            ].map(([title, detail]) => (
-              <button key={title} type="button">
-                <span>
-                  <strong>{title}</strong>
-                  <small>{detail}</small>
-                </span>
-                <ExternalLink size={16} />
-              </button>
+          <form className="shortcut-form" onSubmit={handleAddShortcut}>
+            <input
+              aria-label="바로가기 제목"
+              onChange={(event) => setShortcutTitle(event.target.value)}
+              placeholder="제목"
+              value={shortcutTitle}
+            />
+            <input
+              aria-label="바로가기 링크"
+              onChange={(event) => setShortcutUrl(event.target.value)}
+              placeholder="https://..."
+              value={shortcutUrl}
+            />
+            <button className="primary-button" disabled={!canAddShortcut} type="submit">
+              추가
+            </button>
+          </form>
+          <div className="shortcut-list">
+            {shortcuts.map((shortcut) => (
+              <a
+                className="shortcut-link"
+                href={shortcut.url}
+                key={`${shortcut.title}-${shortcut.url}`}
+                rel="noreferrer"
+                target="_blank"
+              >
+                <span>{shortcut.title}</span>
+                <ExternalLink size={15} />
+              </a>
             ))}
           </div>
+          <p className="helper-text">현재는 프로토타입용 임시 추가이며, 새로고침하면 초기값으로 돌아갑니다.</p>
         </Panel>
 
         <Panel title="업무 메모">
@@ -5503,12 +6231,12 @@ function WorkPage({
   openRegistrationToken,
   vehicleModelSuggestions,
 }: {
-  mode: AppMode;
+  mode: WorkAppMode;
   openRegistrationToken: number;
   vehicleModelSuggestions: string[];
 }) {
   const [calendarView, setCalendarView] = useState<CalendarView>('day');
-  const [workViewByMode, setWorkViewByMode] = useState<Record<AppMode, WorkerWorkView>>({
+  const [workViewByMode, setWorkViewByMode] = useState<Record<WorkAppMode, WorkerWorkView>>({
     worker: readWorkViewSearchParam() ?? 'calendar',
     admin: readWorkViewSearchParam() ?? 'list',
   });
@@ -5912,7 +6640,7 @@ function WorkPage({
     <div className="work-view-switch-row">
       <div>
         <strong>{currentWorkView === 'calendar' ? '캘린더 보기' : '리스트 보기'}</strong>
-        <span>{mode === 'worker' ? '현장 업무 중심' : '전체 관리 중심'}</span>
+        <span>{modeDetailLabel(mode)}</span>
       </div>
       <button
         className="secondary-button"
@@ -8985,168 +9713,73 @@ function AttachmentsPage() {
 
 function LedgerWorkbookPage({ vehicleModelSuggestions }: { vehicleModelSuggestions: string[] }) {
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<LedgerFilter>('all');
-  const [selectedNo, setSelectedNo] = useState(ledgerRecords[0]!.no);
+  const [activeSheetId, setActiveSheetId] = useState<LedgerSheetId>('salesLedger');
   const normalizedQuery = query.trim().toLowerCase();
-  const filteredRecords = useMemo(
-    () =>
-      ledgerRecords.filter((record) => {
-        const matchesQuery =
-          normalizedQuery.length === 0 ||
-          [
-            record.no,
-            record.date,
-            record.category,
-            record.company,
-            record.partner,
-            record.vehicle,
-            record.work,
-            record.partNo,
-            record.plate,
-            record.paymentMethod,
-            record.memo,
-            record.status,
-          ]
-            .join(' ')
-            .toLowerCase()
-            .includes(normalizedQuery);
-        const matchesFilter =
-          filter === 'all' ||
-          (filter === 'sales' && (record.paymentAmount > 0 || record.depositAmount > 0)) ||
-          (filter === 'kp' && record.category === 'KP') ||
-          (filter === 'insurance' && record.category === '보험') ||
-          (filter === 'best' && record.category === '베스트') ||
-          (filter === 'inbound' && record.category === '입고지원') ||
-          (filter === 'estimate' && record.category === '견적') ||
-          (filter === 'card' && (record.category === '카드' || record.paymentMethod.includes('카드')));
-
-        return matchesQuery && matchesFilter;
-      }),
-    [filter, normalizedQuery],
+  const activeSheet = ledgerSheetTabs.find((sheet) => sheet.id === activeSheetId) ?? ledgerSheetTabs[0]!;
+  const activeSheetRows = ledgerSheetRowsById[activeSheet.id];
+  const filteredRows = useMemo(
+    () => activeSheetRows.filter((row) => normalizedQuery.length === 0 || row.searchText.includes(normalizedQuery)),
+    [activeSheetRows, normalizedQuery],
   );
-  const selectedRecord = ledgerRecords.find((record) => record.no === selectedNo) ?? ledgerRecords[0]!;
   const searchSuggestions = useMemo(
     () =>
       Array.from(
         new Set(
-          ledgerRecords.flatMap((record) => [
-            record.no,
-            record.category,
-            record.company,
-            record.partner,
-            record.vehicle,
-            record.plate,
-            record.paymentMethod,
+          [
+            ...ledgerRecords.flatMap((record) => [
+              record.no,
+              record.category,
+              record.company,
+              record.partner,
+              record.vehicle,
+              record.plate,
+              record.paymentMethod,
+              record.status,
+            ]),
+            ...cardSettlements.flatMap((item) => [item.brand, item.plate, item.status]),
             ...vehicleModelSuggestions,
-          ]),
+          ].filter(Boolean),
         ),
       ),
     [vehicleModelSuggestions],
   );
   const totalRevenue = ledgerRecords.reduce((sum, record) => sum + record.depositAmount + record.paymentAmount, 0);
   const claimTotal = ledgerRecords.reduce((sum, record) => sum + record.claimAmount, 0);
-  const cardTotal = ledgerRecords.reduce(
-    (sum, record) => sum + (record.paymentMethod.includes('카드') ? record.paymentAmount : 0),
-    0,
-  );
-  const pendingCount = ledgerRecords.filter((record) => ['청구대기', '전환대기', '지급대기'].includes(record.status)).length;
+  const cardTotal = cardSettlements.reduce((sum, item) => sum + item.paid, 0);
+  const sheetTotal = filteredRows.reduce((sum, row) => sum + row.amount, 0);
+  const pendingCount = filteredRows.filter((row) => /대기|미수|예정|확인/.test(row.status)).length;
 
   return (
     <div className="page-stack ledger-workbook-page">
       <section className="kpi-grid" aria-label="장부 요약">
         <KpiCard icon={ReceiptText} label="4월 장부 합계" value={formatMoney(totalRevenue)} detail="보험입금+결제금액 기준" tone="blue" />
         <KpiCard icon={WalletCards} label="보험 청구" value={formatMoney(claimTotal)} detail="청구금액 별도 추적" tone="orange" />
-        <KpiCard icon={CreditCard} label="카드 매출" value={formatMoney(cardTotal)} detail="카드 시트 수수료 연결" tone="green" />
-        <KpiCard icon={FileText} label="전환 대기" value={`${pendingCount}건`} detail="청구/견적/카드 확인 필요" tone="red" />
-        <KpiCard icon={CheckCircle2} label="구현 시트" value="9개" detail="장부·매출·KP·보험·카드 포함" tone="purple" />
+        <KpiCard icon={CreditCard} label="카드 입금" value={formatMoney(cardTotal)} detail="카드 장부 지급액 기준" tone="green" />
+        <KpiCard icon={FileText} label={activeSheet.label} value={`${filteredRows.length}건`} detail="현재 목록 행 수" tone={activeSheet.tone} />
+        <KpiCard icon={CheckCircle2} label="장부 시트" value={`${ledgerSheetTabs.length}개`} detail={`확인 필요 ${pendingCount}건 · ${formatMoney(sheetTotal)}`} tone="purple" />
       </section>
 
-      <section className="ledger-compose-grid">
-        <Panel className="ledger-main-panel" title="새 장부 입력">
-          <div className="ledger-entry-card">
-            <div className="ledger-entry-head">
-              <div>
-                <p className="eyebrow">2026 장부 입력 폼</p>
-                <strong>{selectedRecord.no} · {selectedRecord.vehicle}</strong>
-              </div>
-              <StatusPill label={selectedRecord.status} tone={selectedRecord.tone} />
-            </div>
-            <div className="ledger-entry-grid">
-              <label>
-                <span>구분</span>
-                <select defaultValue={selectedRecord.category}>
-                  <option>일반</option>
-                  <option>KP</option>
-                  <option>보험</option>
-                  <option>베스트</option>
-                  <option>입고지원</option>
-                </select>
-              </label>
-              <label>
-                <span>작업일</span>
-                <input defaultValue={selectedRecord.date} />
-              </label>
-              <label>
-                <span>시간</span>
-                <input defaultValue={selectedRecord.time} />
-              </label>
-              <label>
-                <span>업체</span>
-                <input defaultValue={selectedRecord.company} />
-              </label>
-              <label>
-                <span>거래처</span>
-                <input defaultValue={selectedRecord.partner} />
-              </label>
-              <label>
-                <span>차종</span>
-                <input defaultValue={selectedRecord.vehicle} list="ledger-vehicle-model-suggestions" />
-              </label>
-              <label className="wide">
-                <span>작업내용</span>
-                <input defaultValue={selectedRecord.work} />
-              </label>
-              <label>
-                <span>사용품번</span>
-                <input defaultValue={selectedRecord.partNo} />
-              </label>
-              <label>
-                <span>차량번호</span>
-                <input defaultValue={selectedRecord.plate} />
-              </label>
-              <label>
-                <span>보험청구</span>
-                <input defaultValue={selectedRecord.claimAmount ? formatMoney(selectedRecord.claimAmount) : ''} />
-              </label>
-              <label>
-                <span>보험입금</span>
-                <input defaultValue={selectedRecord.depositAmount ? formatMoney(selectedRecord.depositAmount) : ''} />
-              </label>
-              <label>
-                <span>결제금액</span>
-                <input defaultValue={selectedRecord.paymentAmount ? formatMoney(selectedRecord.paymentAmount) : ''} />
-              </label>
-              <label>
-                <span>결제구분</span>
-                <input defaultValue={selectedRecord.paymentMethod} />
-              </label>
-            </div>
-            <div className="ledger-entry-actions">
-              <button className="secondary-button" type="button">
-                <Camera size={16} />
-                사진 첨부
-              </button>
-              <button className="secondary-button" type="button">
-                <Download size={16} />
-                엑셀 원본 보기
-              </button>
-              <button className="primary-button" type="button">
-                <Plus size={16} />
-                장부 저장
-              </button>
-            </div>
-          </div>
-
+      <Panel
+        action={
+          <span className="ledger-source-chip">
+            <Download size={14} />
+            {activeSheet.source}
+          </span>
+        }
+        className="ledger-sheet-panel"
+        title={`${activeSheet.label} 목록`}
+      >
+        <div className="ledger-sheet-tabs">
+          <FilterTabs
+            ariaLabel="장부 시트"
+            onChange={(value) => {
+              setActiveSheetId(value as LedgerSheetId);
+              setQuery('');
+            }}
+            options={ledgerSheetTabs}
+            value={activeSheetId}
+          />
+        </div>
           <RecordToolbar
             action={
               <button className="primary-button" type="button">
@@ -9154,135 +9787,32 @@ function LedgerWorkbookPage({ vehicleModelSuggestions }: { vehicleModelSuggestio
                 행 추가
               </button>
             }
-            count={`총 ${filteredRecords.length}건`}
-            filters={
-              <FilterTabs
-                ariaLabel="장부 필터"
-                onChange={(value) => setFilter(value as LedgerFilter)}
-                options={ledgerFilterOptions}
-                value={filter}
-              />
-            }
+            count={`총 ${filteredRows.length}행`}
             search={
               <SearchInput
                 label="장부 검색"
                 listId="ledger-search-suggestions"
                 onChange={setQuery}
-                placeholder="차량번호, 품번, 업체, 구분 검색"
+                placeholder="차량번호, 업체, 금액, 상태 검색"
                 suggestions={searchSuggestions}
                 value={query}
               />
             }
           />
+          <div className="ledger-sheet-meta">
+            <span>합계 {formatMoney(sheetTotal)}</span>
+            <span>확인 필요 {pendingCount}건</span>
+            <span>{activeSheet.source}</span>
+          </div>
           <DataTable
-            columns={['번호', '작업일', '구분', '업체/거래처', '차량', '작업내용', '금액', '상태', '보기']}
-            rows={filteredRecords.map((record) => [
-              record.no,
-              `${record.date}\n${record.time}`,
-              record.category,
-              `${record.company}\n${record.partner}`,
-              `${record.vehicle}\n${record.plate}`,
-              `${record.work}\n${record.partNo}`,
-              `${record.claimAmount ? `청구 ${formatMoney(record.claimAmount)}\n` : ''}${record.depositAmount ? `입금 ${formatMoney(record.depositAmount)}\n` : ''}${record.paymentAmount ? `결제 ${formatMoney(record.paymentAmount)}` : '-'}`,
-              <StatusPill key={`${record.no}-status`} label={record.status} tone={record.tone} />,
-              <button className="mini-button" key={`${record.no}-select`} onClick={() => setSelectedNo(record.no)} type="button">
-                열기
-              </button>,
+            columns={['행', ...ledgerSheetColumns[activeSheet.id]]}
+            rows={filteredRows.map((row, rowIndex) => [
+              <span className="ledger-row-number" key={`${row.key}-row-number`}>
+                {rowIndex + 1}
+              </span>,
+              ...row.cells,
             ])}
           />
-          <datalist id="ledger-vehicle-model-suggestions">
-            {vehicleModelSuggestions.map((suggestion) => (
-              <option key={suggestion} value={suggestion} />
-            ))}
-          </datalist>
-        </Panel>
-
-        <Panel className="ledger-side-panel" title="첨부 · 정산">
-          <div className="ledger-phone-shell">
-            <div className="ledger-phone-top">
-              <strong>옵션</strong>
-              <span>{selectedRecord.plate}</span>
-            </div>
-            <div className="ledger-photo-grid">
-              <button type="button">
-                <Camera size={18} />
-                전
-              </button>
-              <button type="button">
-                <Camera size={18} />
-                후
-              </button>
-            </div>
-            <div className="ledger-side-metrics">
-              <InfoItem icon={Car} label="차량" value={selectedRecord.vehicle} />
-              <InfoItem icon={CreditCard} label="결제" value={selectedRecord.paymentMethod} />
-              <InfoItem icon={WalletCards} label="입금" value={formatMoney(selectedRecord.depositAmount + selectedRecord.paymentAmount)} />
-            </div>
-            <div className="ledger-side-note">
-              <strong>비고</strong>
-              <span>{selectedRecord.memo}</span>
-            </div>
-          </div>
-        </Panel>
-      </section>
-
-      <section className="workbench-grid">
-        <Panel className="span-7" title="시트별 구현 범위">
-          <div className="ledger-module-grid">
-            {workbookModules.map((module) => (
-              <article key={module.name}>
-                <div className="row-title">
-                  <strong>{module.name}</strong>
-                  <StatusPill label={module.status} tone={module.tone} />
-                </div>
-                <p>{module.source} · {module.role}</p>
-                <div className="schema-tags">
-                  {module.fields.map((field) => (
-                    <span key={`${module.name}-${field}`}>{field}</span>
-                  ))}
-                </div>
-              </article>
-            ))}
-          </div>
-        </Panel>
-
-        <Panel className="span-5" title="카드 정산">
-          <div className="card-settlement-list">
-            {cardSettlements.map((item) => (
-              <article key={`${item.date}-${item.brand}-${item.plate}`}>
-                <div className="row-title">
-                  <strong>{item.brand} · {item.plate}</strong>
-                  <StatusPill label={item.status} tone={item.tone} />
-                </div>
-                <div className="ledger-money-row">
-                  <span>{item.date}</span>
-                  <strong>{formatMoney(item.amount)}</strong>
-                  <span>지급 {formatMoney(item.paid)} · {item.feeRate}</span>
-                </div>
-              </article>
-            ))}
-          </div>
-        </Panel>
-      </section>
-
-      <Panel title="견적 전환 대기">
-        <div className="estimate-conversion-list">
-          {estimateConversions.map((item) => (
-            <article key={`${item.date}-${item.vehicle}-${item.plate}`}>
-              <div>
-                <div className="row-title">
-                  <strong>{item.vehicle}</strong>
-                  <StatusPill label={item.owner} tone={item.tone} />
-                </div>
-                <p>{item.date} · {item.plate} · {item.estimate}</p>
-              </div>
-              <span>{item.next}</span>
-              <button className="mini-button" type="button">
-                장부 전환
-              </button>
-            </article>
-          ))}
-        </div>
       </Panel>
     </div>
   );
@@ -9361,70 +9891,251 @@ function downloadPriceBookTemplate() {
   URL.revokeObjectURL(url);
 }
 
+function productListRowToDraft(row?: ProductListRow | MockProductItemRow): ProductListDraft {
+  return {
+    itemCode: row?.itemCode ?? '',
+    itemName: row?.itemName ?? '',
+    spec: row?.spec ?? '',
+    inboundPrice: row?.inboundPrice ?? '',
+    outboundPrice: row?.outboundPrice ?? '',
+    exchangePrice: row?.exchangePrice ?? '',
+    note: row?.note ?? '',
+  };
+}
+
+function productListSearchText(row: ProductListRow) {
+  return productListColumns.map((column) => row[column.key]).join(' ');
+}
+
+function formatProductListPrice(value: string) {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) return '';
+
+  const parsed = Number(trimmedValue.replaceAll(',', ''));
+  if (!Number.isFinite(parsed)) return trimmedValue;
+  return parsed.toLocaleString('ko-KR');
+}
+
+function productListRowCells(row: ProductListRow) {
+  return [
+    <strong key={`${row.id}-code`}>{row.itemCode}</strong>,
+    row.itemName,
+    row.spec,
+    formatProductListPrice(row.inboundPrice),
+    formatProductListPrice(row.outboundPrice),
+    formatProductListPrice(row.exchangePrice),
+    row.note,
+  ];
+}
+
+function downloadProductListRows(rows: ProductListRow[]) {
+  const csvRows = [
+    productListColumns.map((column) => column.label),
+    ...rows.map((row) => productListColumns.map((column) => row[column.key] ?? '')),
+  ];
+  const csv = csvRows.map((row) => row.map(salesProductCsvCell).join(',')).join('\r\n');
+  const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = '품목리스트.csv';
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function normalizeProductListHeader(value: string) {
+  return value.replace(/\s+/g, '').trim();
+}
+
+function parseDelimitedText(text: string, delimiter: ',' | '\t') {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = '';
+  let inQuotes = false;
+  const normalizedText = text.replace(/^\ufeff/, '');
+
+  for (let index = 0; index < normalizedText.length; index += 1) {
+    const char = normalizedText[index];
+    const nextChar = normalizedText[index + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        cell += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (!inQuotes && char === delimiter) {
+      row.push(cell);
+      cell = '';
+      continue;
+    }
+
+    if (!inQuotes && (char === '\n' || char === '\r')) {
+      if (char === '\r' && nextChar === '\n') index += 1;
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = '';
+      continue;
+    }
+
+    cell += char;
+  }
+
+  if (cell.length > 0 || row.length > 0) {
+    row.push(cell);
+    rows.push(row);
+  }
+
+  return rows.filter((cells) => cells.some((value) => value.trim().length > 0));
+}
+
+function parseProductListImportText(text: string): ProductListRow[] {
+  const firstLine = text.replace(/^\ufeff/, '').split(/\r?\n/, 1)[0] ?? '';
+  const delimiter = firstLine.includes('\t') ? '\t' : ',';
+  const rows = parseDelimitedText(text, delimiter);
+  if (rows.length === 0) return [];
+
+  const headerMap = new Map(productListColumns.map((column) => [normalizeProductListHeader(column.label), column.key]));
+  const firstRowKeys = rows[0]!.map((cell) => headerMap.get(normalizeProductListHeader(cell)));
+  const hasHeader = firstRowKeys.filter(Boolean).length >= 3;
+  const fieldKeys = hasHeader ? firstRowKeys : productListColumns.map((column) => column.key);
+  const bodyRows = hasHeader ? rows.slice(1) : rows;
+  const importKey = Date.now().toString(36);
+
+  return bodyRows
+    .map((cells, index) => {
+      const draft = productListRowToDraft();
+      fieldKeys.forEach((key, cellIndex) => {
+        if (!key) return;
+        draft[key] = cells[cellIndex]?.trim() ?? '';
+      });
+
+      return {
+        ...draft,
+        sourceRow: index + 2,
+        id: `import-${importKey}-${index}-${draft.itemCode || 'row'}`,
+      };
+    })
+    .filter((row) => productListColumns.some((column) => row[column.key].trim().length > 0));
+}
+
 function PriceBookPage({ openRegistrationToken }: { openRegistrationToken: number }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<PriceBookFilter>('all');
-  const [selectedId, setSelectedId] = useState(priceBookRows[0]?.id ?? '');
+  const [productRows, setProductRows] = useState<ProductListRow[]>(initialProductListRows);
+  const [selectedId, setSelectedId] = useState(initialProductListRows[0]?.id ?? '');
+  const [editDraft, setEditDraft] = useState<ProductListDraft>(() => productListRowToDraft(initialProductListRows[0]));
+  const [registrationDraft, setRegistrationDraft] = useState<ProductListDraft>(() => productListRowToDraft());
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
   const normalizedQuery = query.trim().toLowerCase();
   const filteredRows = useMemo(
     () =>
-      priceBookRows.filter((row) => {
-        const matchesQuery =
-          normalizedQuery.length === 0 || priceBookSearchText(row).toLowerCase().includes(normalizedQuery);
-        return matchesPriceBookFilter(row, filter) && matchesQuery;
-      }),
-    [filter, normalizedQuery],
+      productRows.filter(
+        (row) => normalizedQuery.length === 0 || productListSearchText(row).toLowerCase().includes(normalizedQuery),
+      ),
+    [normalizedQuery, productRows],
   );
-  const selectedRow =
-    priceBookRows.find((row) => row.id === selectedId) ?? filteredRows[0] ?? priceBookRows[0]!;
-  const connectedFocusText = query.trim() || selectedRow.target;
-  const connectedFilmCuts = priceBookRows
-    .filter((row) => row.source === '필름재단' && isConnectedFilmCut(row, connectedFocusText))
-    .slice(0, 8);
+  const selectedRow = productRows.find((row) => row.id === selectedId) ?? filteredRows[0] ?? productRows[0];
   const searchSuggestions = useMemo(
     () =>
       Array.from(
         new Set(
-          priceBookRows.flatMap((row) => [
-            row.source,
-            row.category,
-            row.target,
-            row.item,
-            row.spec,
-            row.memo ?? '',
-          ]),
+          productRows.flatMap((row) => [row.itemCode, row.itemName, row.spec, row.note]),
         ),
       ).filter(Boolean),
-    [],
+    [productRows],
   );
-  const bestCount = priceBookRows.filter((row) => row.source === '베스트단가표' && row.category === '차량유리').length;
-  const serviceCount = priceBookRows.filter((row) => row.category === '작업단가').length;
-  const tintCount = priceBookRows.filter((row) => row.source === '썬팅').length;
-  const filmCutCount = priceBookRows.filter((row) => row.source === '필름재단').length;
+  const inboundPriceCount = productRows.filter((row) => row.inboundPrice.trim().length > 0).length;
+  const outboundPriceCount = productRows.filter((row) => row.outboundPrice.trim().length > 0).length;
+  const exchangePriceCount = productRows.filter((row) => row.exchangePrice.trim().length > 0).length;
+  const memoCount = productRows.filter((row) => row.note.trim().length > 0).length;
 
   useEffect(() => {
     if (openRegistrationToken <= 0) return;
     setIsRegistrationOpen(true);
   }, [openRegistrationToken]);
 
+  useEffect(() => {
+    if (!selectedRow) return;
+    setEditDraft(productListRowToDraft(selectedRow));
+  }, [selectedRow?.id]);
+
+  function updateEditDraft(key: ProductListField, value: string) {
+    setEditDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateRegistrationDraft(key: ProductListField, value: string) {
+    setRegistrationDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  function selectProductRow(row: ProductListRow) {
+    setSelectedId(row.id);
+    setEditDraft(productListRowToDraft(row));
+  }
+
+  function saveSelectedProduct(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedRow) return;
+
+    setProductRows((current) => current.map((row) => (row.id === selectedRow.id ? { ...row, ...editDraft } : row)));
+  }
+
+  function addProductRow(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const nextRow: ProductListRow = {
+      ...registrationDraft,
+      sourceRow: null,
+      id: `product-new-${Date.now()}`,
+    };
+
+    setProductRows((current) => [nextRow, ...current]);
+    setSelectedId(nextRow.id);
+    setEditDraft(productListRowToDraft(nextRow));
+    setRegistrationDraft(productListRowToDraft());
+    setIsRegistrationOpen(false);
+  }
+
+  async function handleProductListFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const text = await file.text();
+    const importedRows = parseProductListImportText(text);
+    if (importedRows.length > 0) {
+      setProductRows(importedRows);
+      setSelectedId(importedRows[0]!.id);
+      setEditDraft(productListRowToDraft(importedRows[0]));
+      setQuery('');
+    }
+    event.target.value = '';
+  }
+
   return (
     <div className="page-stack price-book-page">
-      <section className="kpi-grid" aria-label="단가표 요약">
-        <KpiCard icon={ReceiptText} label="베스트 유리" value={`${bestCount}건`} detail="차량명/부품명/공급가액" tone="blue" />
-        <KpiCard icon={Wrench} label="작업 단가" value={`${serviceCount}건`} detail="탈부착·썬팅 보조 작업" tone="orange" />
-        <KpiCard icon={ShieldCheck} label="썬팅 상품" value={`${tintCount}건`} detail="브랜드·등급·농도·성능" tone="green" />
-        <KpiCard icon={Car} label="필름 재단" value={`${filmCutCount}건`} detail="차종별 가로/세로 연결" tone="purple" />
-        <KpiCard icon={CheckCircle2} label="VAT 기준" value="포함" detail="원본 단가표 표기 기준" tone="yellow" />
+      <section className="kpi-grid" aria-label="품목리스트 요약">
+        <KpiCard icon={Package} label="품목 전체" value={`${productRows.length.toLocaleString('ko-KR')}건`} detail="품목리스트 원본 행" tone="blue" />
+        <KpiCard icon={ReceiptText} label="입고단가" value={`${inboundPriceCount.toLocaleString('ko-KR')}건`} detail="입고단가 입력 품목" tone="orange" />
+        <KpiCard icon={WalletCards} label="출고단가" value={`${outboundPriceCount.toLocaleString('ko-KR')}건`} detail="출고단가 입력 품목" tone="green" />
+        <KpiCard icon={ShieldCheck} label="교환단가" value={`${exchangePriceCount.toLocaleString('ko-KR')}건`} detail="교환단가 입력 품목" tone="purple" />
+        <KpiCard icon={FileText} label="적요" value={`${memoCount.toLocaleString('ko-KR')}건`} detail="비고/메모 입력 품목" tone="yellow" />
       </section>
 
       <section className="workbench-grid">
         <Panel
-          className="span-8"
-          title="기준 정보 및 단가 관리"
+          className="span-8 product-list-panel"
+          title="품목리스트"
           action={
             <div className="price-book-actions">
-              <button className="secondary-button" onClick={downloadPriceBookTemplate} type="button">
+              <button className="secondary-button" onClick={() => fileInputRef.current?.click()} type="button">
+                <Upload size={16} />
+                엑셀 등록
+              </button>
+              <button className="secondary-button" onClick={() => downloadProductListRows(productRows)} type="button">
                 <Download size={16} />
                 엑셀 다운로드
               </button>
@@ -9435,167 +10146,97 @@ function PriceBookPage({ openRegistrationToken }: { openRegistrationToken: numbe
             </div>
           }
         >
+          <input
+            accept=".csv,.tsv,.txt"
+            className="visually-hidden"
+            onChange={handleProductListFileChange}
+            ref={fileInputRef}
+            type="file"
+          />
           <RecordToolbar
-            count={`총 ${filteredRows.length}건`}
-            filters={
-              <FilterTabs
-                ariaLabel="단가표 필터"
-                onChange={(value) => setFilter(value as PriceBookFilter)}
-                options={priceBookFilterOptions}
-                value={filter}
-              />
-            }
+            count={`총 ${filteredRows.length.toLocaleString('ko-KR')}건`}
             search={
               <SearchInput
-                label="단가 검색"
-                listId="price-book-search-suggestions"
+                label="품목 검색"
+                listId="product-list-search-suggestions"
                 onChange={setQuery}
-                placeholder="차종, 부품, 브랜드, 농도, 재단 사이즈 검색"
+                placeholder="품목코드, 품목명, 규격정보, 적요 검색"
                 suggestions={searchSuggestions}
                 value={query}
               />
             }
           />
           <DataTable
-            columns={['출처', '구분', '차종/브랜드', '품목', '사양', '단가/재단', '적용']}
-            onRowClick={(rowIndex) => setSelectedId(filteredRows[rowIndex]!.id)}
-            rows={filteredRows.map((row) => [
-              <StatusPill key={`${row.id}-source`} label={row.source} tone={row.tone} />,
-              row.category,
-              row.target,
-              row.item,
-              row.spec,
-              formatPriceBookAmount(row),
-              <button className="mini-button" key={`${row.id}-select`} onClick={() => setSelectedId(row.id)} type="button">
-                선택
-              </button>,
-            ])}
+            columns={productListColumns.map((column) => column.label)}
+            onRowClick={(rowIndex) => selectProductRow(filteredRows[rowIndex]!)}
+            rows={filteredRows.map(productListRowCells)}
           />
         </Panel>
 
-        <Panel className="span-4 price-detail-panel" title="선택 단가">
-          <article className="price-detail-card">
-            <div className="row-title">
-              <strong>{selectedRow.target}</strong>
-              <StatusPill label={selectedRow.source} tone={selectedRow.tone} />
-            </div>
-            <p>{selectedRow.item}</p>
-            <div className="price-detail-grid">
-              <InfoItem icon={ReceiptText} label="구분" value={selectedRow.category} />
-              <InfoItem icon={Package} label="금액/재단" value={formatPriceBookAmount(selectedRow)} />
-              <InfoItem icon={FileText} label="사양" value={selectedRow.spec} />
-              <InfoItem icon={CheckCircle2} label="비고" value={selectedRow.memo || (selectedRow.vatIncluded ? 'VAT 포함' : '연결 기준정보')} />
-            </div>
-          </article>
-
-          <div className="linked-film-cut-box">
-            <div className="row-title">
-              <strong>차종 연결 필름 재단</strong>
-              <span>{connectedFocusText || '차종 검색'}</span>
-            </div>
-            {connectedFilmCuts.length > 0 ? (
-              <div className="film-cut-match-list">
-                {connectedFilmCuts.map((row) => (
-                  <button key={row.id} onClick={() => setSelectedId(row.id)} type="button">
-                    <span>{row.target}</span>
-                    <strong>{row.width} x {row.height}</strong>
-                    <em>{row.spec}{row.memo ? ` · ${row.memo}` : ''}</em>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="helper-text">차종명이나 코드(GN7, CN7, NX4 등)로 검색하면 연결된 필름 재단 사이즈가 표시됩니다.</p>
-            )}
-          </div>
+        <Panel className="span-4 product-edit-panel" title="선택 품목 수정">
+          {selectedRow ? (
+            <form className="product-list-edit-form" onSubmit={saveSelectedProduct}>
+              {productListColumns.map((column) => (
+                <label className="estimate-control" key={`edit-${column.key}`}>
+                  <span>{column.label}</span>
+                  {column.key === 'note' ? (
+                    <textarea onChange={(event) => updateEditDraft(column.key, event.target.value)} value={editDraft[column.key]} />
+                  ) : (
+                    <input
+                      inputMode={column.key.includes('Price') ? 'numeric' : undefined}
+                      onChange={(event) => updateEditDraft(column.key, event.target.value)}
+                      value={editDraft[column.key]}
+                    />
+                  )}
+                </label>
+              ))}
+              <button className="primary-button full" type="submit">
+                수정 저장
+              </button>
+            </form>
+          ) : (
+            <p className="helper-text">등록된 품목이 없습니다.</p>
+          )}
         </Panel>
       </section>
 
-      <Panel title="견적 연결 기준">
-        <div className="price-rule-grid">
-          <article>
-            <strong>베스트 단가</strong>
-            <span>차량명과 부품명을 기준으로 견적/장부의 공급가액 후보로 사용합니다.</span>
-          </article>
-          <article>
-            <strong>썬팅 단가</strong>
-            <span>브랜드, 시리즈, 농도, IRR/TSER를 보증서 필름 사양과 같은 표현으로 맞춥니다.</span>
-          </article>
-          <article>
-            <strong>필름 재단</strong>
-            <span>차종 코드와 차종명을 기준으로 가로/세로 재단 사이즈를 차량 정보와 연결합니다.</span>
-          </article>
-        </div>
-      </Panel>
-
       {isRegistrationOpen ? (
         <DetailDrawer
-          eyebrow="기준정보"
+          eyebrow="품목리스트"
           onClose={() => setIsRegistrationOpen(false)}
-          title="단가/재단 정보 등록"
+          title="품목 등록"
           variant="modal"
         >
-          <form className="price-book-registration-form" onSubmit={(event) => event.preventDefault()}>
+          <form className="price-book-registration-form" onSubmit={addProductRow}>
             <div className="sales-form-grid">
-              <label className="estimate-control">
-                <span>
-                  관리 구분
-                  <em>필수</em>
-                </span>
-                <select defaultValue="베스트단가표" required>
-                  <option>베스트단가표</option>
-                  <option>썬팅</option>
-                  <option>필름재단</option>
-                </select>
-              </label>
-              <label className="estimate-control">
-                <span>
-                  카테고리
-                  <em>필수</em>
-                </span>
-                <input defaultValue="차량유리" placeholder="차량유리, 작업단가, 비반사, 현대 · RV" required />
-              </label>
-              <label className="estimate-control">
-                <span>
-                  차종/브랜드
-                  <em>필수</em>
-                </span>
-                <input placeholder="GV80, 카니발 KA4, 3M, 루마" required />
-              </label>
-              <label className="estimate-control">
-                <span>품목/등급</span>
-                <input placeholder="전면유리 ADAS, XP, 전면 필름 재단" />
-              </label>
-              <label className="estimate-control full">
-                <span>옵션/사양</span>
-                <input placeholder="HUD, 차음, 레인센서, 농도 35%, 연식/코드 등" />
-              </label>
-              <label className="estimate-control">
-                <span>순정부품가/시공가</span>
-                <input inputMode="numeric" placeholder="285,000" />
-              </label>
-              <label className="estimate-control">
-                <span>내공가/출고가</span>
-                <input inputMode="numeric" placeholder="150,000" />
-              </label>
-              <label className="estimate-control">
-                <span>재단 가로</span>
-                <input placeholder="76.5" />
-              </label>
-              <label className="estimate-control">
-                <span>재단 세로</span>
-                <input placeholder="1,470" />
-              </label>
-              <label className="estimate-control full">
-                <span>관리 메모</span>
-                <textarea placeholder="신규추가, 확인필요, 적용 제외 조건 등" />
-              </label>
+              {productListColumns.map((column) => (
+                <label className={column.key === 'spec' || column.key === 'note' ? 'estimate-control full' : 'estimate-control'} key={`register-${column.key}`}>
+                  <span>
+                    {column.label}
+                    {column.key === 'itemCode' || column.key === 'itemName' ? <em>필수</em> : null}
+                  </span>
+                  {column.key === 'note' ? (
+                    <textarea
+                      onChange={(event) => updateRegistrationDraft(column.key, event.target.value)}
+                      value={registrationDraft[column.key]}
+                    />
+                  ) : (
+                    <input
+                      inputMode={column.key.includes('Price') ? 'numeric' : undefined}
+                      onChange={(event) => updateRegistrationDraft(column.key, event.target.value)}
+                      required={column.key === 'itemCode' || column.key === 'itemName'}
+                      value={registrationDraft[column.key]}
+                    />
+                  )}
+                </label>
+              ))}
             </div>
             <div className="estimate-save-row">
               <button className="secondary-button" onClick={() => setIsRegistrationOpen(false)} type="button">
                 닫기
               </button>
-              <button className="primary-button" onClick={() => setIsRegistrationOpen(false)} type="button">
-                기준정보 저장
+              <button className="primary-button" type="submit">
+                품목 저장
               </button>
             </div>
           </form>
