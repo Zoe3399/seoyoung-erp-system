@@ -8306,7 +8306,8 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
       return left.workDate.localeCompare(right.workDate, 'ko-KR');
     });
   }, [normalizedQuery, rows, sort]);
-  const selectedRows = rows.filter((row) => selectedKeys.has(row.key));
+  const selectableFilteredRows = filteredRows.filter((row) => row.depositAmount <= 0);
+  const selectedRows = rows.filter((row) => row.depositAmount <= 0 && selectedKeys.has(row.key));
   const selectedAmount = selectedRows.reduce((sum, row) => sum + row.settlement.amount, 0);
   const selectedDepositAmount = selectedRows.reduce((sum, row) => sum + row.depositAmount, 0);
   const totalAmount = rows.reduce((sum, row) => sum + row.settlement.amount, 0);
@@ -8330,7 +8331,23 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
       ).filter(Boolean),
     [rows],
   );
-  const allFilteredSelected = filteredRows.length > 0 && filteredRows.every((row) => selectedKeys.has(row.key));
+  const allFilteredSelected = selectableFilteredRows.length > 0 && selectableFilteredRows.every((row) => selectedKeys.has(row.key));
+
+  useEffect(() => {
+    const selectableKeys = new Set(rows.filter((row) => row.depositAmount <= 0).map((row) => row.key));
+    setSelectedKeys((current) => {
+      const next = new Set<string>();
+      let changed = false;
+      current.forEach((key) => {
+        if (selectableKeys.has(key)) {
+          next.add(key);
+        } else {
+          changed = true;
+        }
+      });
+      return changed ? next : current;
+    });
+  }, [rows]);
 
   function updateOverride(key: string, field: keyof CardSalesOverride, value: string) {
     setOverrides((current) => ({
@@ -8351,9 +8368,13 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
     updateOverride(key, 'depositDate', today);
   }
 
-  function toggleSelected(key: string) {
+  function toggleSelected(key: string, canSelect: boolean) {
     setSelectedKeys((current) => {
       const next = new Set(current);
+      if (!canSelect) {
+        next.delete(key);
+        return next;
+      }
       if (next.has(key)) {
         next.delete(key);
       } else {
@@ -8366,7 +8387,7 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
   function toggleAllFiltered(checked: boolean) {
     setSelectedKeys((current) => {
       const next = new Set(current);
-      filteredRows.forEach((row) => {
+      selectableFilteredRows.forEach((row) => {
         if (checked) {
           next.add(row.key);
         } else {
@@ -8477,7 +8498,7 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
               aria-label="전체 선택"
               checked={allFilteredSelected}
               className="card-sales-select-all-checkbox"
-              disabled={filteredRows.length === 0}
+              disabled={selectableFilteredRows.length === 0}
               key="card-sales-select-all"
               onChange={(event) => toggleAllFiltered(event.target.checked)}
               type="checkbox"
@@ -8494,40 +8515,45 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
             '수수료',
             '%',
           ]}
-          rows={filteredRows.map((row) => [
-            <input
-              aria-label={`${row.settlement.plate} 선택`}
-              checked={selectedKeys.has(row.key)}
-              key={`${row.key}-select`}
-              onChange={() => toggleSelected(row.key)}
-              type="checkbox"
-            />,
-            row.workDate,
-            row.paymentDate,
-            row.category,
-            row.company,
-            row.settlement.plate,
-            row.settlement.amount.toLocaleString('ko-KR'),
-            row.settlement.brand,
-            <input
-              className="card-sales-inline-input"
-              key={`${row.key}-deposit-date`}
-              onFocus={(event) => setDefaultDepositDateIfEmpty(row.key, row.depositDate, event.currentTarget)}
-              onChange={(event) => updateOverride(row.key, 'depositDate', event.target.value)}
-              type="date"
-              value={row.depositDate}
-            />,
-            <input
-              className="card-sales-inline-input money"
-              inputMode="numeric"
-              key={`${row.key}-deposit-amount`}
-              onChange={(event) => updateOverride(row.key, 'depositAmount', event.target.value)}
-              placeholder="입금금액"
-              value={row.depositAmountText}
-            />,
-            row.fee > 0 ? row.fee.toLocaleString('ko-KR') : '',
-            row.rate,
-          ])}
+          rows={filteredRows.map((row) => {
+            const canSelect = row.depositAmount <= 0;
+            return [
+              <input
+                aria-label={`${row.settlement.plate} ${canSelect ? '선택' : '입금완료'}`}
+                checked={canSelect && selectedKeys.has(row.key)}
+                disabled={!canSelect}
+                key={`${row.key}-select`}
+                onChange={() => toggleSelected(row.key, canSelect)}
+                title={canSelect ? undefined : '입금금액이 입력된 건은 일괄입금 대상에서 제외됩니다'}
+                type="checkbox"
+              />,
+              row.workDate,
+              row.paymentDate,
+              row.category,
+              row.company,
+              row.settlement.plate,
+              row.settlement.amount.toLocaleString('ko-KR'),
+              row.settlement.brand,
+              <input
+                className="card-sales-inline-input"
+                key={`${row.key}-deposit-date`}
+                onFocus={(event) => setDefaultDepositDateIfEmpty(row.key, row.depositDate, event.currentTarget)}
+                onChange={(event) => updateOverride(row.key, 'depositDate', event.target.value)}
+                type="date"
+                value={row.depositDate}
+              />,
+              <input
+                className="card-sales-inline-input money"
+                inputMode="numeric"
+                key={`${row.key}-deposit-amount`}
+                onChange={(event) => updateOverride(row.key, 'depositAmount', event.target.value)}
+                placeholder="입금금액"
+                value={row.depositAmountText}
+              />,
+              row.fee > 0 ? row.fee.toLocaleString('ko-KR') : '',
+              row.rate,
+            ];
+          })}
         />
       </Panel>
     </div>

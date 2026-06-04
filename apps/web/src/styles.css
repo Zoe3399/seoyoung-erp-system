@@ -3109,6 +3109,11 @@ tbody tr:hover {
   accent-color: #2f7df6;
 }
 
+.card-sales-panel tbody input[type='checkbox']:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
 .card-sales-toolbar select {
   min-width: 150px;
   padding: 0 10px;
