@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useMemo, useRef, useState, type ChangeEvent, type ClipboardEvent, type Dispatch, type DragEvent, type FormEvent, type ReactNode, type SetStateAction, type TextareaHTMLAttributes } from 'react';
+import { StrictMode, useEffect, useMemo, useRef, useState, type ChangeEvent, type Dispatch, type DragEvent, type FormEvent, type ReactNode, type SetStateAction, type TextareaHTMLAttributes } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   AlertCircle,
@@ -7993,7 +7993,6 @@ function KpStatisticsPage({
   const [periodBasis, setPeriodBasis] = useState<KpPeriodBasis>('work');
   const [periodStart, setPeriodStart] = useState('2026-04-15');
   const [periodEnd, setPeriodEnd] = useState('2026-04-30');
-  const [settledFilter, setSettledFilter] = useState<'all' | 'Y' | 'N'>('all');
   const [partnerQuery, setPartnerQuery] = useState('');
   const [keyword, setKeyword] = useState('');
   const [partnerFilter, setPartnerFilter] = useState<Set<string>>(new Set());
@@ -8023,10 +8022,6 @@ function KpStatisticsPage({
     return rows.filter((row) => {
       const rowDate = normalizeWorkDate(periodBasis === 'payment' ? row.draft.paymentDate : row.workDate);
       const matchesDate = (!start || !rowDate || rowDate >= start) && (!end || !rowDate || rowDate <= end);
-      const matchesSettled =
-        settledFilter === 'all' ||
-        (settledFilter === 'Y' && row.paidAmount > 0) ||
-        (settledFilter === 'N' && row.paidAmount <= 0);
       const matchesPartnerSelection = partnerFilter.size === 0 || partnerFilter.has(row.partner);
       const matchesPartnerQuery = normalizedPartnerQuery.length === 0 || row.partner.toLowerCase().includes(normalizedPartnerQuery);
       const haystack = [
@@ -8044,11 +8039,12 @@ function KpStatisticsPage({
         .toLowerCase();
       const matchesKeyword = normalizedKeyword.length === 0 || haystack.includes(normalizedKeyword);
 
-      return matchesDate && matchesSettled && matchesPartnerSelection && matchesPartnerQuery && matchesKeyword;
+      return matchesDate && matchesPartnerSelection && matchesPartnerQuery && matchesKeyword;
     });
-  }, [keyword, partnerFilter, partnerQuery, periodBasis, periodEnd, periodStart, rows, settledFilter]);
+  }, [keyword, partnerFilter, partnerQuery, periodBasis, periodEnd, periodStart, rows]);
   const totalPaidAmount = filteredRows.reduce((sum, row) => sum + row.paidAmount, 0);
   const reflectedCount = filteredRows.filter((row) => row.workRecordId && row.paidAmount > 0).length;
+  const kpListSummary = `총 ${filteredRows.length}건 · 지급합계 ${totalPaidAmount.toLocaleString('ko-KR')}원 · 작업 반영 ${reflectedCount}건`;
 
   useEffect(() => {
     const reflectedRows = rows.filter((row) => row.workRecordId && row.paidAmount > 0);
@@ -8095,7 +8091,6 @@ function KpStatisticsPage({
     setPeriodBasis('work');
     setPeriodStart('2026-04-15');
     setPeriodEnd('2026-04-30');
-    setSettledFilter('all');
     setPartnerQuery('');
     setKeyword('');
     setPartnerFilter(new Set());
@@ -8158,20 +8153,8 @@ function KpStatisticsPage({
           <button type="button" onClick={() => selectQuickRange(14)}>2주</button>
           <button type="button" onClick={() => setPeriodEnd(formatDateInputValue(addMonths(parseDateInput(periodStart) ?? new Date(), 1)))}>1개월</button>
         </div>
-        <div className="kp-filter-row">
-          <strong>정산여부</strong>
-          <label>
-            <input checked={settledFilter === 'all'} onChange={() => setSettledFilter('all')} type="radio" />
-            전체
-          </label>
-          <label>
-            <input checked={settledFilter === 'Y'} onChange={() => setSettledFilter('Y')} type="radio" />
-            Y
-          </label>
-          <label>
-            <input checked={settledFilter === 'N'} onChange={() => setSettledFilter('N')} type="radio" />
-            N
-          </label>
+        <div className="kp-filter-row kp-search-row">
+          <span className="kp-filter-indent" aria-hidden="true" />
           <SearchInput
             className="kp-partner-search"
             label="업체"
@@ -8200,18 +8183,20 @@ function KpStatisticsPage({
         className="kp-table-panel"
         title="KP 정산 리스트"
         action={
-          <button className="secondary-button" onClick={() => downloadKpStatisticsCsv(filteredRows)} type="button">
-            <Download size={16} />
-            EXCEL 추출
-          </button>
+          <div className="kp-panel-actions">
+            <span className="kp-list-summary">{kpListSummary}</span>
+            <button className="secondary-button" onClick={() => downloadKpStatisticsCsv(filteredRows)} type="button">
+              <Download size={16} />
+              EXCEL 추출
+            </button>
+          </div>
         }
       >
-        <RecordToolbar count={`총 ${filteredRows.length}건 · 지급합계 ${totalPaidAmount.toLocaleString('ko-KR')}원 · 작업 반영 ${reflectedCount}건`} />
         <DataTable
           columns={['업체(거래처)', '작업일', '지급일', '차종', '차량번호', '지급금액', '유리지급가', 'VAT', '썬팅지급가', 'VAT', '추가지급가', 'VAT', '공제금액', '면책금', '썬팅', '상세']}
-          rows={filteredRows.map((row) => [
-            row.partner,
-            row.workDate,
+            rows={filteredRows.map((row) => [
+              row.partner,
+              row.workDate,
             <input
               className="kp-inline-input date"
               key={`${row.id}-payment-date`}
@@ -8219,8 +8204,8 @@ function KpStatisticsPage({
               type="date"
               value={normalizeWorkDate(row.draft.paymentDate)}
             />,
-            row.vehicle,
-            row.plateNumber,
+              row.vehicle,
+              row.plateNumber,
             <strong className="kp-paid-amount" key={`${row.id}-paid`}>{row.paidAmount.toLocaleString('ko-KR')}</strong>,
             amountInput(row, 'glassAmount'),
             vatSelect(row, 'glassVat'),
@@ -8299,7 +8284,6 @@ type CardSalesOverride = {
 type CardSalesStorageState = {
   overrides: Record<string, CardSalesOverride>;
   bulkDepositDate: string;
-  bulkDepositAmount: string;
 };
 
 function formatCardSalesMoneyInput(value: string) {
@@ -8308,8 +8292,17 @@ function formatCardSalesMoneyInput(value: string) {
 }
 
 function normalizeCardSalesDateInput(value: string) {
-  const normalized = normalizeWorkDate(value.trim());
-  return normalized && parseDateInput(normalized) ? normalized : '';
+  const trimmedValue = value.trim();
+  const compactDateMatch = trimmedValue.match(/^(\d{4})(\d{2})(\d{2})$/);
+  const normalized = compactDateMatch
+    ? `${compactDateMatch[1]}-${compactDateMatch[2]}-${compactDateMatch[3]}`
+    : normalizeWorkDate(trimmedValue);
+  const parsedDate = normalized ? parseDateInput(normalized) : null;
+  return parsedDate && formatDateInputValue(parsedDate) === normalized ? normalized : '';
+}
+
+function formatCardSalesDateTypingValue(value: string) {
+  return value.replace(/[^\d-]/g, '').slice(0, 10);
 }
 
 function isCardSalesOverride(value: unknown): value is CardSalesOverride {
@@ -8322,7 +8315,6 @@ function readCardSalesStorage(): CardSalesStorageState {
   const fallback = {
     overrides: {},
     bulkDepositDate: todayDateInputValue(),
-    bulkDepositAmount: '',
   };
   if (typeof window === 'undefined') return fallback;
 
@@ -8349,7 +8341,6 @@ function readCardSalesStorage(): CardSalesStorageState {
     return {
       overrides,
       bulkDepositDate: normalizeCardSalesDateInput(String(state.bulkDepositDate ?? '')) || fallback.bulkDepositDate,
-      bulkDepositAmount: formatCardSalesMoneyInput(String(state.bulkDepositAmount ?? '')),
     };
   } catch {
     return fallback;
@@ -8364,6 +8355,85 @@ function writeCardSalesStorage(state: CardSalesStorageState) {
   } catch {
     // Browser storage can be unavailable in privacy modes.
   }
+}
+
+function CardSalesDateInput({
+  ariaLabel,
+  className = '',
+  onChange,
+  onFocus,
+  value,
+}: {
+  ariaLabel: string;
+  className?: string;
+  onChange: (value: string) => void;
+  onFocus?: (input: HTMLInputElement) => void;
+  value: string;
+}) {
+  const pickerRef = useRef<HTMLInputElement | null>(null);
+
+  function applyDateValue(nextValue: string, options: { forceNormalize?: boolean } = {}) {
+    const normalizedValue = normalizeCardSalesDateInput(nextValue);
+    if (normalizedValue) {
+      onChange(normalizedValue);
+      return;
+    }
+
+    if (options.forceNormalize) {
+      onChange('');
+      return;
+    }
+
+    onChange(formatCardSalesDateTypingValue(nextValue));
+  }
+
+  function openCalendarPicker() {
+    const picker = pickerRef.current;
+    if (!picker) return;
+
+    picker.showPicker?.();
+    picker.focus();
+  }
+
+  return (
+    <span className={`card-sales-date-field ${className}`}>
+      <input
+        aria-label={ariaLabel}
+        inputMode="numeric"
+        onBlur={(event) => applyDateValue(event.target.value, { forceNormalize: true })}
+        onChange={(event) => applyDateValue(event.target.value)}
+        onFocus={(event) => onFocus?.(event.currentTarget)}
+        onKeyDown={(event) => {
+          if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+            event.preventDefault();
+            event.currentTarget.select();
+          }
+        }}
+        onPaste={(event) => {
+          const normalizedValue = normalizeCardSalesDateInput(event.clipboardData.getData('text'));
+          if (!normalizedValue) return;
+
+          event.preventDefault();
+          onChange(normalizedValue);
+        }}
+        placeholder="yyyy-mm-dd"
+        type="text"
+        value={value}
+      />
+      <button aria-label={`${ariaLabel} 달력 열기`} onClick={openCalendarPicker} type="button">
+        <CalendarDays size={15} />
+      </button>
+      <input
+        aria-hidden="true"
+        className="card-sales-hidden-date-picker"
+        onChange={(event) => onChange(event.target.value)}
+        ref={pickerRef}
+        tabIndex={-1}
+        type="date"
+        value={normalizeCardSalesDateInput(value)}
+      />
+    </span>
+  );
 }
 
 function cardSalesKey(settlement: CardSettlement, index: number) {
@@ -8395,7 +8465,7 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [overrides, setOverrides] = useState<Record<string, CardSalesOverride>>(() => initialCardSalesStorage.overrides);
   const [bulkDepositDate, setBulkDepositDate] = useState(() => initialCardSalesStorage.bulkDepositDate);
-  const [bulkDepositAmount, setBulkDepositAmount] = useState(() => initialCardSalesStorage.bulkDepositAmount);
+  const [bulkDepositAmount, setBulkDepositAmount] = useState('');
   const normalizedQuery = query.trim().toLowerCase();
   const rows = useMemo(
     () =>
@@ -8497,8 +8567,8 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
   }, [rows]);
 
   useEffect(() => {
-    writeCardSalesStorage({ overrides, bulkDepositDate, bulkDepositAmount });
-  }, [bulkDepositAmount, bulkDepositDate, overrides]);
+    writeCardSalesStorage({ overrides, bulkDepositDate });
+  }, [bulkDepositDate, overrides]);
 
   function updateOverride(key: string, field: keyof CardSalesOverride, value: string) {
     const nextValue = field === 'depositAmount' ? formatCardSalesMoneyInput(value) : value;
@@ -8518,14 +8588,6 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
     const today = todayDateInputValue();
     input.value = today;
     updateOverride(key, 'depositDate', today);
-  }
-
-  function applyPastedDepositDate(event: ClipboardEvent<HTMLInputElement>, onApply: (value: string) => void) {
-    const normalized = normalizeCardSalesDateInput(event.clipboardData.getData('text'));
-    if (!normalized) return;
-
-    event.preventDefault();
-    onApply(normalized);
   }
 
   function toggleSelected(key: string, canSelect: boolean) {
@@ -8641,12 +8703,7 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
           <div className="card-bulk-controls">
             <label>
               <span>입금일자</span>
-              <input
-                onChange={(event) => setBulkDepositDate(event.target.value)}
-                onPaste={(event) => applyPastedDepositDate(event, setBulkDepositDate)}
-                type="date"
-                value={bulkDepositDate}
-              />
+              <CardSalesDateInput ariaLabel="일괄입금 입금일자" onChange={setBulkDepositDate} value={bulkDepositDate} />
             </label>
             <label>
               <span>일괄입금액</span>
@@ -8704,15 +8761,14 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
               row.settlement.plate,
               row.settlement.amount.toLocaleString('ko-KR'),
               row.settlement.brand,
-              <input
-              className="card-sales-inline-input"
-              key={`${row.key}-deposit-date`}
-              onFocus={(event) => setDefaultDepositDateIfEmpty(row.key, row.depositDate, event.currentTarget)}
-              onChange={(event) => updateOverride(row.key, 'depositDate', event.target.value)}
-              onPaste={(event) => applyPastedDepositDate(event, (value) => updateOverride(row.key, 'depositDate', value))}
-              type="date"
-              value={row.depositDate}
-            />,
+              <CardSalesDateInput
+                ariaLabel={`${row.settlement.plate} 입금일자`}
+                className="card-sales-inline-input"
+                key={`${row.key}-deposit-date`}
+                onChange={(value) => updateOverride(row.key, 'depositDate', value)}
+                onFocus={(input) => setDefaultDepositDateIfEmpty(row.key, row.depositDate, input)}
+                value={row.depositDate}
+              />,
               <input
                 className="card-sales-inline-input money"
                 inputMode="numeric"

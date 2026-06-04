@@ -3057,7 +3057,7 @@ tbody tr:hover {
 .card-bulk-controls {
   display: flex;
   align-items: end;
-  gap: 8px;
+  gap: 14px;
 }
 
 .card-bulk-controls label {
@@ -3082,6 +3082,66 @@ tbody tr:hover {
 .card-bulk-controls input {
   width: 128px;
   padding: 0 10px;
+}
+
+.card-sales-date-field {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px;
+  align-items: center;
+  width: 148px;
+  height: 34px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.card-sales-date-field input[type='text'] {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: #0f172a;
+  font: inherit;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  outline: 0;
+}
+
+.card-sales-date-field input[type='text']::placeholder {
+  color: #94a3b8;
+}
+
+.card-sales-date-field button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 100%;
+  border: 0;
+  border-left: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  cursor: pointer;
+}
+
+.card-sales-date-field button:hover {
+  background: #edf4ff;
+  color: #2f7df6;
+}
+
+.card-sales-hidden-date-picker {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .card-sales-panel .record-toolbar {
@@ -3123,7 +3183,7 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 16px;
+  gap: 28px;
   margin: 10px 0 16px;
   padding: 12px 14px;
   border: 1px solid #e2e8f0;
@@ -3135,6 +3195,7 @@ tbody tr:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: end;
+  justify-content: flex-end;
   gap: 10px;
 }
 
@@ -3142,6 +3203,8 @@ tbody tr:hover {
   display: grid;
   gap: 4px;
   min-width: 112px;
+  justify-items: end;
+  text-align: right;
 }
 
 .card-sales-selected-summary em {
@@ -3155,7 +3218,9 @@ tbody tr:hover {
 .card-sales-selected-summary strong {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   min-height: 34px;
+  width: 100%;
   color: #0f172a;
   font-size: 13px;
   font-weight: 900;
@@ -3227,6 +3292,11 @@ tbody tr:hover {
   text-align: center;
 }
 
+.card-sales-date-field.card-sales-inline-input {
+  width: 100%;
+  padding: 0;
+}
+
 .card-sales-inline-input.money {
   font-variant-numeric: tabular-nums;
 }
@@ -3245,6 +3315,10 @@ tbody tr:hover {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+.kp-search-row {
+  align-items: end;
 }
 
 .kp-filter-row strong {
@@ -3295,6 +3369,11 @@ tbody tr:hover {
   color: #fff;
 }
 
+.kp-filter-indent {
+  flex: 0 0 216px;
+  height: 1px;
+}
+
 .kp-partner-search {
   width: 270px;
 }
@@ -3304,17 +3383,43 @@ tbody tr:hover {
   padding: 0 10px;
 }
 
+.kp-search-row .kp-keyword-input {
+  height: 42px;
+}
+
+.kp-search-row .primary-button,
+.kp-search-row .secondary-button {
+  min-height: 42px;
+}
+
 .kp-table-panel .panel-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   min-height: 56px;
 }
 
-.kp-table-panel .record-toolbar {
-  justify-content: flex-end;
-  margin-bottom: 10px;
+.kp-panel-actions {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.kp-list-summary {
+  justify-self: start;
+  min-width: 0;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .kp-table-panel .table-wrap table {
-  min-width: 1560px;
+  min-width: 1600px;
   table-layout: fixed;
 }
 
@@ -3340,13 +3445,16 @@ tbody tr:hover {
 
 .kp-table-panel .table-wrap th:nth-child(2),
 .kp-table-panel .table-wrap td:nth-child(2),
-.kp-table-panel .table-wrap th:nth-child(3),
-.kp-table-panel .table-wrap td:nth-child(3),
 .kp-table-panel .table-wrap th:nth-child(5),
 .kp-table-panel .table-wrap td:nth-child(5),
 .kp-table-panel .table-wrap th:nth-child(6),
 .kp-table-panel .table-wrap td:nth-child(6) {
   width: 110px;
+}
+
+.kp-table-panel .table-wrap th:nth-child(3),
+.kp-table-panel .table-wrap td:nth-child(3) {
+  width: 148px;
 }
 
 .kp-table-panel .table-wrap th:nth-child(4),
@@ -6429,6 +6537,24 @@ tbody tr:hover {
   .price-book-actions .primary-button,
   .price-book-actions .secondary-button {
     width: 100%;
+  }
+
+  .kp-filter-indent {
+    display: none;
+  }
+
+  .kp-partner-search,
+  .kp-keyword-input {
+    width: 100%;
+  }
+
+  .kp-table-panel .panel-header,
+  .kp-panel-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .kp-list-summary {
+    white-space: normal;
   }
 }
 
