@@ -3003,6 +3003,197 @@ tbody tr:hover {
   border-radius: 999px;
 }
 
+.card-sales-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.card-sales-summary-strip span {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 10px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.card-sales-summary-strip strong {
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 950;
+  text-align: right;
+}
+
+.card-sales-summary-strip em {
+  color: #94a3b8;
+  font-style: normal;
+  text-align: right;
+}
+
+.card-bulk-controls {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+}
+
+.card-bulk-controls label {
+  display: grid;
+  gap: 4px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.card-bulk-controls input,
+.card-sales-toolbar select,
+.card-sales-inline-input {
+  height: 34px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+}
+
+.card-bulk-controls input {
+  width: 128px;
+  padding: 0 10px;
+}
+
+.card-sales-panel .record-toolbar {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) auto auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.card-sales-panel .record-toolbar-search {
+  min-width: 0;
+}
+
+.card-sales-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.card-select-all input,
+.card-sales-panel tbody input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: #2f7df6;
+}
+
+.card-sales-toolbar select {
+  min-width: 150px;
+  padding: 0 10px;
+}
+
+.card-sales-bulk-row {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 10px 0 16px;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.card-sales-selected-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.card-sales-panel .table-wrap table {
+  min-width: 1220px;
+  table-layout: fixed;
+}
+
+.card-sales-panel .table-wrap th,
+.card-sales-panel .table-wrap td {
+  height: 48px;
+  padding: 8px 10px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.card-sales-panel .table-wrap th {
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.card-sales-panel .table-wrap th:nth-child(1),
+.card-sales-panel .table-wrap td:nth-child(1) {
+  width: 56px;
+}
+
+.card-sales-panel .table-wrap th:nth-child(2),
+.card-sales-panel .table-wrap td:nth-child(2),
+.card-sales-panel .table-wrap th:nth-child(3),
+.card-sales-panel .table-wrap td:nth-child(3),
+.card-sales-panel .table-wrap th:nth-child(4),
+.card-sales-panel .table-wrap td:nth-child(4),
+.card-sales-panel .table-wrap th:nth-child(7),
+.card-sales-panel .table-wrap td:nth-child(7),
+.card-sales-panel .table-wrap th:nth-child(8),
+.card-sales-panel .table-wrap td:nth-child(8),
+.card-sales-panel .table-wrap th:nth-child(11),
+.card-sales-panel .table-wrap td:nth-child(11),
+.card-sales-panel .table-wrap th:nth-child(12),
+.card-sales-panel .table-wrap td:nth-child(12) {
+  width: 92px;
+}
+
+.card-sales-panel .table-wrap th:nth-child(5),
+.card-sales-panel .table-wrap td:nth-child(5),
+.card-sales-panel .table-wrap th:nth-child(6),
+.card-sales-panel .table-wrap td:nth-child(6) {
+  width: 118px;
+}
+
+.card-sales-panel .table-wrap th:nth-child(9),
+.card-sales-panel .table-wrap td:nth-child(9),
+.card-sales-panel .table-wrap th:nth-child(10),
+.card-sales-panel .table-wrap td:nth-child(10) {
+  width: 124px;
+}
+
+.card-sales-inline-input {
+  width: 100%;
+  min-width: 0;
+  padding: 0 8px;
+  text-align: center;
+}
+
+.card-sales-inline-input.money {
+  font-variant-numeric: tabular-nums;
+}
+
 .payment-repeat-note {
   display: grid;
   gap: 4px;

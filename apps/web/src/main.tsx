@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent, type ReactNode, type TextareaHTMLAttributes } from 'react';
+import { StrictMode, useEffect, useMemo, useRef, useState, type ChangeEvent, type Dispatch, type DragEvent, type FormEvent, type ReactNode, type SetStateAction, type TextareaHTMLAttributes } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   AlertCircle,
@@ -470,7 +470,7 @@ type PaymentListSourceItem = {
   paidAmount: number;
   invoiceIssued: boolean;
   status: PurchasePaymentStatus;
-  source: '구매관리' | '수기등록';
+  source: '구매관리' | '수기등록' | '작업';
   memo: string;
 };
 type PaymentPartnerAggregate = {
@@ -669,15 +669,20 @@ type LedgerSheetRow = {
 };
 
 type CardSettlement = {
+  workDate?: string;
   date: string;
+  category?: string;
+  company?: string;
   brand: string;
   vehicle?: string;
   plate: string;
   amount: number;
   paid: number;
+  depositDate?: string;
   feeRate: string;
   status: string;
   tone: Tone;
+  source?: string;
 };
 
 type WarrantyRecord = {
@@ -1358,7 +1363,6 @@ const MODE_OPTIONS: ModeOption[] = [
 const TOP_NAV_PAGE_IDS: PageId[] = ['dashboard', 'revenue', 'sales', 'estimates', 'work'];
 
 const PLACEHOLDER_PAGE_IDS = new Set<PageId>([
-  'cardSales',
   'workKp',
   'workInsurance',
   'workBest',
@@ -2957,10 +2961,12 @@ const ledgerRecords: LedgerRecord[] = [
 ];
 
 const cardSettlements: CardSettlement[] = [
-  { date: '26.03.03', brand: '하나', plate: '368러4358', amount: 400000, paid: 394800, feeRate: '1.30%', status: '지급확인', tone: 'green' },
-  { date: '26.03.06', brand: 'KB', plate: '20더3199', amount: 380000, paid: 374680, feeRate: '1.40%', status: '지급대기', tone: 'orange' },
-  { date: '26.03.09', brand: '롯데', plate: '17더2738', amount: 300000, paid: 296100, feeRate: '1.30%', status: '지급대기', tone: 'orange' },
-  { date: '26.03.11', brand: 'BC', plate: '45무4727', amount: 88000, paid: 87120, feeRate: '1.00%', status: '정산완료', tone: 'green' },
+  { workDate: '26.05.21', date: '26.05.19', category: '일반', company: '-', brand: 'NH', plate: '00기0000', amount: 100000, paid: 99000, depositDate: '26.05.23', feeRate: '0.9900', status: '입금확인', tone: 'green' },
+  { workDate: '26.05.21', date: '26.05.21', category: '보험', company: '삼성', brand: 'KB', plate: '12가9380', amount: 300000, paid: 297000, depositDate: '26.05.25', feeRate: '0.9900', status: '입금확인', tone: 'green' },
+  { workDate: '26.05.23', date: '26.05.23', category: 'KP', company: '우성', brand: 'BC', plate: '14아9481', amount: 380000, paid: 377150, depositDate: '26.05.27', feeRate: '0.9925', status: '입금확인', tone: 'green' },
+  { workDate: '26.05.26', date: '26.05.23', category: '입고지원', company: '오픈링크', brand: '하나', plate: '64오8745', amount: 600000, paid: 594000, depositDate: '26.05.25', feeRate: '0.9900', status: '입금확인', tone: 'green' },
+  { workDate: '26.05.23', date: '26.05.23', category: '입고지원', company: '삼성', brand: 'NH', plate: '85고9548', amount: 400000, paid: 0, feeRate: '', status: '입금대기', tone: 'orange' },
+  { workDate: '26.05.23', date: '26.05.23', category: '일반', company: '-', brand: 'NH', plate: '67우9872', amount: 450000, paid: 0, feeRate: '', status: '입금대기', tone: 'orange' },
 ];
 
 const warrantyRecords: WarrantyRecord[] = [
@@ -3283,7 +3289,7 @@ const repairShopLedgerRows = ledgerRecords
   );
 
 const cardLedgerRows = cardSettlements.map((item, index) => {
-  const fee = item.amount - item.paid;
+  const fee = Math.max(0, item.amount - item.paid);
 
   return createLedgerSheetRow({
     key: `${item.date}-${item.brand}-${item.plate}-card-ledger`,
@@ -4026,6 +4032,9 @@ function App() {
   const [customerModalId, setCustomerModalId] = useState<string | null>(null);
   const [isEstimateRegistrationOpen, setIsEstimateRegistrationOpen] = useState(false);
   const [isVehicleRegistrationOpen, setIsVehicleRegistrationOpen] = useState(false);
+  const [workRecords, setWorkRecords] = useState<WorkerWorkListRecord[]>(() =>
+    workerWorkListRecords.filter((record) => record.kind === '작업'),
+  );
   const [vehicleCatalog, setVehicleCatalog] = useState<VehicleCatalogItem[]>(() =>
     mergeVehicleCatalog(defaultVehicleCatalog, readVehicleCatalogStorage()),
   );
@@ -4056,6 +4065,8 @@ function App() {
     () => customers.find((customer) => customer.id === customerModalId) ?? null,
     [customerModalId],
   );
+  const workPaymentScheduleItems = useMemo(() => workRecordsToPaymentScheduleItems(workRecords), [workRecords]);
+  const cardSalesSettlements = useMemo(() => [...workRecordsToCardSettlements(workRecords), ...cardSettlements], [workRecords]);
   const activeNav = ALL_NAV_ITEMS.find((item) => item.id === activePage) ?? ALL_NAV_ITEMS[0]!;
   useEffect(() => {
     writeVehicleCatalogStorage(vehicleCatalog);
@@ -4158,6 +4169,10 @@ function App() {
   function handleAddVehicle(draft: VehicleCatalogDraft) {
     const vehicle = createVehicleCatalogItem(draft);
     setVehicleCatalog((current) => mergeVehicleCatalog(current, [vehicle]));
+  }
+
+  function handleCreateEstimateWorkRecord(record: WorkerWorkListRecord) {
+    setWorkRecords((current) => [record, ...current.filter((item) => item.id !== record.id)]);
   }
 
   function renderSidebarNode(node: SidebarNavNode, depth: 3 | 4): ReactNode {
@@ -4317,9 +4332,11 @@ function App() {
         {activePage === 'paymentList' && (
           <PaymentListPage
             onOpenPurchasePartner={openPurchasePartner}
+            workRecords={workRecords}
           />
         )}
         {activePage === 'ledger' && <LedgerWorkbookPage vehicleModelSuggestions={vehicleSuggestions.model} />}
+        {activePage === 'cardSales' && <CardSalesPage settlements={cardSalesSettlements} />}
         {activePage === 'estimates' && (
           <EstimatesPage
             onOpenRegistration={() => setIsEstimateRegistrationOpen(true)}
@@ -4329,10 +4346,12 @@ function App() {
         {activePage === 'work' && (
           <WorkPage
             mode={appMode === 'admin' ? 'admin' : 'worker'}
+            setWorkRecords={setWorkRecords}
             vehicleModelSuggestions={vehicleSuggestions.model}
+            workRecords={workRecords}
           />
         )}
-        {activePage === 'schedule' && <SchedulePage />}
+        {activePage === 'schedule' && <SchedulePage linkedPayments={workPaymentScheduleItems} />}
         {activePage === 'priceBook' && <PriceBookPage />}
         {activePage === 'warranty' && (
           <WarrantyPage
@@ -4368,6 +4387,7 @@ function App() {
     ) : null}
     {activePage === 'estimates' && isEstimateRegistrationOpen ? (
       <EstimateRegistrationModal
+        onCreateWorkRecord={handleCreateEstimateWorkRecord}
         onClose={() => setIsEstimateRegistrationOpen(false)}
         vehicleSuggestions={vehicleSuggestions}
       />
@@ -5775,9 +5795,11 @@ function EstimatesPage({
 }
 
 function EstimateRegistrationModal({
+  onCreateWorkRecord,
   onClose,
   vehicleSuggestions,
 }: {
+  onCreateWorkRecord: (record: WorkerWorkListRecord) => void;
   onClose: () => void;
   vehicleSuggestions: VehicleSuggestionSet;
 }) {
@@ -5800,7 +5822,11 @@ function EstimateRegistrationModal({
           </button>
         </header>
         <div className="modal-body estimate-registration-modal-body">
-          <EstimateRegistrationPanel onSubmitComplete={onClose} vehicleSuggestions={vehicleSuggestions} />
+          <EstimateRegistrationPanel
+            onCreateWorkRecord={onCreateWorkRecord}
+            onSubmitComplete={onClose}
+            vehicleSuggestions={vehicleSuggestions}
+          />
         </div>
       </section>
     </div>
@@ -5809,11 +5835,13 @@ function EstimateRegistrationModal({
 
 function EstimateRegistrationPanel({
   estimate,
+  onCreateWorkRecord,
   onSubmitComplete,
   submitLabel = '견적 저장 + 작업 예약',
   vehicleSuggestions,
 }: {
   estimate?: Estimate;
+  onCreateWorkRecord?: (record: WorkerWorkListRecord) => void;
   onSubmitComplete?: () => void;
   submitLabel?: string;
   vehicleSuggestions: VehicleSuggestionSet;
@@ -5853,6 +5881,10 @@ function EstimateRegistrationPanel({
       className="estimate-registration-form"
       onSubmit={(event) => {
         event.preventDefault();
+        const record = createEstimateWorkRecordFromFormData(new FormData(event.currentTarget), autoCreateWork);
+        if (record) {
+          onCreateWorkRecord?.(record);
+        }
         onSubmitComplete?.();
       }}
     >
@@ -5883,7 +5915,7 @@ function EstimateRegistrationPanel({
               견적 담당자
               <em>필수</em>
             </span>
-            <select defaultValue={estimate?.estimatorName ?? ESTIMATOR_OPTIONS[0]} required>
+            <select defaultValue={estimate?.estimatorName ?? ESTIMATOR_OPTIONS[0]} name="estimatorName" required>
               {ESTIMATOR_OPTIONS.map((name) => (
                 <option key={name}>{name}</option>
               ))}
@@ -5894,7 +5926,7 @@ function EstimateRegistrationPanel({
               견적내용
               <em>필수</em>
             </span>
-            <textarea defaultValue={estimateContentValue} required />
+            <textarea defaultValue={estimateContentValue} name="estimateContent" required />
           </label>
         </div>
       </FormSection>
@@ -5907,6 +5939,7 @@ function EstimateRegistrationPanel({
               <input
                 defaultValue={estimate?.customer}
                 list="estimate-customer-suggestions"
+                name="customer"
                 placeholder={tradeType === '업체' ? '거래 업체명' : '고객명'}
               />
               <button type="button">
@@ -5935,6 +5968,7 @@ function EstimateRegistrationPanel({
                 </button>
               ))}
             </div>
+            <input name="tradeType" type="hidden" value={tradeType} />
           </div>
           <label className="estimate-control">
             <span>문의경로</span>
@@ -5947,7 +5981,7 @@ function EstimateRegistrationPanel({
           <label className="estimate-control">
             <span>차량번호</span>
             <div className="lookup-control">
-              <input list="estimate-vehicle-lookup-suggestions" placeholder="12가3456" />
+              <input list="estimate-vehicle-lookup-suggestions" name="plateNumber" placeholder="12가3456" />
               <button type="button">
                 <Search size={14} />
                 조회
@@ -5970,7 +6004,7 @@ function EstimateRegistrationPanel({
           </label>
           <label className="estimate-control">
             <span>모델명</span>
-            <input defaultValue={estimate?.vehicle} list="estimate-vehicle-model-suggestions" placeholder="차종/모델명" />
+            <input defaultValue={estimate?.vehicle} list="estimate-vehicle-model-suggestions" name="vehicle" placeholder="차종/모델명" />
           </label>
           <label className="estimate-control">
             <span>년식</span>
@@ -5978,7 +6012,7 @@ function EstimateRegistrationPanel({
           </label>
           <label className="estimate-control">
             <span>청구/보험 구분</span>
-            <select defaultValue="일반">
+            <select defaultValue="일반" name="claimType">
               {CLAIM_TYPE_OPTIONS.map((type) => (
                 <option key={type}>{type}</option>
               ))}
@@ -5986,7 +6020,7 @@ function EstimateRegistrationPanel({
           </label>
           <label className="estimate-control">
             <span>작업구분</span>
-            <select defaultValue="교체">
+            <select defaultValue="교체" name="workType">
               {WORK_TYPE_OPTIONS.map((type) => (
                 <option key={type}>{type}</option>
               ))}
@@ -5997,13 +6031,14 @@ function EstimateRegistrationPanel({
             <input
               defaultValue={estimate?.area.join(', ')}
               list="estimate-repair-area-suggestions"
+              name="repairArea"
               placeholder="전면, QTR(조), 루프/파노라마"
             />
           </label>
           <label className="estimate-control">
             <span>부품번호</span>
             <div className="lookup-control">
-              <input list="estimate-part-suggestions" placeholder="86111-AT080" />
+              <input list="estimate-part-suggestions" name="partNo" placeholder="86111-AT080" />
               <button type="button">
                 <Search size={14} />
                 검색
@@ -6028,7 +6063,7 @@ function EstimateRegistrationPanel({
           </label>
           <label className="estimate-control full">
             <span>최종견적내용</span>
-            <textarea defaultValue={finalEstimateContentValue} />
+            <textarea defaultValue={finalEstimateContentValue} name="finalEstimateContent" />
           </label>
           <label className="estimate-control full">
             <span>비고</span>
@@ -6041,12 +6076,20 @@ function EstimateRegistrationPanel({
         <div className="estimate-form-grid">
           <label className="estimate-control">
             <span>결제수단</span>
-            <select defaultValue="">
+            <select defaultValue="" name="paymentMethod">
               <option value="">선택</option>
               <option>현금</option>
               <option>카드</option>
-              <option>계좌</option>
+              <option>계좌이체</option>
               <option>보험</option>
+            </select>
+          </label>
+          <label className="estimate-control">
+            <span>카드사</span>
+            <select defaultValue={CARD_COMPANY_OPTIONS[0]} name="cardCompany">
+              {CARD_COMPANY_OPTIONS.map((company) => (
+                <option key={company}>{company}</option>
+              ))}
             </select>
           </label>
           <label className="estimate-control">
@@ -6062,11 +6105,11 @@ function EstimateRegistrationPanel({
           </label>
           <label className="estimate-control">
             <span>보험청구금액</span>
-            <input inputMode="numeric" placeholder="원" />
+            <input inputMode="numeric" name="insuranceClaimAmount" placeholder="원" />
           </label>
           <label className="estimate-control">
             <span>결제금액</span>
-            <input defaultValue={estimate?.amount ? String(estimate.amount) : undefined} inputMode="numeric" placeholder="원" />
+            <input defaultValue={estimate?.amount ? String(estimate.amount) : undefined} inputMode="numeric" name="paymentAmount" placeholder="원" />
           </label>
         </div>
       </FormSection>
@@ -6077,6 +6120,7 @@ function EstimateRegistrationPanel({
             <label>
               <input
                 checked={autoCreateWork}
+                name="autoCreateWork"
                 onChange={(event) => setAutoCreateWork(event.target.checked)}
                 type="checkbox"
               />
@@ -6086,11 +6130,11 @@ function EstimateRegistrationPanel({
           </div>
           <label className="estimate-control">
             <span>작업일</span>
-            <input defaultValue={scheduledWorkDateValue} type="date" />
+            <input defaultValue={scheduledWorkDateValue} name="scheduledWorkDate" type="date" />
           </label>
           <label className="estimate-control">
             <span>작업시간</span>
-            <select defaultValue={estimate?.scheduledWorkTime ?? ''}>
+            <select defaultValue={estimate?.scheduledWorkTime ?? ''} name="scheduledWorkTime">
               <option value="">시간 미정</option>
               <option>오전</option>
               <option>오후</option>
@@ -6101,7 +6145,7 @@ function EstimateRegistrationPanel({
           </label>
           <label className="estimate-control">
             <span>방문/출장</span>
-            <select defaultValue={estimate?.scheduledVisit ?? ''}>
+            <select defaultValue={estimate?.scheduledVisit ?? ''} name="scheduledVisit">
               <option value="">선택</option>
               <option>방문</option>
               <option>출장</option>
@@ -6110,7 +6154,7 @@ function EstimateRegistrationPanel({
           </label>
           <label className="estimate-control">
             <span>출장자</span>
-            <select defaultValue={estimate?.scheduledTechnician ?? ''}>
+            <select defaultValue={estimate?.scheduledTechnician ?? ''} name="scheduledTechnician">
               <option value="">선택</option>
               {ESTIMATOR_OPTIONS.map((name) => (
                 <option key={name}>{name}</option>
@@ -6475,6 +6519,7 @@ function buildPaymentListSourceItems(
   monthKey: string,
   manualRules: ManualPaymentRule[],
   periodBasis: PaymentPeriodBasis = 'base',
+  workRecords: WorkerWorkListRecord[] = [],
 ): PaymentListSourceItem[] {
   const purchaseItems = purchaseEntries
     .filter((entry) => (periodBasis === 'payment' ? entry.paymentMonth === monthKey : entry.baseMonth === monthKey))
@@ -6498,8 +6543,11 @@ function buildPaymentListSourceItems(
   const manualItems = manualRules
     .map((rule) => manualRuleOccurrenceForMonth(rule, monthKey))
     .filter((item): item is PaymentListSourceItem => Boolean(item));
+  const workItems = workRecordsToPaymentListSourceItems(workRecords).filter((item) =>
+    periodBasis === 'payment' ? item.paymentMonth === monthKey : item.baseMonth === monthKey,
+  );
 
-  return [...purchaseItems, ...manualItems];
+  return [...purchaseItems, ...manualItems, ...workItems];
 }
 
 function isDisplayDateInRange(displayDate: string, startDate: string, endDate: string) {
@@ -6515,6 +6563,7 @@ function buildPaymentListSourceItemsForRange(
   startDate: string,
   endDate: string,
   manualRules: ManualPaymentRule[],
+  workRecords: WorkerWorkListRecord[] = [],
 ): PaymentListSourceItem[] {
   const start = parseDateInput(startDate);
   const end = parseDateInput(endDate);
@@ -6554,7 +6603,11 @@ function buildPaymentListSourceItemsForRange(
     cursor.setMonth(cursor.getMonth() + 1);
   }
 
-  return [...purchaseItems, ...manualItems];
+  const workItems = workRecordsToPaymentListSourceItems(workRecords).filter((entry) =>
+    isDisplayDateInRange(entry.dueDate, startDate, endDate),
+  );
+
+  return [...purchaseItems, ...manualItems, ...workItems];
 }
 
 function resolveAggregatePaymentStatus(entries: PaymentListSourceItem[]): PurchasePaymentStatus {
@@ -6802,8 +6855,10 @@ function PurchasePage({
 
 function PaymentListPage({
   onOpenPurchasePartner,
+  workRecords,
 }: {
   onOpenPurchasePartner: (partner: string, monthKey: string) => void;
+  workRecords: WorkerWorkListRecord[];
 }) {
   const [selectedMonth, setSelectedMonth] = useState('2026.05');
   const [manualRules, setManualRules] = useState<ManualPaymentRule[]>([]);
@@ -6823,12 +6878,13 @@ function PaymentListPage({
   });
   const [appliedSearch, setAppliedSearch] = useState(searchDraft);
   const appliedMonthKey = monthKeyFromDate(appliedSearch.periodStart) || selectedMonth;
+  const workPaymentListItems = useMemo(() => workRecordsToPaymentListSourceItems(workRecords), [workRecords]);
   const sourceItems = useMemo(
     () =>
       appliedSearch.periodBasis === 'custom'
-        ? buildPaymentListSourceItemsForRange(appliedSearch.periodStart, appliedSearch.periodEnd, manualRules)
-        : buildPaymentListSourceItems(appliedMonthKey, manualRules, appliedSearch.periodBasis),
-    [appliedMonthKey, appliedSearch.periodBasis, appliedSearch.periodEnd, appliedSearch.periodStart, manualRules],
+        ? buildPaymentListSourceItemsForRange(appliedSearch.periodStart, appliedSearch.periodEnd, manualRules, workRecords)
+        : buildPaymentListSourceItems(appliedMonthKey, manualRules, appliedSearch.periodBasis, workRecords),
+    [appliedMonthKey, appliedSearch.periodBasis, appliedSearch.periodEnd, appliedSearch.periodStart, manualRules, workRecords],
   );
   const aggregates = useMemo(() => buildPaymentPartnerAggregates(sourceItems), [sourceItems]);
   const filteredAggregates = useMemo(
@@ -6868,23 +6924,23 @@ function PaymentListPage({
   const filteredListAmount = filteredAggregates.reduce((sum, aggregate) => sum + aggregate.amount, 0);
   const monthlySummaryBasis = appliedSearch.periodBasis === 'payment' ? 'payment' : 'base';
   const currentMonthItems = useMemo(
-    () => buildPaymentListSourceItems(appliedMonthKey, manualRules, monthlySummaryBasis),
-    [appliedMonthKey, manualRules, monthlySummaryBasis],
+    () => buildPaymentListSourceItems(appliedMonthKey, manualRules, monthlySummaryBasis, workRecords),
+    [appliedMonthKey, manualRules, monthlySummaryBasis, workRecords],
   );
   const currentMonthAmount = currentMonthItems.reduce((sum, item) => sum + item.amount, 0);
   const previousMonthItems = useMemo(
-    () => buildPaymentListSourceItems(shiftMonthKey(appliedMonthKey, -1), manualRules, monthlySummaryBasis),
-    [appliedMonthKey, manualRules, monthlySummaryBasis],
+    () => buildPaymentListSourceItems(shiftMonthKey(appliedMonthKey, -1), manualRules, monthlySummaryBasis, workRecords),
+    [appliedMonthKey, manualRules, monthlySummaryBasis, workRecords],
   );
   const previousMonthAmount = previousMonthItems.reduce((sum, item) => sum + item.amount, 0);
   const amountChange = currentMonthAmount - previousMonthAmount;
   const partnerSuggestions = useMemo(
-    () => Array.from(new Set([...purchaseEntries.map((entry) => entry.partner), ...manualRules.map((rule) => rule.partner)])),
-    [manualRules],
+    () => Array.from(new Set([...purchaseEntries.map((entry) => entry.partner), ...manualRules.map((rule) => rule.partner), ...workPaymentListItems.map((item) => item.partner)])),
+    [manualRules, workPaymentListItems],
   );
   const categorySuggestions = useMemo(
-    () => Array.from(new Set([...purchaseEntries.map((entry) => entry.category), ...manualRules.map((rule) => rule.category)])),
-    [manualRules],
+    () => Array.from(new Set([...purchaseEntries.map((entry) => entry.category), ...manualRules.map((rule) => rule.category), ...workPaymentListItems.map((item) => item.category)])),
+    [manualRules, workPaymentListItems],
   );
 
   function updateSearch<Key extends keyof typeof searchDraft>(key: Key, value: (typeof searchDraft)[Key]) {
@@ -7297,8 +7353,8 @@ function PaymentListPage({
   );
 }
 
-function SchedulePage() {
-  const [payments, setPayments] = useState<PaymentScheduleItem[]>(paymentScheduleSeed);
+function SchedulePage({ linkedPayments }: { linkedPayments: PaymentScheduleItem[] }) {
+  const [manualPayments, setManualPayments] = useState<PaymentScheduleItem[]>(paymentScheduleSeed);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<PaymentScheduleFilter>('all');
   const [selectedDate, setSelectedDate] = useState('2026.05.21');
@@ -7309,6 +7365,7 @@ function SchedulePage() {
   const [shortcuts, setShortcuts] = useState<DashboardShortcut[]>(defaultPaymentShortcuts);
   const normalizedQuery = query.trim().toLowerCase();
   const canAddShortcut = shortcutTitle.trim().length > 0 && shortcutUrl.trim().length > 0;
+  const payments = useMemo(() => [...linkedPayments, ...manualPayments], [linkedPayments, manualPayments]);
   const totalScheduledAmount = payments.reduce((sum, payment) => sum + payment.amount, 0);
   const completedAmount = payments.reduce((sum, payment) => sum + payment.paidAmount, 0);
   const unpaidAmount = payments.reduce((sum, payment) => sum + Math.max(0, payment.amount - payment.paidAmount), 0);
@@ -7377,7 +7434,7 @@ function SchedulePage() {
     event.preventDefault();
     const nextPayment = createPaymentScheduleItem(draft);
 
-    setPayments((current) => [nextPayment, ...current]);
+    setManualPayments((current) => [nextPayment, ...current]);
     setSelectedDate(nextPayment.date);
     setDraft(createPaymentScheduleDraft());
     setIsRegistrationOpen(false);
@@ -7642,21 +7699,303 @@ function SchedulePage() {
   );
 }
 
+type CardSalesSort = 'workAsc' | 'paymentAsc' | 'amountDesc' | 'cardAsc';
+type CardSalesOverride = {
+  depositDate: string;
+  depositAmount: string;
+};
+
+function cardSalesKey(settlement: CardSettlement, index: number) {
+  return `${settlement.workDate ?? settlement.date}-${settlement.date}-${settlement.brand}-${settlement.plate}-${settlement.source ?? index}`;
+}
+
+function normalizeCardSalesDate(value: string) {
+  const normalized = normalizeWorkDate(value);
+  if (!normalized) return value.trim();
+  const [year = '2026', month = '01', day = '01'] = normalized.split('-');
+  return `${year.slice(2)}.${month}.${day}`;
+}
+
+function defaultCardDepositDate(value: string) {
+  const normalized = normalizeWorkDate(value);
+  if (!normalized) return '';
+  return cardSettlementDateFromWorkDate(formatDateInputValue(addDays(parseDateInput(normalized) ?? new Date(), 2)));
+}
+
+function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<CardSalesSort>('workAsc');
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [overrides, setOverrides] = useState<Record<string, CardSalesOverride>>({});
+  const [bulkDepositDate, setBulkDepositDate] = useState('26.05.25');
+  const [bulkDepositAmount, setBulkDepositAmount] = useState('');
+  const normalizedQuery = query.trim().toLowerCase();
+  const rows = useMemo(
+    () =>
+      settlements.map((settlement, index) => {
+        const key = cardSalesKey(settlement, index);
+        const override = overrides[key];
+        const defaultDepositAmount = settlement.paid > 0 ? settlement.paid.toLocaleString('ko-KR') : '';
+        const depositAmountText = override?.depositAmount ?? defaultDepositAmount;
+        const depositAmount = parseMoneyText(depositAmountText);
+        const fee = depositAmount > 0 ? Math.max(0, settlement.amount - depositAmount) : 0;
+        const rate = depositAmount > 0 && settlement.amount > 0 ? (depositAmount / settlement.amount).toFixed(4) : settlement.feeRate;
+
+        return {
+          key,
+          settlement,
+          workDate: normalizeCardSalesDate(settlement.workDate ?? settlement.date),
+          paymentDate: normalizeCardSalesDate(settlement.date),
+          category: settlement.category ?? '작업',
+          company: settlement.company ?? '-',
+          depositDate: override?.depositDate ?? settlement.depositDate ?? (settlement.paid > 0 ? defaultCardDepositDate(settlement.date) : ''),
+          depositAmountText,
+          depositAmount,
+          fee,
+          rate,
+        };
+      }),
+    [overrides, settlements],
+  );
+  const filteredRows = useMemo(() => {
+    const filtered = rows.filter((row) => {
+      const haystack = [
+        row.workDate,
+        row.paymentDate,
+        row.category,
+        row.company,
+        row.settlement.plate,
+        row.settlement.vehicle,
+        row.settlement.brand,
+        row.settlement.amount,
+        row.settlement.status,
+        row.settlement.source,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return normalizedQuery.length === 0 || haystack.includes(normalizedQuery);
+    });
+
+    return [...filtered].sort((left, right) => {
+      if (sort === 'amountDesc') return right.settlement.amount - left.settlement.amount;
+      if (sort === 'cardAsc') return left.settlement.brand.localeCompare(right.settlement.brand, 'ko-KR');
+      if (sort === 'paymentAsc') return left.paymentDate.localeCompare(right.paymentDate, 'ko-KR');
+      return left.workDate.localeCompare(right.workDate, 'ko-KR');
+    });
+  }, [normalizedQuery, rows, sort]);
+  const selectedRows = rows.filter((row) => selectedKeys.has(row.key));
+  const selectedAmount = selectedRows.reduce((sum, row) => sum + row.settlement.amount, 0);
+  const selectedDepositAmount = selectedRows.reduce((sum, row) => sum + row.depositAmount, 0);
+  const totalAmount = rows.reduce((sum, row) => sum + row.settlement.amount, 0);
+  const totalDepositAmount = rows.reduce((sum, row) => sum + row.depositAmount, 0);
+  const totalFee = rows.reduce((sum, row) => sum + row.fee, 0);
+  const pendingCount = rows.filter((row) => row.depositAmount <= 0).length;
+  const searchSuggestions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          rows.flatMap((row) => [
+            row.workDate,
+            row.paymentDate,
+            row.category,
+            row.company,
+            row.settlement.plate,
+            row.settlement.brand,
+            row.settlement.status,
+          ]),
+        ),
+      ).filter(Boolean),
+    [rows],
+  );
+  const allFilteredSelected = filteredRows.length > 0 && filteredRows.every((row) => selectedKeys.has(row.key));
+
+  function updateOverride(key: string, field: keyof CardSalesOverride, value: string) {
+    setOverrides((current) => ({
+      ...current,
+      [key]: {
+        depositDate: current[key]?.depositDate ?? '',
+        depositAmount: current[key]?.depositAmount ?? '',
+        [field]: value,
+      },
+    }));
+  }
+
+  function toggleSelected(key: string) {
+    setSelectedKeys((current) => {
+      const next = new Set(current);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
+  function toggleAllFiltered(checked: boolean) {
+    setSelectedKeys((current) => {
+      const next = new Set(current);
+      filteredRows.forEach((row) => {
+        if (checked) {
+          next.add(row.key);
+        } else {
+          next.delete(row.key);
+        }
+      });
+      return next;
+    });
+  }
+
+  function applyBulkDeposit() {
+    const bulkAmount = parseMoneyText(bulkDepositAmount);
+    if (selectedRows.length === 0 || selectedAmount <= 0 || bulkAmount <= 0) return;
+
+    const rate = bulkAmount / selectedAmount;
+    setOverrides((current) => {
+      const next = { ...current };
+      selectedRows.forEach((row) => {
+        next[row.key] = {
+          depositDate: bulkDepositDate,
+          depositAmount: Math.round(row.settlement.amount * rate).toLocaleString('ko-KR'),
+        };
+      });
+      return next;
+    });
+  }
+
+  return (
+    <div className="page-stack card-sales-page">
+      <section className="card-sales-summary-strip" aria-label="카드매출 요약">
+        <span>
+          카드 결제금액
+          <strong>{formatMoney(totalAmount)}</strong>
+          <em>총 {rows.length}건</em>
+        </span>
+        <span>
+          입금금액
+          <strong>{formatMoney(totalDepositAmount)}</strong>
+          <em>수기입력/자동계산 합산</em>
+        </span>
+        <span>
+          수수료
+          <strong>{formatMoney(totalFee)}</strong>
+          <em>입금 입력 행 기준</em>
+        </span>
+        <span>
+          입금대기
+          <strong>{pendingCount}건</strong>
+          <em>입금일자/금액 미입력</em>
+        </span>
+      </section>
+
+      <Panel
+        className="card-sales-panel"
+        title="카드매출 목록"
+      >
+        <RecordToolbar
+          count={`총 ${filteredRows.length}건 · 선택 ${selectedRows.length}건`}
+          filters={
+            <div className="card-sales-toolbar">
+              <label className="card-select-all">
+                <input checked={allFilteredSelected} onChange={(event) => toggleAllFiltered(event.target.checked)} type="checkbox" />
+                <span>전체 선택</span>
+              </label>
+              <select onChange={(event) => setSort(event.target.value as CardSalesSort)} value={sort}>
+                <option value="workAsc">작업일 빠른순</option>
+                <option value="paymentAsc">결제일 빠른순</option>
+                <option value="amountDesc">결제금액 높은순</option>
+                <option value="cardAsc">카드사 가나다순</option>
+              </select>
+            </div>
+          }
+          search={
+            <SearchInput
+              label="카드매출 검색"
+              listId="card-sales-search-suggestions"
+              onChange={setQuery}
+              placeholder="차량번호, 업체, 카드사 검색"
+              suggestions={searchSuggestions}
+              value={query}
+            />
+          }
+        />
+        <div className="card-sales-bulk-row">
+          <div className="card-sales-selected-summary">
+            <span>일괄입금 대상 결제금액 {selectedAmount.toLocaleString('ko-KR')}원</span>
+            <span>입력된 입금금액 {selectedDepositAmount.toLocaleString('ko-KR')}원</span>
+          </div>
+          <div className="card-bulk-controls">
+            <label>
+              <span>입금일자</span>
+              <input onChange={(event) => setBulkDepositDate(event.target.value)} placeholder="26.05.25" value={bulkDepositDate} />
+            </label>
+            <label>
+              <span>일괄입금액</span>
+              <input inputMode="numeric" onChange={(event) => setBulkDepositAmount(event.target.value)} placeholder="입금금액" value={bulkDepositAmount} />
+            </label>
+            <button className="primary-button" disabled={selectedRows.length === 0 || parseMoneyText(bulkDepositAmount) <= 0} onClick={applyBulkDeposit} type="button">
+              계산
+            </button>
+          </div>
+        </div>
+        <DataTable
+          columns={['선택', '작업일', '결제일', '구분', '업체', '차량번호', '결제금액', '카드사', '입금일자', '입금금액', '수수료', '%']}
+          rows={filteredRows.map((row) => [
+            <input
+              aria-label={`${row.settlement.plate} 선택`}
+              checked={selectedKeys.has(row.key)}
+              key={`${row.key}-select`}
+              onChange={() => toggleSelected(row.key)}
+              type="checkbox"
+            />,
+            row.workDate,
+            row.paymentDate,
+            row.category,
+            row.company,
+            row.settlement.plate,
+            row.settlement.amount.toLocaleString('ko-KR'),
+            row.settlement.brand,
+            <input
+              className="card-sales-inline-input"
+              key={`${row.key}-deposit-date`}
+              onChange={(event) => updateOverride(row.key, 'depositDate', event.target.value)}
+              placeholder="입금일자"
+              value={row.depositDate}
+            />,
+            <input
+              className="card-sales-inline-input money"
+              inputMode="numeric"
+              key={`${row.key}-deposit-amount`}
+              onChange={(event) => updateOverride(row.key, 'depositAmount', event.target.value)}
+              placeholder="입금금액"
+              value={row.depositAmountText}
+            />,
+            row.fee > 0 ? row.fee.toLocaleString('ko-KR') : '',
+            row.rate,
+          ])}
+        />
+      </Panel>
+    </div>
+  );
+}
+
 function WorkPage({
   mode,
+  setWorkRecords,
   vehicleModelSuggestions,
+  workRecords,
 }: {
   mode: WorkAppMode;
+  setWorkRecords: Dispatch<SetStateAction<WorkerWorkListRecord[]>>;
   vehicleModelSuggestions: string[];
+  workRecords: WorkerWorkListRecord[];
 }) {
   const [calendarView, setCalendarView] = useState<CalendarView>('day');
   const [workViewByMode, setWorkViewByMode] = useState<Record<WorkAppMode, WorkerWorkView>>({
     worker: readWorkViewSearchParam() ?? 'calendar',
     admin: readWorkViewSearchParam() ?? 'list',
   });
-  const [workRecords, setWorkRecords] = useState<WorkerWorkListRecord[]>(() =>
-    workerWorkListRecords.filter((record) => record.kind === '작업'),
-  );
   const [workListPage, setWorkListPage] = useState(() => readPositiveIntSearchParam('workPage', 1));
   const [workPageSize, setWorkPageSize] = useState<WorkPageSize>(() => {
     const size = readPositiveIntSearchParam('workPageSize', 20);
@@ -8642,12 +8981,185 @@ function parseWorkAmountInput(value: string) {
   return normalizedValue ? Number(normalizedValue) : 0;
 }
 
+function formDataText(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 function normalizeWorkDate(value: string) {
   const [rawYear, rawMonth, rawDay] = value.split(/[.-]/).map((part) => part.trim());
   if (!rawYear || !rawMonth || !rawDay) return '';
 
   const year = rawYear.length === 2 ? `20${rawYear}` : rawYear;
   return `${year.padStart(4, '0')}-${rawMonth.padStart(2, '0')}-${rawDay.padStart(2, '0')}`;
+}
+
+function isAutoLinkedWorkRecord(record: WorkerWorkListRecord) {
+  return record.id.startsWith('estimate-work-') || record.id.startsWith('custom-');
+}
+
+function cardBrandLabel(cardCompany: string, customCardCompany = '') {
+  const label = cardCompany === '기타' ? customCardCompany.trim() : cardCompany.trim();
+  return (label || '카드').replace(/카드$/u, '');
+}
+
+function workPaymentMethodLabel(payment: WorkPaymentEntry) {
+  if (payment.method === '카드') return cardBrandLabel(payment.cardCompany, payment.customCardCompany);
+  const bankName = payment.bankName === '기타' ? payment.customBankName : payment.bankName;
+  return bankName.trim() || payment.method;
+}
+
+function resolveWorkRecordPaymentStatus(record: WorkerWorkListRecord): PaymentScheduleStatus {
+  if (record.paymentAmount <= 0) return '결제예정';
+  const paidAmount = sumWorkPayments(record.payments);
+  if (paidAmount >= record.paymentAmount) return '결제완료';
+  if (paidAmount > 0) return '부분결제';
+  return '결제예정';
+}
+
+function workRecordsToPaymentScheduleItems(records: WorkerWorkListRecord[]): PaymentScheduleItem[] {
+  return records
+    .filter((record) => isAutoLinkedWorkRecord(record) && record.paymentAmount > 0)
+    .map((record): PaymentScheduleItem => {
+      const status = resolveWorkRecordPaymentStatus(record);
+      return {
+        id: `work-payment-${record.id}`,
+        date: normalizePaymentDate(record.date),
+        partner: record.customer,
+        item: record.title,
+        amount: record.paymentAmount,
+        paidAmount: Math.min(record.paymentAmount, sumWorkPayments(record.payments)),
+        status,
+        method: summarizeValues(record.payments.map(workPaymentMethodLabel), 1),
+        source: '작업 자동등록',
+        memo: `${record.vehicle} ${record.plateNumber} · ${record.owner}`,
+      };
+    });
+}
+
+function workRecordsToPaymentListSourceItems(records: WorkerWorkListRecord[]): PaymentListSourceItem[] {
+  return records
+    .filter((record) => isAutoLinkedWorkRecord(record) && record.paymentAmount > 0)
+    .map((record): PaymentListSourceItem => {
+      const normalizedDate = normalizeWorkDate(record.date);
+      const monthKey = monthKeyFromDate(normalizedDate) || '2026.05';
+      const status = resolveWorkRecordPaymentStatus(record);
+      return {
+        id: `work-payment-list-${record.id}`,
+        baseMonth: monthKey,
+        paymentMonth: monthKey,
+        dueDate: normalizePaymentDate(record.date),
+        variability: '변동',
+        category: record.division || '작업',
+        partner: record.customer,
+        bank: summarizeValues(record.payments.map((payment) => payment.method), 1),
+        accountNumber: summarizeValues(record.payments.map(workPaymentMethodLabel), 1),
+        amount: record.paymentAmount,
+        paidAmount: Math.min(record.paymentAmount, sumWorkPayments(record.payments)),
+        invoiceIssued: false,
+        status,
+        source: '작업',
+        memo: `${record.title} · ${record.vehicle} ${record.plateNumber}`,
+      };
+    });
+}
+
+function cardSettlementDateFromWorkDate(value: string) {
+  const normalizedDate = normalizeWorkDate(value);
+  if (!normalizedDate) return normalizePaymentDate(value);
+  const [year = '2026', month = '01', day = '01'] = normalizedDate.split('-');
+  return `${year.slice(2)}.${month}.${day}`;
+}
+
+function workRecordsToCardSettlements(records: WorkerWorkListRecord[]): CardSettlement[] {
+  return records
+    .filter((record) => isAutoLinkedWorkRecord(record))
+    .flatMap((record) =>
+      record.payments
+        .filter((payment) => payment.method === '카드' && parseWorkAmountInput(payment.amount) > 0)
+        .map((payment, index): CardSettlement => {
+          const amount = parseWorkAmountInput(payment.amount);
+          const feeRate = '1.30%';
+          return {
+            date: cardSettlementDateFromWorkDate(record.date),
+            brand: cardBrandLabel(payment.cardCompany, payment.customCardCompany),
+            vehicle: record.vehicle,
+            plate: record.plateNumber,
+            amount,
+            paid: Math.round(amount * 0.987),
+            feeRate,
+            status: record.paymentStatus === 'Y' ? '자동등록' : '입력확인',
+            tone: record.paymentStatus === 'Y' ? 'blue' : 'orange',
+            source: `${record.customer} · ${record.title}${index > 0 ? ` #${index + 1}` : ''}`,
+          };
+        }),
+    );
+}
+
+function createEstimateWorkRecordFromFormData(formData: FormData, autoCreateWork: boolean): WorkerWorkListRecord | null {
+  const workDate = formDataText(formData, 'scheduledWorkDate');
+  if (!autoCreateWork || !workDate) return null;
+
+  const paymentAmountText = formDataText(formData, 'paymentAmount');
+  const paymentAmount = parseWorkAmountInput(paymentAmountText);
+  const paymentMethod = formDataText(formData, 'paymentMethod');
+  const isCardPayment = paymentMethod === '카드';
+  const isAccountPayment = paymentMethod === '계좌' || paymentMethod === '계좌이체';
+  const cardCompany = formDataText(formData, 'cardCompany') || CARD_COMPANY_OPTIONS[0] || '';
+  const owner = formDataText(formData, 'scheduledTechnician') || formDataText(formData, 'estimatorName') || ESTIMATOR_OPTIONS[0] || '';
+  const visit = (formDataText(formData, 'scheduledVisit') as WorkVisitType) || '방문';
+  const repairArea = formDataText(formData, 'repairArea');
+  const workType = formDataText(formData, 'workType');
+  const finalContent = formDataText(formData, 'finalEstimateContent');
+  const estimateContent = formDataText(formData, 'estimateContent');
+  const claimType = formDataText(formData, 'claimType') || '일반';
+  const plateNumber = formDataText(formData, 'plateNumber') || '-';
+  const title =
+    finalContent ||
+    [workType, repairArea].filter(Boolean).join(' ') ||
+    estimateContent ||
+    '견적 연결 작업';
+  const payments: WorkPaymentEntry[] =
+    paymentAmount > 0 && (isCardPayment || isAccountPayment)
+      ? [
+          {
+            ...createEmptyWorkPaymentEntry(0, String(paymentAmount)),
+            method: isCardPayment ? '카드' : '계좌이체',
+            cardCompany,
+          },
+        ]
+      : [];
+  const draft: WorkRegistrationFormDraft = {
+    date: workDate,
+    visit: WORK_VISIT_OPTIONS.includes(visit) ? visit : '방문',
+    time: formDataText(formData, 'scheduledWorkTime') || '시간 미정',
+    division: claimType === '일반' ? '일반' : '보험',
+    company: formDataText(formData, 'tradeType') || claimType,
+    customer: formDataText(formData, 'customer') || '-',
+    vehicle: formDataText(formData, 'vehicle') || '-',
+    plateNumber,
+    title,
+    stock: formDataText(formData, 'partNo') || '-',
+    insuranceClaimAmount: formDataText(formData, 'insuranceClaimAmount'),
+    insurancePaidAmount: '',
+    paymentAmount: paymentAmountText,
+    paymentStatus: paymentAmount > 0 && payments.length > 0 ? 'Y' : 'N',
+    status: '예정',
+    owner,
+    address: draftAddressFromVisit(WORK_VISIT_OPTIONS.includes(visit) ? visit : '방문'),
+  };
+  const record = createWorkRecordFromRegistrationDraft(draft);
+
+  return {
+    ...record,
+    id: `estimate-work-${Date.now()}`,
+    payments,
+    paymentStatus: resolveWorkPaymentStatus(paymentAmount, payments),
+  };
+}
+
+function draftAddressFromVisit(visit: WorkVisitType) {
+  return visit === '방문' ? '경남차유리 작업장' : `${visit}지 미정`;
 }
 
 function getWorkColumnFilterValue(record: WorkerWorkListRecord, key: WorkColumnFilterKey) {
