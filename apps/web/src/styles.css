@@ -2700,7 +2700,7 @@ tbody tr:hover {
 .payment-list-table-panel .table-wrap th:nth-child(8),
 .payment-list-table-panel .table-wrap td:nth-child(8) {
   width: 118px;
-  text-align: right;
+  text-align: center;
   font-variant-numeric: tabular-nums;
 }
 
