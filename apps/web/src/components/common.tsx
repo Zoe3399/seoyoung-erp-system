@@ -358,7 +358,7 @@ export function DataTable({
   rows,
   onRowClick,
 }: {
-  columns: string[];
+  columns: ReactNode[];
   rows: Array<Array<ReactNode>>;
   onRowClick?: (rowIndex: number) => void;
 }) {
@@ -367,8 +367,8 @@ export function DataTable({
       <table>
         <thead>
           <tr>
-            {columns.map((column) => (
-              <th key={column}>{column}</th>
+            {columns.map((column, columnIndex) => (
+              <th key={columnIndex}>{column}</th>
             ))}
           </tr>
         </thead>

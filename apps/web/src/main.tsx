@@ -1367,7 +1367,6 @@ const PLACEHOLDER_PAGE_IDS = new Set<PageId>([
   'workInsurance',
   'workBest',
   'workInbound',
-  'statisticsKp',
   'statisticsBest',
   'statisticsInsurance',
   'statisticsInbound',
@@ -1758,12 +1757,13 @@ const WORK_LEDGER_FIELD_OVERRIDES: Record<string, Partial<WorkerWorkListRecord>>
     paymentStatus: 'Y',
   },
   'extra-3': {
-    division: '업체',
-    company: '대성모터스',
-    plateNumber: '12어0423',
-    insuranceClaimAmount: 0,
+    date: '2026.04.15',
+    division: 'KP',
+    company: '롯데',
+    plateNumber: '222하9493',
+    insuranceClaimAmount: 449020,
     insurancePaidAmount: 0,
-    paymentAmount: 420000,
+    paymentAmount: 0,
     paymentStatus: 'N',
   },
 };
@@ -4337,6 +4337,12 @@ function App() {
         )}
         {activePage === 'ledger' && <LedgerWorkbookPage vehicleModelSuggestions={vehicleSuggestions.model} />}
         {activePage === 'cardSales' && <CardSalesPage settlements={cardSalesSettlements} />}
+        {activePage === 'statisticsKp' && (
+          <KpStatisticsPage
+            setWorkRecords={setWorkRecords}
+            workRecords={workRecords}
+          />
+        )}
         {activePage === 'estimates' && (
           <EstimatesPage
             onOpenRegistration={() => setIsEstimateRegistrationOpen(true)}
@@ -7196,13 +7202,17 @@ function PaymentListPage({
         className="payment-list-table-panel"
         title="전체 대금결제 리스트"
         action={
-          <button className="primary-button" onClick={() => setIsRegistrationOpen(true)} type="button">
-            <Plus size={16} />
-            수기 결제 추가
-          </button>
+          <div className="payment-list-panel-actions">
+            <span className="payment-list-header-count">
+              총 {filteredAggregates.length}건 · 합계 {filteredListAmount.toLocaleString('ko-KR')}원
+            </span>
+            <button className="primary-button" onClick={() => setIsRegistrationOpen(true)} type="button">
+              <Plus size={16} />
+              수기 결제 추가
+            </button>
+          </div>
         }
       >
-        <RecordToolbar count={`총 ${filteredAggregates.length}건 · 합계 ${filteredListAmount.toLocaleString('ko-KR')}원`} />
         <DataTable
           columns={['기준월', '결제월', '변동', '구분', '거래처', '은행', '계좌번호', '금액', '계산서', '결제여부', '상세']}
           rows={filteredAggregates.map((aggregate) => [
@@ -7699,6 +7709,511 @@ function SchedulePage({ linkedPayments }: { linkedPayments: PaymentScheduleItem[
   );
 }
 
+type KpVatMode = '별' | '포' | '-';
+type KpSettlementDraft = {
+  paymentDate: string;
+  glassAmount: string;
+  glassVat: KpVatMode;
+  tintPaymentAmount: string;
+  tintVat: KpVatMode;
+  extraAmount: string;
+  extraVat: KpVatMode;
+  deductionAmount: string;
+  waiverAmount: string;
+  tintingAmount: string;
+};
+type KpSettlementBaseRow = {
+  id: string;
+  workRecordId?: string;
+  partner: string;
+  workDate: string;
+  vehicle: string;
+  plateNumber: string;
+  source: '기본' | '작업';
+  draft: KpSettlementDraft;
+};
+type KpPeriodBasis = 'work' | 'payment';
+
+const KP_VAT_OPTIONS: KpVatMode[] = ['별', '포', '-'];
+const KP_SETTLEMENT_SEED_ROWS: KpSettlementBaseRow[] = [
+  {
+    id: 'kp-seed-001',
+    partner: '아마존',
+    workDate: '26.04.15',
+    vehicle: '팰리세이드',
+    plateNumber: '181호4828',
+    source: '기본',
+    draft: {
+      paymentDate: '2026-04-30',
+      glassAmount: '414,800',
+      glassVat: '별',
+      tintPaymentAmount: '',
+      tintVat: '-',
+      extraAmount: '20,000',
+      extraVat: '별',
+      deductionAmount: '',
+      waiverAmount: '',
+      tintingAmount: '60,000',
+    },
+  },
+  {
+    id: 'kp-seed-002',
+    partner: '롯데',
+    workDate: '26.04.15',
+    vehicle: 'KA4 카니발',
+    plateNumber: '222하9493',
+    source: '기본',
+    draft: {
+      paymentDate: '2026-04-30',
+      glassAmount: '268,200',
+      glassVat: '별',
+      tintPaymentAmount: '80,000',
+      tintVat: '별',
+      extraAmount: '60,000',
+      extraVat: '별',
+      deductionAmount: '',
+      waiverAmount: '',
+      tintingAmount: '',
+    },
+  },
+  {
+    id: 'kp-seed-003',
+    partner: '오릭스',
+    workDate: '26.04.15',
+    vehicle: 'KA4 카니발',
+    plateNumber: '156호3801',
+    source: '기본',
+    draft: {
+      paymentDate: '2026-04-30',
+      glassAmount: '295,020',
+      glassVat: '포',
+      tintPaymentAmount: '22,000',
+      tintVat: '포',
+      extraAmount: '',
+      extraVat: '-',
+      deductionAmount: '',
+      waiverAmount: '',
+      tintingAmount: '140,000',
+    },
+  },
+  {
+    id: 'kp-seed-004',
+    partner: '롯데',
+    workDate: '26.04.16',
+    vehicle: 'GN7그랜저',
+    plateNumber: '181허3164',
+    source: '기본',
+    draft: {
+      paymentDate: '2026-04-30',
+      glassAmount: '314,600',
+      glassVat: '별',
+      tintPaymentAmount: '80,000',
+      tintVat: '별',
+      extraAmount: '60,000',
+      extraVat: '별',
+      deductionAmount: '',
+      waiverAmount: '',
+      tintingAmount: '',
+    },
+  },
+];
+
+function createKpDraftFromWorkRecord(record: WorkerWorkListRecord): KpSettlementDraft {
+  const paidAmount = record.insurancePaidAmount > 0 ? record.insurancePaidAmount.toLocaleString('ko-KR') : '';
+  return {
+    paymentDate: normalizeWorkDate(record.date) || '2026-05-21',
+    glassAmount: paidAmount || (record.insuranceClaimAmount > 0 ? record.insuranceClaimAmount.toLocaleString('ko-KR') : ''),
+    glassVat: '포',
+    tintPaymentAmount: '',
+    tintVat: '-',
+    extraAmount: '',
+    extraVat: '-',
+    deductionAmount: '',
+    waiverAmount: '',
+    tintingAmount: '',
+  };
+}
+
+function buildKpBaseRows(workRecords: WorkerWorkListRecord[]): KpSettlementBaseRow[] {
+  const workRows = workRecords
+    .filter((record) => record.kind === '작업' && (record.division === 'KP' || record.company === 'KP'))
+    .map((record): KpSettlementBaseRow => ({
+      id: `kp-work-${record.id}`,
+      workRecordId: record.id,
+      partner: record.company === 'KP' ? record.customer : record.company,
+      workDate: cardSettlementDateFromWorkDate(record.date),
+      vehicle: record.vehicle,
+      plateNumber: record.plateNumber,
+      source: '작업',
+      draft: createKpDraftFromWorkRecord(record),
+    }));
+
+  return [...workRows, ...KP_SETTLEMENT_SEED_ROWS];
+}
+
+function applyKpVat(amount: number, mode: KpVatMode) {
+  if (amount <= 0) return 0;
+  if (mode === '별') return Math.round(amount * 1.1);
+  return amount;
+}
+
+function calculateKpPaidAmount(draft: KpSettlementDraft) {
+  const glassAmount = applyKpVat(parseMoneyText(draft.glassAmount), draft.glassVat);
+  const tintPaymentAmount = applyKpVat(parseMoneyText(draft.tintPaymentAmount), draft.tintVat);
+  const extraAmount = applyKpVat(parseMoneyText(draft.extraAmount), draft.extraVat);
+  const deductionAmount = parseMoneyText(draft.deductionAmount);
+  const waiverAmount = parseMoneyText(draft.waiverAmount);
+
+  return Math.max(0, glassAmount + tintPaymentAmount + extraAmount - deductionAmount - waiverAmount);
+}
+
+function formatKpDisplayDate(value: string) {
+  const normalized = normalizeWorkDate(value);
+  return normalized ? cardSettlementDateFromWorkDate(normalized) : value;
+}
+
+function kpCsvCell(value: string | number) {
+  const text = String(value).replace(/\r?\n/g, ' ');
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function downloadKpStatisticsCsv(rows: Array<KpSettlementBaseRow & { draft: KpSettlementDraft; paidAmount: number }>) {
+  const headers = ['업체(거래처)', '작업일', '지급일', '차종', '차량번호', '지급금액', '유리지급가', '유리VAT', '썬팅지급가', '썬팅VAT', '추가지급가', '추가VAT', '공제금액', '면책금', '썬팅'];
+  const body = rows.map((row) => [
+    row.partner,
+    row.workDate,
+    formatKpDisplayDate(row.draft.paymentDate),
+    row.vehicle,
+    row.plateNumber,
+    row.paidAmount,
+    parseMoneyText(row.draft.glassAmount),
+    row.draft.glassVat,
+    parseMoneyText(row.draft.tintPaymentAmount),
+    row.draft.tintVat,
+    parseMoneyText(row.draft.extraAmount),
+    row.draft.extraVat,
+    parseMoneyText(row.draft.deductionAmount),
+    parseMoneyText(row.draft.waiverAmount),
+    parseMoneyText(row.draft.tintingAmount),
+  ]);
+  const csv = [headers, ...body].map((row) => row.map(kpCsvCell).join(',')).join('\r\n');
+  const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `KP정산_${new Date().toISOString().slice(0, 10)}.csv`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function KpStatisticsPage({
+  setWorkRecords,
+  workRecords,
+}: {
+  setWorkRecords: Dispatch<SetStateAction<WorkerWorkListRecord[]>>;
+  workRecords: WorkerWorkListRecord[];
+}) {
+  const [periodBasis, setPeriodBasis] = useState<KpPeriodBasis>('work');
+  const [periodStart, setPeriodStart] = useState('2026-04-15');
+  const [periodEnd, setPeriodEnd] = useState('2026-04-30');
+  const [settledFilter, setSettledFilter] = useState<'all' | 'Y' | 'N'>('all');
+  const [partnerQuery, setPartnerQuery] = useState('');
+  const [keyword, setKeyword] = useState('');
+  const [partnerFilter, setPartnerFilter] = useState<Set<string>>(new Set());
+  const [isPartnerModalOpen, setIsPartnerModalOpen] = useState(false);
+  const [drafts, setDrafts] = useState<Record<string, KpSettlementDraft>>({});
+  const [selectedRow, setSelectedRow] = useState<(KpSettlementBaseRow & { draft: KpSettlementDraft; paidAmount: number }) | null>(null);
+  const baseRows = useMemo(() => buildKpBaseRows(workRecords), [workRecords]);
+  const rows = useMemo(
+    () =>
+      baseRows.map((row) => {
+        const draft = drafts[row.id] ?? row.draft;
+        return {
+          ...row,
+          draft,
+          paidAmount: calculateKpPaidAmount(draft),
+        };
+      }),
+    [baseRows, drafts],
+  );
+  const partnerSuggestions = useMemo(() => Array.from(new Set(baseRows.map((row) => row.partner))).sort((a, b) => a.localeCompare(b, 'ko-KR')), [baseRows]);
+  const filteredRows = useMemo(() => {
+    const normalizedPartnerQuery = partnerQuery.trim().toLowerCase();
+    const normalizedKeyword = keyword.trim().toLowerCase();
+    const start = normalizeWorkDate(periodStart);
+    const end = normalizeWorkDate(periodEnd);
+
+    return rows.filter((row) => {
+      const rowDate = normalizeWorkDate(periodBasis === 'payment' ? row.draft.paymentDate : row.workDate);
+      const matchesDate = (!start || !rowDate || rowDate >= start) && (!end || !rowDate || rowDate <= end);
+      const matchesSettled =
+        settledFilter === 'all' ||
+        (settledFilter === 'Y' && row.paidAmount > 0) ||
+        (settledFilter === 'N' && row.paidAmount <= 0);
+      const matchesPartnerSelection = partnerFilter.size === 0 || partnerFilter.has(row.partner);
+      const matchesPartnerQuery = normalizedPartnerQuery.length === 0 || row.partner.toLowerCase().includes(normalizedPartnerQuery);
+      const haystack = [
+        row.partner,
+        row.workDate,
+        row.vehicle,
+        row.plateNumber,
+        row.paidAmount,
+        row.draft.paymentDate,
+        row.draft.glassAmount,
+        row.draft.tintPaymentAmount,
+        row.draft.extraAmount,
+      ]
+        .join(' ')
+        .toLowerCase();
+      const matchesKeyword = normalizedKeyword.length === 0 || haystack.includes(normalizedKeyword);
+
+      return matchesDate && matchesSettled && matchesPartnerSelection && matchesPartnerQuery && matchesKeyword;
+    });
+  }, [keyword, partnerFilter, partnerQuery, periodBasis, periodEnd, periodStart, rows, settledFilter]);
+  const totalPaidAmount = filteredRows.reduce((sum, row) => sum + row.paidAmount, 0);
+  const reflectedCount = filteredRows.filter((row) => row.workRecordId && row.paidAmount > 0).length;
+
+  useEffect(() => {
+    const reflectedRows = rows.filter((row) => row.workRecordId && row.paidAmount > 0);
+    if (reflectedRows.length === 0) return;
+
+    setWorkRecords((current) => {
+      let changed = false;
+      const nextRecords = current.map((record) => {
+        const reflectedRow = reflectedRows.find((row) => row.workRecordId === record.id);
+        if (!reflectedRow || record.insurancePaidAmount === reflectedRow.paidAmount) return record;
+
+        changed = true;
+        return { ...record, insurancePaidAmount: reflectedRow.paidAmount };
+      });
+
+      return changed ? nextRecords : current;
+    });
+  }, [rows, setWorkRecords]);
+
+  function syncKpPaidAmountToWork(row: KpSettlementBaseRow, paidAmount: number) {
+    if (!row.workRecordId && !row.plateNumber) return;
+
+    setWorkRecords((current) =>
+      current.map((record) => {
+        const matches = row.workRecordId ? record.id === row.workRecordId : record.plateNumber === row.plateNumber;
+        return matches ? { ...record, insurancePaidAmount: paidAmount } : record;
+      }),
+    );
+  }
+
+  function updateDraft(row: KpSettlementBaseRow & { draft: KpSettlementDraft }, key: keyof KpSettlementDraft, value: string) {
+    const nextDraft = { ...row.draft, [key]: value };
+    const paidAmount = calculateKpPaidAmount(nextDraft);
+    setDrafts((current) => ({ ...current, [row.id]: nextDraft }));
+    syncKpPaidAmountToWork(row, paidAmount);
+  }
+
+  function selectQuickRange(days: number) {
+    const start = parseDateInput(periodStart) ?? new Date(2026, 4, 21);
+    setPeriodEnd(formatDateInputValue(addDays(start, days - 1)));
+  }
+
+  function resetFilters() {
+    setPeriodBasis('work');
+    setPeriodStart('2026-04-15');
+    setPeriodEnd('2026-04-30');
+    setSettledFilter('all');
+    setPartnerQuery('');
+    setKeyword('');
+    setPartnerFilter(new Set());
+  }
+
+  function togglePartner(partner: string) {
+    setPartnerFilter((current) => {
+      const next = new Set(current);
+      if (next.has(partner)) {
+        next.delete(partner);
+      } else {
+        next.add(partner);
+      }
+      return next;
+    });
+  }
+
+  const vatSelect = (row: KpSettlementBaseRow & { draft: KpSettlementDraft }, key: 'glassVat' | 'tintVat' | 'extraVat') => (
+    <select
+      className="kp-inline-select"
+      key={`${row.id}-${key}`}
+      onChange={(event) => updateDraft(row, key, event.target.value as KpVatMode)}
+      value={row.draft[key]}
+    >
+      {KP_VAT_OPTIONS.map((option) => (
+        <option key={option}>{option}</option>
+      ))}
+    </select>
+  );
+  const amountInput = (row: KpSettlementBaseRow & { draft: KpSettlementDraft }, key: keyof KpSettlementDraft, placeholder = '0') => (
+    <input
+      className="kp-inline-input"
+      inputMode="numeric"
+      key={`${row.id}-${key}`}
+      onChange={(event) => updateDraft(row, key, event.target.value)}
+      placeholder={placeholder}
+      value={row.draft[key]}
+    />
+  );
+
+  return (
+    <div className="page-stack kp-statistics-page">
+      <section className="kp-filter-panel" aria-label="KP 검색 조건">
+        <div className="kp-filter-row">
+          <strong>기간</strong>
+          <label>
+            <input checked={periodBasis === 'work'} onChange={() => setPeriodBasis('work')} type="radio" />
+            작업일
+          </label>
+          <label>
+            <input checked={periodBasis === 'payment'} onChange={() => setPeriodBasis('payment')} type="radio" />
+            지급일
+          </label>
+          <input onChange={(event) => setPeriodStart(event.target.value)} type="date" value={periodStart} />
+          <span>~</span>
+          <input onChange={(event) => setPeriodEnd(event.target.value)} type="date" value={periodEnd} />
+          <button type="button" onClick={() => setPeriodStart(formatDateInputValue(new Date(2026, 4, 20)))}>오늘</button>
+          <button type="button" onClick={() => selectQuickRange(3)}>3일</button>
+          <button className="active" type="button" onClick={() => selectQuickRange(7)}>1주</button>
+          <button type="button" onClick={() => selectQuickRange(14)}>2주</button>
+          <button type="button" onClick={() => setPeriodEnd(formatDateInputValue(addMonths(parseDateInput(periodStart) ?? new Date(), 1)))}>1개월</button>
+        </div>
+        <div className="kp-filter-row">
+          <strong>정산여부</strong>
+          <label>
+            <input checked={settledFilter === 'all'} onChange={() => setSettledFilter('all')} type="radio" />
+            전체
+          </label>
+          <label>
+            <input checked={settledFilter === 'Y'} onChange={() => setSettledFilter('Y')} type="radio" />
+            Y
+          </label>
+          <label>
+            <input checked={settledFilter === 'N'} onChange={() => setSettledFilter('N')} type="radio" />
+            N
+          </label>
+          <SearchInput
+            className="kp-partner-search"
+            label="업체"
+            listId="kp-partner-search-suggestions"
+            onChange={setPartnerQuery}
+            placeholder="업체명"
+            suggestions={partnerSuggestions}
+            value={partnerQuery}
+          />
+          <button className="secondary-button" onClick={() => setIsPartnerModalOpen(true)} type="button">
+            <Search size={15} />
+            업체 선택
+          </button>
+          <input
+            className="kp-keyword-input"
+            onChange={(event) => setKeyword(event.target.value)}
+            placeholder="차량번호/브랜드/모델명/부품번호"
+            value={keyword}
+          />
+          <button className="primary-button" type="button">검색</button>
+          <button className="secondary-button" onClick={resetFilters} type="button">초기화</button>
+        </div>
+      </section>
+
+      <Panel
+        className="kp-table-panel"
+        title="KP 정산 리스트"
+        action={
+          <button className="secondary-button" onClick={() => downloadKpStatisticsCsv(filteredRows)} type="button">
+            <Download size={16} />
+            EXCEL 추출
+          </button>
+        }
+      >
+        <RecordToolbar count={`총 ${filteredRows.length}건 · 지급합계 ${totalPaidAmount.toLocaleString('ko-KR')}원 · 작업 반영 ${reflectedCount}건`} />
+        <DataTable
+          columns={['업체(거래처)', '작업일', '지급일', '차종', '차량번호', '지급금액', '유리지급가', 'VAT', '썬팅지급가', 'VAT', '추가지급가', 'VAT', '공제금액', '면책금', '썬팅', '상세']}
+          rows={filteredRows.map((row) => [
+            row.partner,
+            row.workDate,
+            <input
+              className="kp-inline-input date"
+              key={`${row.id}-payment-date`}
+              onChange={(event) => updateDraft(row, 'paymentDate', event.target.value)}
+              type="date"
+              value={normalizeWorkDate(row.draft.paymentDate)}
+            />,
+            row.vehicle,
+            row.plateNumber,
+            <strong className="kp-paid-amount" key={`${row.id}-paid`}>{row.paidAmount.toLocaleString('ko-KR')}</strong>,
+            amountInput(row, 'glassAmount'),
+            vatSelect(row, 'glassVat'),
+            amountInput(row, 'tintPaymentAmount'),
+            vatSelect(row, 'tintVat'),
+            amountInput(row, 'extraAmount'),
+            vatSelect(row, 'extraVat'),
+            amountInput(row, 'deductionAmount'),
+            amountInput(row, 'waiverAmount'),
+            amountInput(row, 'tintingAmount'),
+            <button className="mini-button" key={`${row.id}-detail`} onClick={() => setSelectedRow(row)} type="button">상세</button>,
+          ])}
+        />
+      </Panel>
+
+      <section className="kp-help-grid">
+        <article>
+          <strong>계산식</strong>
+          <span>지급금액 = 유리지급가 + 썬팅지급가 + 추가지급가 - 공제금액 - 면책금</span>
+          <span>VAT가 '별'이면 해당 지급가에 1.1을 곱하고, '포'이면 입력값 그대로 계산합니다.</span>
+        </article>
+        <article>
+          <strong>작업 자동 반영</strong>
+          <span>작업 화면에서 생성된 KP 건은 차량번호/작업 ID로 연결됩니다.</span>
+          <span>지급금액이 계산되면 연결된 작업의 보험입금액에 즉시 반영됩니다.</span>
+        </article>
+      </section>
+
+      {isPartnerModalOpen ? (
+        <DetailDrawer
+          eyebrow="KP"
+          onClose={() => setIsPartnerModalOpen(false)}
+          title="업체 선택"
+          variant="modal"
+        >
+          <div className="kp-partner-modal">
+            {partnerSuggestions.map((partner) => (
+              <label key={partner}>
+                <input checked={partnerFilter.has(partner)} onChange={() => togglePartner(partner)} type="checkbox" />
+                <span>{partner}</span>
+              </label>
+            ))}
+            <div className="estimate-save-row">
+              <button className="secondary-button" onClick={() => setPartnerFilter(new Set())} type="button">전체 해제</button>
+              <button className="primary-button" onClick={() => setIsPartnerModalOpen(false)} type="button">적용</button>
+            </div>
+          </div>
+        </DetailDrawer>
+      ) : null}
+
+      {selectedRow ? (
+        <DetailDrawer
+          eyebrow="KP 상세"
+          onClose={() => setSelectedRow(null)}
+          title={`${selectedRow.partner} · ${selectedRow.plateNumber}`}
+          variant="modal"
+        >
+          <div className="detail-grid">
+            <Field label="작업일" value={selectedRow.workDate} />
+            <Field label="지급일" value={formatKpDisplayDate(selectedRow.draft.paymentDate)} />
+            <Field label="차종" value={selectedRow.vehicle} />
+            <Field label="지급금액" value={formatMoney(selectedRow.paidAmount)} />
+            <Field label="작업 반영" value={selectedRow.workRecordId ? '연결됨' : '수기/기본행'} />
+          </div>
+        </DetailDrawer>
+      ) : null}
+    </div>
+  );
+}
+
 type CardSalesSort = 'workAsc' | 'paymentAsc' | 'amountDesc' | 'cardAsc';
 type CardSalesOverride = {
   depositDate: string;
@@ -7719,7 +8234,12 @@ function normalizeCardSalesDate(value: string) {
 function defaultCardDepositDate(value: string) {
   const normalized = normalizeWorkDate(value);
   if (!normalized) return '';
-  return cardSettlementDateFromWorkDate(formatDateInputValue(addDays(parseDateInput(normalized) ?? new Date(), 2)));
+  const date = parseDateInput(normalized);
+  return date ? formatDateInputValue(addDays(date, 2)) : '';
+}
+
+function todayDateInputValue() {
+  return formatDateInputValue(new Date());
 }
 
 function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
@@ -7727,7 +8247,7 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
   const [sort, setSort] = useState<CardSalesSort>('workAsc');
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [overrides, setOverrides] = useState<Record<string, CardSalesOverride>>({});
-  const [bulkDepositDate, setBulkDepositDate] = useState('26.05.25');
+  const [bulkDepositDate, setBulkDepositDate] = useState(() => todayDateInputValue());
   const [bulkDepositAmount, setBulkDepositAmount] = useState('');
   const normalizedQuery = query.trim().toLowerCase();
   const rows = useMemo(
@@ -7748,7 +8268,9 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
           paymentDate: normalizeCardSalesDate(settlement.date),
           category: settlement.category ?? '작업',
           company: settlement.company ?? '-',
-          depositDate: override?.depositDate ?? settlement.depositDate ?? (settlement.paid > 0 ? defaultCardDepositDate(settlement.date) : ''),
+          depositDate: normalizeWorkDate(
+            override?.depositDate ?? settlement.depositDate ?? (settlement.paid > 0 ? defaultCardDepositDate(settlement.date) : ''),
+          ),
           depositAmountText,
           depositAmount,
           fee,
@@ -7819,6 +8341,14 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
         [field]: value,
       },
     }));
+  }
+
+  function setDefaultDepositDateIfEmpty(key: string, currentDepositDate: string, input: HTMLInputElement) {
+    if (currentDepositDate) return;
+
+    const today = todayDateInputValue();
+    input.value = today;
+    updateOverride(key, 'depositDate', today);
   }
 
   function toggleSelected(key: string) {
@@ -7897,10 +8427,6 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
           count={`총 ${filteredRows.length}건 · 선택 ${selectedRows.length}건`}
           filters={
             <div className="card-sales-toolbar">
-              <label className="card-select-all">
-                <input checked={allFilteredSelected} onChange={(event) => toggleAllFiltered(event.target.checked)} type="checkbox" />
-                <span>전체 선택</span>
-              </label>
               <select onChange={(event) => setSort(event.target.value as CardSalesSort)} value={sort}>
                 <option value="workAsc">작업일 빠른순</option>
                 <option value="paymentAsc">결제일 빠른순</option>
@@ -7921,14 +8447,20 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
           }
         />
         <div className="card-sales-bulk-row">
-          <div className="card-sales-selected-summary">
-            <span>일괄입금 대상 결제금액 {selectedAmount.toLocaleString('ko-KR')}원</span>
-            <span>입력된 입금금액 {selectedDepositAmount.toLocaleString('ko-KR')}원</span>
+          <div className="card-sales-selected-summary" aria-label="선택 일괄입금 요약">
+            <span>
+              <em>대상 결제금액</em>
+              <strong>{selectedAmount.toLocaleString('ko-KR')}원</strong>
+            </span>
+            <span>
+              <em>입력된 입금금액</em>
+              <strong>{selectedDepositAmount.toLocaleString('ko-KR')}원</strong>
+            </span>
           </div>
           <div className="card-bulk-controls">
             <label>
               <span>입금일자</span>
-              <input onChange={(event) => setBulkDepositDate(event.target.value)} placeholder="26.05.25" value={bulkDepositDate} />
+              <input onChange={(event) => setBulkDepositDate(event.target.value)} type="date" value={bulkDepositDate} />
             </label>
             <label>
               <span>일괄입금액</span>
@@ -7940,7 +8472,28 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
           </div>
         </div>
         <DataTable
-          columns={['선택', '작업일', '결제일', '구분', '업체', '차량번호', '결제금액', '카드사', '입금일자', '입금금액', '수수료', '%']}
+          columns={[
+            <input
+              aria-label="전체 선택"
+              checked={allFilteredSelected}
+              className="card-sales-select-all-checkbox"
+              disabled={filteredRows.length === 0}
+              key="card-sales-select-all"
+              onChange={(event) => toggleAllFiltered(event.target.checked)}
+              type="checkbox"
+            />,
+            '작업일',
+            '결제일',
+            '구분',
+            '업체',
+            '차량번호',
+            '결제금액',
+            '카드사',
+            '입금일자',
+            '입금금액',
+            '수수료',
+            '%',
+          ]}
           rows={filteredRows.map((row) => [
             <input
               aria-label={`${row.settlement.plate} 선택`}
@@ -7959,8 +8512,9 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
             <input
               className="card-sales-inline-input"
               key={`${row.key}-deposit-date`}
+              onFocus={(event) => setDefaultDepositDateIfEmpty(row.key, row.depositDate, event.currentTarget)}
               onChange={(event) => updateOverride(row.key, 'depositDate', event.target.value)}
-              placeholder="입금일자"
+              type="date"
               value={row.depositDate}
             />,
             <input
