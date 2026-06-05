@@ -260,6 +260,9 @@ type GeneralTask = {
 
 type CalendarEntry = { kind: 'work'; order: WorkOrder } | { kind: 'todo'; task: GeneralTask };
 type CalendarEntryRef = { kind: 'work' | 'todo'; index: number };
+type CalendarPanelMode = 'list' | 'detail';
+type WorkRuntimeStatus = WorkStatus | '완료대기';
+type WorkRuntimeNow = { dateKey: string; minutes: number };
 type WorkListFilter = 'all' | 'scheduled' | 'active' | 'done';
 type WorkerWorkView = 'calendar' | 'list';
 type WorkerWorkKind = '작업' | '일반';
@@ -1463,7 +1466,7 @@ const MONTH_ENTRY_DAYS = new Map<number, CalendarEntryRef[]>([
   [26, [workRef(1)]],
 ]);
 
-const YEAR_CALENDAR = [
+const YEAR_CALENDAR: Array<[string, string, string]> = [
   ['1월', '18건', '보험 7'],
   ['2월', '21건', '출장 8'],
   ['3월', '24건', '정비소 6'],
@@ -8830,6 +8833,11 @@ function WorkPage({
   const normalizedWorkListQuery = workListQuery.trim().toLowerCase();
   const currentCalendarDate = '2026.05.20';
   const currentCalendarDateKey = normalizeWorkDate(currentCalendarDate);
+  const currentCalendarMonthKey = workMonthKeyFromDate(currentCalendarDate);
+  const workRuntimeNow = useMemo(() => createWorkRuntimeNow(currentCalendarDateKey), [currentCalendarDateKey]);
+  const [calendarPanelMode, setCalendarPanelMode] = useState<CalendarPanelMode>('detail');
+  const [selectedCalendarDateKey, setSelectedCalendarDateKey] = useState(currentCalendarDateKey);
+  const [selectedCalendarMonthKey, setSelectedCalendarMonthKey] = useState(currentCalendarMonthKey);
   const calendarWorkRecords = useMemo(
     () => workRecords.filter((record) => record.kind === '작업' && record.entry.kind === 'work'),
     [workRecords],
@@ -8838,21 +8846,6 @@ function WorkPage({
     () => calendarWorkRecords.filter((record) => normalizeWorkDate(record.date) === currentCalendarDateKey),
     [calendarWorkRecords, currentCalendarDateKey],
   );
-  const currentDayEntries = useMemo(
-    () =>
-      [
-        ...currentDayWorkRecords.map((record) => record.entry),
-        ...generalTasks.map((task) => ({ kind: 'todo' as const, task })),
-      ].sort((a, b) => entryTime(a).localeCompare(entryTime(b))),
-    [currentDayWorkRecords],
-  );
-  const filteredTodayEntries = currentDayEntries.filter((entry) => {
-    if (entry.kind !== 'work') return false;
-    if (workListFilter === 'scheduled') return entry.order.status === '예정' || entry.order.status === '보류';
-    if (workListFilter === 'active') return entry.order.status === '진행중';
-    if (workListFilter === 'done') return entry.order.status === '완료';
-    return true;
-  });
   const weekCalendarCells = useMemo(
     () =>
       WEEK_CALENDAR.map((day) => {
@@ -9007,6 +9000,29 @@ function WorkPage({
     (workListPage - 1) * workPageSize,
     workListPage * workPageSize,
   );
+  const calendarUsesScopedList = calendarView === 'month' || calendarView === 'year';
+  const selectedCalendarRecord = selectedWorkRecord ?? (calendarUsesScopedList ? null : currentDayWorkRecords[0] ?? calendarWorkRecords[0] ?? null);
+  const calendarPanelListRecords = useMemo(() => {
+    const records =
+      calendarView === 'year'
+        ? calendarWorkRecords.filter((record) => workMonthKeyFromDate(record.date) === selectedCalendarMonthKey)
+        : calendarWorkRecords.filter((record) => normalizeWorkDate(record.date) === selectedCalendarDateKey);
+
+    return [...records].sort((left, right) => {
+      const dateCompare = normalizeWorkDate(left.date).localeCompare(normalizeWorkDate(right.date));
+      return dateCompare !== 0 ? dateCompare : left.time.localeCompare(right.time);
+    });
+  }, [calendarView, calendarWorkRecords, selectedCalendarDateKey, selectedCalendarMonthKey]);
+  const calendarPanelListTitle =
+    calendarView === 'year'
+      ? `${formatWorkMonthScopeLabel(selectedCalendarMonthKey)} 작업 목록`
+      : `${formatWorkDateScopeLabel(selectedCalendarDateKey)} 작업 목록`;
+  const showCalendarPanelList = calendarUsesScopedList && calendarPanelMode === 'list';
+  const selectedCalendarRuntimeStatus = selectedCalendarRecord ? resolveWorkRuntimeStatus(selectedCalendarRecord, workRuntimeNow) : null;
+  const completionPendingRecords = useMemo(
+    () => currentDayWorkRecords.filter((record) => resolveWorkRuntimeStatus(record, workRuntimeNow) === '완료대기'),
+    [currentDayWorkRecords, workRuntimeNow],
+  );
 
   useEffect(() => {
     if (workListPage <= workListTotalPages) return;
@@ -9101,6 +9117,42 @@ function WorkPage({
     setWorkListPage(1);
   }
 
+  function handleCalendarViewChange(nextView: CalendarView) {
+    setCalendarView(nextView);
+    if (nextView === 'month') {
+      setCalendarPanelMode('list');
+      setSelectedCalendarDateKey(currentCalendarDateKey);
+      closeWorkRecord();
+      return;
+    }
+
+    if (nextView === 'year') {
+      setCalendarPanelMode('list');
+      setSelectedCalendarMonthKey(currentCalendarMonthKey);
+      closeWorkRecord();
+      return;
+    }
+
+    setCalendarPanelMode('detail');
+    closeWorkRecord();
+  }
+
+  function selectCalendarDate(fullDate: string) {
+    const nextDateKey = normalizeWorkDate(fullDate);
+    if (!nextDateKey) return;
+
+    setSelectedCalendarDateKey(nextDateKey);
+    setSelectedCalendarMonthKey(workMonthKeyFromDate(fullDate));
+    setCalendarPanelMode('list');
+    closeWorkRecord();
+  }
+
+  function selectCalendarMonth(monthLabel: string) {
+    setSelectedCalendarMonthKey(workMonthKeyFromLabel(monthLabel));
+    setCalendarPanelMode('list');
+    closeWorkRecord();
+  }
+
   function openWorkRecord(record: WorkerWorkListRecord) {
     setSelectedWorkRecordId(record.id);
     updateUrlSearchParams({
@@ -9112,11 +9164,14 @@ function WorkPage({
     });
   }
 
-  function openCalendarEntry(entry: CalendarEntry) {
-    const record = findRecordForEntry(workRecords, entry);
-    if (record) {
-      openWorkRecord(record);
-    }
+  function openCalendarWorkRecord(record: WorkerWorkListRecord) {
+    setCalendarPanelMode('detail');
+    openWorkRecord(record);
+  }
+
+  function returnToCalendarPanelList() {
+    setCalendarPanelMode('list');
+    closeWorkRecord();
   }
 
   function closeWorkRecord() {
@@ -9404,7 +9459,7 @@ function WorkPage({
                   aria-selected={calendarView === view.id}
                   className={calendarView === view.id ? 'selected' : ''}
                   key={view.id}
-                  onClick={() => setCalendarView(view.id)}
+                  onClick={() => handleCalendarViewChange(view.id)}
                   role="tab"
                   type="button"
                 >
@@ -9449,7 +9504,9 @@ function WorkPage({
                           key={record.id}
                           onDragEnd={() => setDraggedWorkRecordId(null)}
                           onDragStart={(event) => handleWorkScheduleDragStart(record, event)}
-                          onSelect={() => openWorkRecord(record)}
+                          onSelect={() => openCalendarWorkRecord(record)}
+                          selected={selectedCalendarRecord?.id === record.id}
+                          status={resolveWorkRuntimeStatus(record, workRuntimeNow)}
                         />
                       ))}
                     </div>
@@ -9488,7 +9545,9 @@ function WorkPage({
                         key={`${day.date}-${record.id}`}
                         onDragEnd={() => setDraggedWorkRecordId(null)}
                         onDragStart={(event) => handleWorkScheduleDragStart(record, event)}
-                        onSelect={() => openWorkRecord(record)}
+                        onSelect={() => openCalendarWorkRecord(record)}
+                        selected={selectedCalendarRecord?.id === record.id}
+                        status={resolveWorkRuntimeStatus(record, workRuntimeNow)}
                       />
                     ))
                   ) : (
@@ -9509,8 +9568,14 @@ function WorkPage({
               <article
                 className={`calendar-month-cell calendar-drop-target ${cell.date === '20' ? 'today' : ''} ${
                   !cell.fullDate ? 'empty' : ''
-                } ${draggedWorkRecordId && cell.fullDate ? 'drag-ready' : ''}`}
+                } ${cell.fullDate && normalizeWorkDate(cell.fullDate) === selectedCalendarDateKey ? 'selected' : ''} ${
+                  draggedWorkRecordId && cell.fullDate ? 'drag-ready' : ''
+                }`}
                 key={cell.key}
+                onClick={() => {
+                  if (!cell.fullDate) return;
+                  selectCalendarDate(cell.fullDate);
+                }}
                 onDragOver={(event) => {
                   if (!draggedWorkRecordId || !cell.fullDate) return;
                   event.preventDefault();
@@ -9531,7 +9596,8 @@ function WorkPage({
                     key={`${cell.key}-${record.id}`}
                     onDragEnd={() => setDraggedWorkRecordId(null)}
                     onDragStart={(event) => handleWorkScheduleDragStart(record, event)}
-                    onSelect={() => openWorkRecord(record)}
+                    onSelect={() => openCalendarWorkRecord(record)}
+                    selected={selectedCalendarRecord?.id === record.id}
                   />
                 ))}
                 {cell.records.length > 2 ? (
@@ -9544,84 +9610,78 @@ function WorkPage({
 
         {calendarView === 'year' ? (
           <div className="calendar-year-view">
-            {YEAR_CALENDAR.map(([month, count, detail]) => (
-              <article className={month === '5월' ? 'selected' : ''} key={month}>
+            {YEAR_CALENDAR.map(([month, count, detail]) => {
+              const monthKey = workMonthKeyFromLabel(month);
+
+              return (
+              <button className={selectedCalendarMonthKey === monthKey ? 'selected' : ''} key={month} onClick={() => selectCalendarMonth(month)} type="button">
                 <strong>{month}</strong>
                 <span>{count}</span>
                 <small>{detail}</small>
-              </article>
-            ))}
+              </button>
+              );
+            })}
           </div>
         ) : null}
         </div>
       </section>
 
       <Panel
-        className="work-list-panel"
-        title="오늘 작업"
         action={
-          <div className="work-list-filter">
-            <button
-              className={workListFilter === 'all' ? 'selected' : ''}
-              onClick={() => setWorkListFilter('all')}
-              type="button"
-            >
-              전체
-            </button>
-            <button
-              className={workListFilter === 'scheduled' ? 'selected' : ''}
-              onClick={() => setWorkListFilter('scheduled')}
-              type="button"
-            >
-              예정
-            </button>
-            <button
-              className={workListFilter === 'active' ? 'selected' : ''}
-              onClick={() => setWorkListFilter('active')}
-              type="button"
-            >
-              진행
-            </button>
-          </div>
+          showCalendarPanelList ? (
+            <span className="work-panel-count">{calendarPanelListRecords.length}건</span>
+          ) : selectedCalendarRecord ? (
+            <div className={`work-detail-panel-actions ${calendarUsesScopedList ? 'with-back' : ''}`}>
+              {calendarUsesScopedList ? (
+                <button className="text-button work-detail-back-button" onClick={returnToCalendarPanelList} type="button">
+                  <ChevronLeft size={16} />
+                  목록
+                </button>
+              ) : null}
+              {selectedCalendarRuntimeStatus ? (
+                <StatusPill label={selectedCalendarRuntimeStatus} tone={statusTone(selectedCalendarRuntimeStatus)} />
+              ) : null}
+            </div>
+          ) : undefined
         }
+        className="work-detail-panel"
+        title={showCalendarPanelList ? calendarPanelListTitle : '작업 상세 내용'}
       >
-        <div className="daily-work-list">
-          {filteredTodayEntries.map((entry) => (
-            <TodayListItem
-              entry={entry}
-              key={`${entry.kind}-${entryTime(entry)}-${entryTitle(entry)}`}
-              onComplete={() => entry.kind === 'work' ? setCompletionOrder(entry.order) : openCalendarEntry(entry)}
-              onOpen={() => openCalendarEntry(entry)}
-            />
-          ))}
-        </div>
+        {showCalendarPanelList ? (
+          <CalendarWorkRecordList
+            onOpen={openCalendarWorkRecord}
+            records={calendarPanelListRecords}
+            runtimeNow={workRuntimeNow}
+            scopeLabel={calendarPanelListTitle}
+          />
+        ) : selectedCalendarRecord ? (
+          <WorkRecordInlineDetailPanel
+            onComplete={(order) => setCompletionOrder(order)}
+            record={selectedCalendarRecord}
+          />
+        ) : (
+          <div className="empty-state">
+            <strong>작업 일정이 없습니다.</strong>
+            <span>선택 가능한 작업이 등록되면 여기에 표시됩니다.</span>
+          </div>
+        )}
       </Panel>
       </section>
 
       <section className="workbench-grid">
-        <Panel className="span-7" title="선택한 작업 처리">
-          <div className="completion-grid">
-            <div className="step-card active">
-              <CheckCircle2 size={18} />
-              <strong>작업 정보</strong>
-              <span>카니발 도어유리 교체</span>
-            </div>
-            <div className="step-card">
-              <Camera size={18} />
-              <strong>사진 올리기</strong>
-              <span>작업 후 2장</span>
-            </div>
-            <div className="step-card">
-              <Package size={18} />
-              <strong>재고 차감</strong>
-              <span>GLS-KA-2041 1개</span>
-            </div>
-            <div className="step-card">
-              <ReceiptText size={18} />
-              <strong>전표 생성</strong>
-              <span>360,000원</span>
-            </div>
-          </div>
+        <Panel
+          action={<span className={`work-panel-count ${completionPendingRecords.length > 0 ? 'danger' : ''}`}>{completionPendingRecords.length}건</span>}
+          className="span-7"
+          title="선택한 작업 처리"
+        >
+          <WorkCompletionPendingList
+            onComplete={(record) => {
+              if (record.entry.kind !== 'work') return;
+              setCompletionOrder(record.entry.order);
+            }}
+            onOpen={openCalendarWorkRecord}
+            records={completionPendingRecords}
+          />
         </Panel>
 
         <Panel className="span-5" title="현장 메모">
@@ -9634,19 +9694,6 @@ function WorkPage({
           </div>
         </Panel>
       </section>
-
-      {selectedWorkRecord ? (
-        <WorkRecordDetailDrawer
-          onClose={closeWorkRecord}
-          onComplete={(order) => {
-            closeWorkRecord();
-            setCompletionOrder(order);
-          }}
-          onSave={saveWorkRecord}
-          record={selectedWorkRecord}
-          vehicleModelSuggestions={vehicleModelSuggestions}
-        />
-      ) : null}
 
       {completionOrder ? (
         <WorkCompletionDrawer order={completionOrder} onClose={() => setCompletionOrder(null)} />
@@ -9720,61 +9767,172 @@ function CompletedWorkScheduleMoveDialog({
   );
 }
 
-function TodayListItem({
-  entry,
+function CalendarWorkRecordList({
+  records,
+  runtimeNow,
+  scopeLabel,
   onOpen,
-  onComplete,
 }: {
-  entry: CalendarEntry;
-  onOpen: () => void;
-  onComplete: () => void;
+  records: WorkerWorkListRecord[];
+  runtimeNow: WorkRuntimeNow;
+  scopeLabel: string;
+  onOpen: (record: WorkerWorkListRecord) => void;
 }) {
-  if (entry.kind === 'todo') {
-    const task = entry.task;
-
+  if (records.length === 0) {
     return (
-      <article className="daily-work-item todo">
-        <time>{task.time}</time>
-        <div>
-          <div className="row-title">
-            <strong>{task.title}</strong>
-            <StatusPill label={task.status} tone={statusTone(task.status)} />
-          </div>
-          <p>{task.detail}</p>
-          <div className="meta-line">
-            <span>{task.category}</span>
-            <span>{task.owner}</span>
-        </div>
-        <div className="work-item-actions">
-          <button onClick={onOpen} type="button">메모</button>
-          <button onClick={onComplete} type="button">완료</button>
-        </div>
-        </div>
-      </article>
+      <div className="empty-state">
+        <strong>작업 일정이 없습니다.</strong>
+        <span>{scopeLabel}에 등록된 작업이 없습니다.</span>
+      </div>
     );
   }
 
-  const { order } = entry;
+  return (
+    <div className="calendar-panel-work-list">
+      {records.map((record) => {
+        const runtimeStatus = resolveWorkRuntimeStatus(record, runtimeNow);
+
+        return (
+          <button className="calendar-panel-work-item" key={record.id} onClick={() => onOpen(record)} type="button">
+            <time>{formatWorkDateTimeLabel(record)}</time>
+            <div>
+              <div className="row-title">
+                <strong>{record.title}</strong>
+                <StatusPill label={runtimeStatus} tone={statusTone(runtimeStatus)} />
+              </div>
+              <p>{record.customer} · {record.vehicle}</p>
+              <div className="meta-line">
+                <span>{record.owner}</span>
+                <span>{record.stock}</span>
+              </div>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function WorkCompletionPendingList({
+  records,
+  onOpen,
+  onComplete,
+}: {
+  records: WorkerWorkListRecord[];
+  onOpen: (record: WorkerWorkListRecord) => void;
+  onComplete: (record: WorkerWorkListRecord) => void;
+}) {
+  if (records.length === 0) {
+    return (
+      <div className="empty-state compact">
+        <strong>완료대기 작업이 없습니다.</strong>
+        <span>작업 완료 후 정산과 부품 차감으로 이어집니다.</span>
+      </div>
+    );
+  }
 
   return (
-    <article className="daily-work-item">
-      <time>{order.time}</time>
-      <div>
-        <div className="row-title">
-          <strong>{order.repair}</strong>
-          <StatusPill label={order.status} tone={statusTone(order.status)} />
-        </div>
-        <p>{order.customer} · {order.vehicle}</p>
-        <div className="meta-line">
-          <span>{order.visit}</span>
-          <span>{order.technician}</span>
-          <span>{order.stock}</span>
-        </div>
-        <div className="work-item-actions">
-          <button onClick={onOpen} type="button">상세</button>
-          <button onClick={onComplete} type="button">완료</button>
+    <div className="completion-pending-list">
+      {records.map((record) => (
+        <article className="completion-pending-item" key={record.id}>
+          <time>{formatWorkDateTimeLabel(record)}</time>
+          <div>
+            <div className="row-title">
+              <strong>{record.title}</strong>
+              <StatusPill label="완료대기" tone="red" />
+            </div>
+            <p>{record.customer} · {record.vehicle} · {record.stock}</p>
+            <div className="work-item-actions">
+              <button onClick={() => onOpen(record)} type="button">상세</button>
+              <button onClick={() => onComplete(record)} type="button">완료 처리</button>
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function WorkRecordInlineDetailPanel({
+  record,
+  onComplete,
+}: {
+  record: WorkerWorkListRecord;
+  onComplete: (order: WorkOrder) => void;
+}) {
+  const workEntry = record.kind === '작업' && record.entry.kind === 'work' ? record.entry : null;
+  const isWorkRecord = workEntry !== null;
+  const visit = workEntry?.order.visit ?? '방문';
+  const { address } = parseWorkLocation(record.location, visit);
+  const detailTitle = isWorkRecord ? record.title : record.customer;
+  const detailMemo = isWorkRecord ? '작업 전 고객 연락 및 부품 확인' : record.title;
+  const scheduleLabel = isWorkRecord ? `${record.date} ${visit} ${record.time}` : `${record.date} ${record.time}`;
+
+  return (
+    <article className="work-inline-detail">
+      <div className="work-inline-heading">
+        <div>
+          <span>{isWorkRecord ? '선택 작업' : '선택 일정'}</span>
+          <strong>{detailTitle}</strong>
         </div>
       </div>
+
+      <div className="work-inline-summary">
+        <InfoItem icon={Clock3} label="일시" value={scheduleLabel} />
+        <InfoItem icon={UserRound} label={isWorkRecord ? '고객' : '제목'} value={record.customer} />
+        <InfoItem icon={Car} label="차량" value={record.vehicle} />
+        <InfoItem icon={Wrench} label="작업자" value={record.owner} />
+        <InfoItem icon={MapPin} label={isWorkRecord ? '주소/위치' : '분류'} value={address} />
+        <InfoItem icon={Package} label="사용 부품" value={record.stock} />
+      </div>
+
+      <div className="work-inline-section">
+        <span>{isWorkRecord ? '작업내용' : '상세 내용'}</span>
+        <p>{record.title}</p>
+      </div>
+
+      <div className="work-inline-section">
+        <span>메모</span>
+        <p>{detailMemo}</p>
+      </div>
+
+      {workEntry ? (
+        <div className="work-inline-ledger">
+          <div>
+            <span>보험청구액</span>
+            <strong>{formatWorkLedgerAmount(record.insuranceClaimAmount)}</strong>
+          </div>
+          <div>
+            <span>보험입금액</span>
+            <strong>{formatWorkLedgerAmount(record.insurancePaidAmount)}</strong>
+          </div>
+          <div>
+            <span>결제금액</span>
+            <strong>{formatWorkLedgerAmount(record.paymentAmount)}</strong>
+          </div>
+          <div>
+            <span>결제여부</span>
+            <strong className={record.paymentStatus === 'Y' ? 'payment-status-y' : ''}>{record.paymentStatus}</strong>
+          </div>
+        </div>
+      ) : null}
+
+      {workEntry ? (
+        <div className="work-inline-actions">
+          <button className="primary-button" disabled={record.status === '완료'} onClick={() => onComplete(workEntry.order)} type="button">
+            <CheckCircle2 size={16} />
+            작업 완료 처리
+          </button>
+          <button className="secondary-button" type="button">
+            <ReceiptText size={16} />
+            연결 견적
+          </button>
+          <button className="secondary-button" type="button">
+            <Camera size={16} />
+            자료 첨부
+          </button>
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -9799,6 +9957,66 @@ function normalizeWorkDate(value: string) {
 
   const year = rawYear.length === 2 ? `20${rawYear}` : rawYear;
   return `${year.padStart(4, '0')}-${rawMonth.padStart(2, '0')}-${rawDay.padStart(2, '0')}`;
+}
+
+const WORK_COMPLETION_WAIT_MINUTES = 90;
+
+function createWorkRuntimeNow(dateKey: string): WorkRuntimeNow {
+  const now = new Date();
+  return {
+    dateKey,
+    minutes: now.getHours() * 60 + now.getMinutes(),
+  };
+}
+
+function workTimeToMinutes(value: string) {
+  const [rawHour, rawMinute] = value.split(':');
+  const hour = Number(rawHour);
+  const minute = Number(rawMinute);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return 0;
+  return hour * 60 + minute;
+}
+
+function resolveWorkRuntimeStatus(record: WorkerWorkListRecord, runtimeNow: WorkRuntimeNow): WorkRuntimeStatus {
+  if (record.status === '완료' || record.status === '보류') return record.status;
+
+  const recordDateKey = normalizeWorkDate(record.date);
+  if (!recordDateKey) return record.status;
+  if (recordDateKey > runtimeNow.dateKey) return '예정';
+  if (recordDateKey < runtimeNow.dateKey) return '완료대기';
+
+  const startMinutes = workTimeToMinutes(record.time);
+  if (runtimeNow.minutes < startMinutes) return '예정';
+  if (runtimeNow.minutes >= startMinutes + WORK_COMPLETION_WAIT_MINUTES) return '완료대기';
+  return '진행중';
+}
+
+function workMonthKeyFromDate(value: string) {
+  return normalizeWorkDate(value).slice(0, 7) || '2026-05';
+}
+
+function workMonthKeyFromLabel(label: string) {
+  const month = Number(label.replace(/[^\d]/g, ''));
+  return `2026-${String(month || 5).padStart(2, '0')}`;
+}
+
+function formatWorkDateScopeLabel(dateKey: string) {
+  const [, rawMonth, rawDay] = dateKey.split('-');
+  const month = Number(rawMonth);
+  const day = Number(rawDay);
+  if (!month || !day) return '선택 날짜';
+  return `${month}월 ${day}일`;
+}
+
+function formatWorkMonthScopeLabel(monthKey: string) {
+  const [, rawMonth] = monthKey.split('-');
+  const month = Number(rawMonth);
+  return month ? `${month}월` : '선택 월';
+}
+
+function formatWorkDateTimeLabel(record: WorkerWorkListRecord) {
+  const dateKey = normalizeWorkDate(record.date);
+  return dateKey ? `${formatWorkDateScopeLabel(dateKey)} ${record.time}` : `${record.date} ${record.time}`;
 }
 
 function isAutoLinkedWorkRecord(record: WorkerWorkListRecord) {
@@ -10294,6 +10512,8 @@ function CalendarJob({
   onDragEnd,
   onDragStart,
   onSelect,
+  selected = false,
+  status,
 }: {
   entry: CalendarEntry;
   compact?: boolean;
@@ -10303,7 +10523,11 @@ function CalendarJob({
   onDragEnd?: () => void;
   onDragStart?: (event: DragEvent<HTMLButtonElement>) => void;
   onSelect?: () => void;
+  selected?: boolean;
+  status?: WorkRuntimeStatus;
 }) {
+  const displayStatus = status ?? entryStatus(entry);
+  const tone = statusTone(displayStatus);
   const dragProps = {
     draggable,
     onDragEnd,
@@ -10316,14 +10540,17 @@ function CalendarJob({
 
     return (
       <button
-        className={`calendar-job todo ${compact ? 'compact' : ''} ${mini ? 'mini' : ''} ${isDragging ? 'dragging' : ''}`}
-        onClick={onSelect}
+        className={`calendar-job todo tone-${tone} ${compact ? 'compact' : ''} ${mini ? 'mini' : ''} ${selected ? 'selected' : ''} ${isDragging ? 'dragging' : ''}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          onSelect?.();
+        }}
         type="button"
         {...dragProps}
       >
         <div className="row-title">
           <strong>{task.title}</strong>
-          {!mini ? <StatusPill label={task.status} tone={statusTone(task.status)} /> : null}
+          {!mini ? <StatusPill label={displayStatus} tone={tone} /> : null}
         </div>
         {!mini ? <p>{task.detail}</p> : null}
         <div className="meta-line">
@@ -10339,14 +10566,17 @@ function CalendarJob({
 
   return (
     <button
-      className={`calendar-job ${compact ? 'compact' : ''} ${mini ? 'mini' : ''} ${isDragging ? 'dragging' : ''}`}
-      onClick={onSelect}
+      className={`calendar-job tone-${tone} ${compact ? 'compact' : ''} ${mini ? 'mini' : ''} ${selected ? 'selected' : ''} ${isDragging ? 'dragging' : ''}`}
+      onClick={(event) => {
+        event.stopPropagation();
+        onSelect?.();
+      }}
       type="button"
       {...dragProps}
     >
       <div className="row-title">
         <strong>{mini ? order.repair : order.customer}</strong>
-        {!mini ? <StatusPill label={order.status} tone={statusTone(order.status)} /> : null}
+        {!mini ? <StatusPill label={displayStatus} tone={tone} /> : null}
       </div>
       {!mini ? <p>{order.repair}</p> : null}
       <div className="meta-line">
@@ -10435,23 +10665,6 @@ function applyWorkLedgerOverride(record: WorkerWorkListRecord): WorkerWorkListRe
     ...record,
     ...(WORK_LEDGER_FIELD_OVERRIDES[record.id] ?? {}),
   };
-}
-
-function findRecordForEntry(records: WorkerWorkListRecord[], entry: CalendarEntry) {
-  return records.find((record) => {
-    if (record.entry === entry) return true;
-    if (record.entry.kind !== entry.kind) return false;
-
-    if (entry.kind === 'work' && record.entry.kind === 'work') {
-      return record.entry.order === entry.order || (record.customer === entry.order.customer && record.time === entry.order.time);
-    }
-
-    if (entry.kind === 'todo' && record.entry.kind === 'todo') {
-      return record.entry.task === entry.task || (record.customer === entry.task.title && record.time === entry.task.time);
-    }
-
-    return false;
-  });
 }
 
 function workRecordToDraft(record: WorkerWorkListRecord): WorkRecordDraft {
@@ -13802,6 +14015,8 @@ function statusTone(status: string): Tone {
     입금완료: 'green',
     정상: 'green',
     부족: 'red',
+    미발행: 'red',
+    완료대기: 'red',
     확인필요: 'orange',
   };
 

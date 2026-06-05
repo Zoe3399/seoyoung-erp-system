@@ -1876,7 +1876,8 @@ tbody tr:hover {
 }
 
 .work-calendar-panel,
-.work-list-panel {
+.work-list-panel,
+.work-detail-panel {
   min-height: 100%;
 }
 
@@ -1910,6 +1911,42 @@ tbody tr:hover {
   background: #ffffff;
   color: #191f28;
   box-shadow: 0 1px 2px rgb(25 31 40 / 12%);
+}
+
+.work-panel-count {
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #f2f4f6;
+  color: #4e5968;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.work-panel-count.danger {
+  background: #fff1f2;
+  color: #e03137;
+}
+
+.work-detail-panel .panel-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.work-detail-panel-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.work-detail-panel-actions.with-back {
+  justify-content: space-between;
+  width: 100%;
 }
 
 .daily-work-list {
@@ -1950,6 +1987,175 @@ tbody tr:hover {
   margin-top: 4px;
   color: #4e5968;
   font-size: 13px;
+}
+
+.calendar-panel-work-list {
+  display: grid;
+  gap: 10px;
+}
+
+.calendar-panel-work-item {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #edf0f2;
+  border-radius: 8px;
+  background: #ffffff;
+  text-align: left;
+}
+
+.calendar-panel-work-item:hover {
+  border-color: #c9dcff;
+  background: #fbfdff;
+}
+
+.calendar-panel-work-item time {
+  color: #3182f6;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.calendar-panel-work-item p {
+  margin-top: 4px;
+  color: #4e5968;
+  font-size: 13px;
+}
+
+.completion-pending-list {
+  display: grid;
+  gap: 10px;
+}
+
+.completion-pending-item {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #ffd4d8;
+  border-left: 4px solid #f04452;
+  border-radius: 8px;
+  background: #fffafa;
+}
+
+.completion-pending-item time {
+  color: #e03137;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.completion-pending-item p {
+  margin-top: 4px;
+  color: #4e5968;
+  font-size: 13px;
+}
+
+.work-inline-detail {
+  display: grid;
+  gap: 14px;
+}
+
+.work-detail-back-button {
+  min-height: 30px;
+  padding: 0 8px;
+  color: #4e5968;
+  font-size: 13px;
+}
+
+.work-inline-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.work-inline-heading > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.work-inline-heading span,
+.work-inline-section span,
+.work-inline-ledger span {
+  color: #8b95a1;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.work-inline-heading strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #191f28;
+  font-size: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.work-inline-summary {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.work-inline-summary .info-item {
+  grid-template-columns: 18px minmax(64px, 0.55fr) minmax(0, 1fr);
+}
+
+.work-inline-section {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #edf0f2;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.work-inline-section p {
+  color: #333d4b;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.work-inline-ledger {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.work-inline-ledger div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f7f8fa;
+}
+
+.work-inline-ledger strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #191f28;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.work-inline-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.work-inline-actions .primary-button,
+.work-inline-actions .secondary-button {
+  width: 100%;
 }
 
 .sortable-work-table {
@@ -3859,6 +4065,10 @@ tbody tr:hover {
   background: #ffffff;
 }
 
+.calendar-month-cell:not(.empty) {
+  cursor: pointer;
+}
+
 .calendar-month-cell:nth-child(7n) {
   border-right: 0;
 }
@@ -3871,6 +4081,12 @@ tbody tr:hover {
 
 .calendar-month-cell.today {
   background: #f6faff;
+}
+
+.calendar-month-cell.selected {
+  outline: 2px solid #1b64da;
+  outline-offset: -2px;
+  background: #eef6ff;
 }
 
 .calendar-month-cell.empty {
@@ -3899,7 +4115,7 @@ tbody tr:hover {
   gap: 10px;
 }
 
-.calendar-year-view article {
+.calendar-year-view button {
   display: grid;
   gap: 6px;
   min-height: 112px;
@@ -3907,9 +4123,16 @@ tbody tr:hover {
   border: 1px solid #e5e8eb;
   border-radius: 8px;
   background: #ffffff;
+  color: inherit;
+  text-align: left;
 }
 
-.calendar-year-view article.selected {
+.calendar-year-view button:hover {
+  border-color: #c9dcff;
+  background: #fbfdff;
+}
+
+.calendar-year-view button.selected {
   border-color: #3182f6;
   background: #eef6ff;
 }
@@ -3935,16 +4158,51 @@ tbody tr:hover {
   width: 100%;
   min-width: 0;
   padding: 12px;
-  border: 0;
-  border-left: 3px solid #3182f6;
+  border: 1px solid #edf0f2;
+  border-left: 4px solid #3182f6;
   border-radius: 8px;
-  background: #f6faff;
+  background: #ffffff;
   text-align: left;
   cursor: pointer;
 }
 
 .calendar-job:hover {
-  background: #eef6ff;
+  border-color: #c9dcff;
+  background: #fbfdff;
+}
+
+.calendar-job.selected {
+  border-color: #8b95a1;
+  background: #ffffff;
+  box-shadow: 0 4px 10px rgb(25 31 40 / 8%);
+}
+
+.calendar-job.tone-blue {
+  border-left-color: #3182f6;
+}
+
+.calendar-job.tone-orange {
+  border-left-color: #ff8a22;
+}
+
+.calendar-job.tone-green {
+  border-left-color: #00a661;
+}
+
+.calendar-job.tone-red {
+  border-left-color: #f04452;
+}
+
+.calendar-job.tone-gray {
+  border-left-color: #8b95a1;
+}
+
+.calendar-job.tone-purple {
+  border-left-color: #7c5cff;
+}
+
+.calendar-job.tone-yellow {
+  border-left-color: #f2b600;
 }
 
 .calendar-job[draggable='true'] {
@@ -3963,7 +4221,6 @@ tbody tr:hover {
 
 .calendar-job.todo {
   border-left-color: #00a661;
-  background: #f6fdf9;
 }
 
 .calendar-job.compact {
@@ -4277,6 +4534,10 @@ tbody tr:hover {
 
 .empty-state strong {
   color: #333d4b;
+}
+
+.empty-state.compact {
+  min-height: 120px;
 }
 
 .customer-list-item {
