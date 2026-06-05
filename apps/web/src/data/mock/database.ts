@@ -42,6 +42,15 @@ export type MockPartnerRow = {
 export type MockInventoryItem = {
   partNo: string;
   name: string;
+  spec: string;
+  previousQty: string;
+  inboundQty: string;
+  outboundQty: string;
+  stockQty: string;
+  inboundPrice: string;
+  outboundPrice: string;
+  exchangePrice: string;
+  note: string;
   usageScope: MockProductUsageScope;
   compatible: string;
   location: string;
@@ -121,7 +130,7 @@ function resolveInventoryStatus(stock: number, minimum: number): MockInventorySt
 }
 
 function resolveInventoryName(row: MockInventorySnapshotRow, product?: MockProductItemRow) {
-  return row.spec || product?.spec || row.itemName || product?.itemName || row.itemCode;
+  return row.itemName || product?.itemName || row.itemCode;
 }
 
 function resolveCompatibleVehicle(row: MockInventorySnapshotRow, product?: MockProductItemRow) {
@@ -138,7 +147,10 @@ export function buildActualInventoryItems(): MockInventoryItem[] {
   const productByCode = new Map(mockDb.product_items.map((item) => [item.itemCode, item]));
 
   return mockDb.inventory_snapshots
-    .filter((row) => row.itemCode.trim().length > 0)
+    .filter((row) => {
+      const itemCode = row.itemCode.trim();
+      return itemCode.length > 0 && itemCode !== '합계';
+    })
     .map((row, index) => {
       const product = productByCode.get(row.itemCode);
       const stock = calculateStock(row);
@@ -149,6 +161,15 @@ export function buildActualInventoryItems(): MockInventoryItem[] {
       return {
         partNo: row.itemCode,
         name: resolveInventoryName(row, product),
+        spec: row.spec || product?.spec || '',
+        previousQty: row.previousQty,
+        inboundQty: row.inboundQty,
+        outboundQty: row.outboundQty,
+        stockQty: row.stockQty,
+        inboundPrice: product?.inboundPrice ?? '',
+        outboundPrice: product?.outboundPrice ?? '',
+        exchangePrice: product?.exchangePrice ?? '',
+        note: product?.note ?? '',
         usageScope: resolveUsageScope(product),
         compatible: resolveCompatibleVehicle(row, product),
         location: `실재고-${String(index + 1).padStart(3, '0')}`,

@@ -189,6 +189,7 @@ export function SearchInput({
           aria-controls={shouldShowDropdown ? suggestionId : undefined}
           aria-expanded={shouldShowDropdown}
           aria-labelledby={labelId}
+          id={inputId}
           onChange={(event) => onChange(event.target.value)}
           onBlur={() => setIsOpen(false)}
           onFocus={() => setIsOpen(true)}
@@ -354,16 +355,20 @@ export function KpiCard({
 }
 
 export function DataTable({
+  className = '',
   columns,
+  emptyMessage,
   rows,
   onRowClick,
 }: {
+  className?: string;
   columns: ReactNode[];
+  emptyMessage?: ReactNode;
   rows: Array<Array<ReactNode>>;
   onRowClick?: (rowIndex: number) => void;
 }) {
   return (
-    <div className="table-wrap">
+    <div className={`table-wrap ${className}`.trim()}>
       <table>
         <thead>
           <tr>
@@ -373,7 +378,7 @@ export function DataTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, rowIndex) => (
+          {rows.length > 0 ? rows.map((row, rowIndex) => (
             <tr
               className={onRowClick ? 'clickable-row' : undefined}
               key={`${rowIndex}-${String(row[0])}`}
@@ -410,11 +415,24 @@ export function DataTable({
                 <td key={`${rowIndex}-${cellIndex}`}>{cell}</td>
               ))}
             </tr>
-          ))}
+          )) : emptyMessage ? (
+            <tr className="table-empty-row">
+              <td colSpan={columns.length}>
+                <div className="table-empty-message">{emptyMessage}</div>
+              </td>
+            </tr>
+          ) : null}
         </tbody>
       </table>
     </div>
   );
+}
+
+export function ListColumnTable({
+  className = '',
+  ...props
+}: Parameters<typeof DataTable>[0]) {
+  return <DataTable {...props} className={`list-column-table ${className}`.trim()} />;
 }
 
 export function StatusPill({ label, tone }: { label: string; tone: Tone }) {

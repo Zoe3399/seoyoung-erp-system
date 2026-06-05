@@ -35,7 +35,6 @@ import {
   ActionFooter,
   BrandIdentity,
   CalcRow,
-  DataTable,
   DetailDrawer,
   Field,
   FilterTabs,
@@ -44,6 +43,7 @@ import {
   InfoItem,
   KpiCard,
   LineItem,
+  ListColumnTable,
   Panel,
   PriorityItem,
   RecordToolbar,
@@ -54,7 +54,7 @@ import {
   type Tone,
 } from './components/common';
 import { buildActualInventoryItems, buildActualPartners, selectMockRows, type MockProductItemRow } from './data/mock/database';
-import { formatMoney } from './lib/format';
+import { formatMoney, formatMoneyInputValue, parseMoneyInputValue } from './lib/format';
 import './styles.css';
 
 declare global {
@@ -381,6 +381,7 @@ type ScheduleFilter = 'all' | 'work' | 'general' | 'claim' | 'leave';
 
 type PaymentScheduleStatus = '결제예정' | '결제완료' | '부분결제' | '연체';
 type PaymentScheduleFilter = 'all' | 'scheduled' | 'paid' | 'partial' | 'overdue';
+type PaymentScheduleGroupFilter = 'all' | 'purchase' | 'work' | 'transfer' | 'card' | 'cashOther';
 type PaymentScheduleItem = {
   id: string;
   date: string;
@@ -392,6 +393,28 @@ type PaymentScheduleItem = {
   method: string;
   source: string;
   memo: string;
+};
+type PaymentCalendarHoliday = {
+  date: string;
+  name: string;
+};
+type AccountingDaySummary = {
+  paymentCount: number;
+  cardCount: number;
+  accountCount: number;
+  totalCount: number;
+  paymentAmount: number;
+  cardDepositAmount: number;
+  accountReceiptAmount: number;
+};
+type PaymentCalendarCell = {
+  key: string;
+  day: string;
+  date: string;
+  payments: PaymentScheduleItem[];
+  accountingSummary: AccountingDaySummary;
+  holidayName?: string | undefined;
+  isToday: boolean;
 };
 type PaymentScheduleDraft = {
   date: string;
@@ -510,6 +533,15 @@ type Claim = {
 type InventoryItem = {
   partNo: string;
   name: string;
+  spec: string;
+  previousQty: string;
+  inboundQty: string;
+  outboundQty: string;
+  stockQty: string;
+  inboundPrice: string;
+  outboundPrice: string;
+  exchangePrice: string;
+  note: string;
   usageScope: ProductUsageScope;
   compatible: string;
   location: string;
@@ -580,14 +612,41 @@ type Customer = {
 type CustomerFilter = 'all' | 'unpaid' | 'clear' | 'recent';
 type EstimateFilter = 'all' | 'pending' | 'ready' | 'parts';
 type ClaimFilter = 'all' | 'wait' | 'partial' | 'paid';
-type InventoryFilter = 'all' | 'shortage' | 'check' | 'normal';
+type InventoryStockFilter = 'all' | 'hasStock' | 'emptyStock' | 'negativeStock';
+type InventoryMovementFilter = 'all' | 'inbound' | 'outbound' | 'changed' | 'noMovement';
+type InventoryPriceFilter = 'all' | 'hasInboundPrice' | 'hasOutboundPrice' | 'hasExchangePrice' | 'missingPrice';
+type InventorySort = 'codeAsc' | 'nameAsc' | 'stockDesc' | 'stockAsc' | 'inboundDesc' | 'outboundDesc';
+type InventoryColumnFilterKey =
+  | 'partNo'
+  | 'name'
+  | 'spec'
+  | 'previousQty'
+  | 'inboundQty'
+  | 'outboundQty'
+  | 'stockQty'
+  | 'inboundPrice'
+  | 'outboundPrice'
+  | 'exchangePrice'
+  | 'note';
+type InventoryColumnFilterRule = { id: string; key: InventoryColumnFilterKey; value: string };
+type InventorySearchState = {
+  code: string;
+  name: string;
+  spec: string;
+  note: string;
+  stock: InventoryStockFilter;
+  movement: InventoryMovementFilter;
+  price: InventoryPriceFilter;
+  sort: InventorySort;
+};
+type SalesProductFilter = 'all' | 'saleOnly' | 'shared' | 'alert' | 'ready';
 type PartnerFilter = 'all' | 'shop' | 'insurer' | 'supplier';
 type AttachmentFilter = 'all' | 'estimate' | 'claim' | 'work' | 'base';
 type SheetImportFilter = 'all' | 'core' | 'reference' | 'finance' | 'document' | 'secure';
 type LedgerSheetId = 'salesLedger' | 'kp' | 'insurance' | 'estimate' | 'best' | 'inbound' | 'repairShop' | 'cardLedger';
-type WarrantyFilter = 'all' | 'pending' | 'issued' | 'check';
+type WarrantyFilter = 'all' | 'unissued' | 'issued' | 'check';
 type PriceBookFilter = 'all' | 'best' | 'service' | 'tint' | 'filmCut';
-type WarrantyStatus = '발행대기' | '발행완료' | '확인필요';
+type WarrantyStatus = '미발행' | '발행완료' | '확인필요';
 type LedgerCategory = '일반' | 'KP' | '보험' | '베스트' | '입고지원' | '견적' | '정비공장' | '카드';
 type CalendarView = 'day' | 'week' | 'month' | 'year';
 
@@ -1153,7 +1212,7 @@ function buildGlobalSearchSuggestions(vehicleSuggestions: VehicleSuggestionSet):
       id: `inventory-${item.partNo}`,
       value: item.partNo,
       label: compactTextParts([item.partNo, item.name]),
-      detail: compactTextParts(['재고', item.compatible, `${item.stock}개`]),
+      detail: compactTextParts(['재고', item.spec, `${item.stockQty || item.stock}개`]),
       pageId: 'inventory',
     });
   });
@@ -1227,6 +1286,7 @@ const WORKER_NAV_GROUPS: SidebarNavGroup[] = [
     icon: WalletCards,
     items: [
       { id: 'worker-sales', label: '판매 관리', icon: WalletCards, pageId: 'sales', count: '4' },
+      { id: 'worker-sales-inventory', label: '재고관리', icon: Package, pageId: 'inventory' },
       { id: 'worker-purchase', label: '구매관리', icon: Package, pageId: 'purchase', count: '2' },
     ],
   },
@@ -1256,7 +1316,7 @@ const ADMIN_NAV_GROUPS: SidebarNavGroup[] = [
     label: '관리',
     icon: ShieldCheck,
     items: [
-      { id: 'admin-schedule', label: '일정 관리', icon: CalendarDays, pageId: 'schedule', count: '5' },
+      { id: 'admin-schedule', label: '회계 일정 관리', icon: CalendarDays, pageId: 'schedule', count: '5' },
       { id: 'admin-card-sales', label: '카드매출', icon: CreditCard, pageId: 'cardSales' },
       { id: 'admin-payment-list', label: '대금결제리스트', icon: Database, pageId: 'paymentList' },
       { id: 'admin-warranty', label: '보증서', icon: ShieldCheck, pageId: 'warranty', count: '3' },
@@ -1269,13 +1329,13 @@ const DB_NAV_GROUPS: SidebarNavGroup[] = [
     id: 'inventory',
     label: '재고',
     icon: Package,
-    items: [{ id: 'db-inventory', label: '재고', icon: Package, pageId: 'inventory', count: '2' }],
+    items: [{ id: 'db-inventory', label: '재고관리', icon: Package, pageId: 'inventory', count: '2' }],
   },
   {
     id: 'part-number-list',
-    label: '품번리스트',
+    label: '품목리스트',
     icon: FileText,
-    items: [{ id: 'db-part-number-list', label: '품번리스트', icon: FileText, pageId: 'partNumberList' }],
+    items: [{ id: 'db-part-number-list', label: '품목리스트', icon: FileText, pageId: 'partNumberList' }],
   },
   {
     id: 'vehicles',
@@ -1376,7 +1436,6 @@ const PLACEHOLDER_PAGE_IDS = new Set<PageId>([
   'statisticsInbound',
   'bulkManagementList',
   'integratedList',
-  'partNumberList',
 ]);
 
 const ESTIMATOR_OPTIONS = ['정보경', '정원철', '박승주'];
@@ -1400,6 +1459,63 @@ const PAYMENT_SCHEDULE_FILTER_OPTIONS: Array<{ id: PaymentScheduleFilter; label:
   { id: 'partial', label: '부분결제' },
   { id: 'overdue', label: '연체' },
 ];
+const PAYMENT_SCHEDULE_GROUP_FILTER_OPTIONS: Array<{ id: PaymentScheduleGroupFilter; label: string }> = [
+  { id: 'all', label: '전체 구분' },
+  { id: 'purchase', label: '매입·입고' },
+  { id: 'work', label: '작업·정산' },
+  { id: 'transfer', label: '계좌이체' },
+  { id: 'card', label: '카드결제' },
+  { id: 'cashOther', label: '현금·기타' },
+];
+const KOREAN_WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
+const PAYMENT_CALENDAR_HOLIDAYS_BY_YEAR: Record<number, PaymentCalendarHoliday[]> = {
+  2026: [
+    { date: '2026.01.01', name: '신정' },
+    { date: '2026.02.16', name: '설날 연휴' },
+    { date: '2026.02.17', name: '설날' },
+    { date: '2026.02.18', name: '설날 연휴' },
+    { date: '2026.03.01', name: '삼일절' },
+    { date: '2026.03.02', name: '대체공휴일' },
+    { date: '2026.05.01', name: '근로자의 날' },
+    { date: '2026.05.05', name: '어린이날' },
+    { date: '2026.05.24', name: '부처님오신날' },
+    { date: '2026.05.25', name: '대체공휴일' },
+    { date: '2026.06.03', name: '지방선거일' },
+    { date: '2026.06.06', name: '현충일' },
+    { date: '2026.08.15', name: '광복절' },
+    { date: '2026.08.17', name: '대체공휴일' },
+    { date: '2026.09.24', name: '추석 연휴' },
+    { date: '2026.09.25', name: '추석' },
+    { date: '2026.09.26', name: '추석 연휴' },
+    { date: '2026.10.03', name: '개천절' },
+    { date: '2026.10.05', name: '대체공휴일' },
+    { date: '2026.10.09', name: '한글날' },
+    { date: '2026.12.25', name: '성탄절' },
+  ],
+  2027: [
+    { date: '2027.01.01', name: '신정' },
+    { date: '2027.02.06', name: '설날 연휴' },
+    { date: '2027.02.07', name: '설날' },
+    { date: '2027.02.08', name: '설날 연휴' },
+    { date: '2027.02.09', name: '대체공휴일' },
+    { date: '2027.03.01', name: '삼일절' },
+    { date: '2027.05.01', name: '근로자의 날' },
+    { date: '2027.05.05', name: '어린이날' },
+    { date: '2027.05.13', name: '부처님오신날' },
+    { date: '2027.06.06', name: '현충일' },
+    { date: '2027.08.15', name: '광복절' },
+    { date: '2027.08.16', name: '대체공휴일' },
+    { date: '2027.09.14', name: '추석 연휴' },
+    { date: '2027.09.15', name: '추석' },
+    { date: '2027.09.16', name: '추석 연휴' },
+    { date: '2027.10.03', name: '개천절' },
+    { date: '2027.10.04', name: '대체공휴일' },
+    { date: '2027.10.09', name: '한글날' },
+    { date: '2027.10.11', name: '대체공휴일' },
+    { date: '2027.12.25', name: '성탄절' },
+    { date: '2027.12.27', name: '대체공휴일' },
+  ],
+};
 const PURCHASE_FILTER_OPTIONS: Array<{ id: PurchaseFilter; label: string }> = [
   { id: 'all', label: '전체' },
   { id: 'fixed', label: '고정' },
@@ -1427,6 +1543,29 @@ const WORK_COLUMN_FILTER_OPTIONS: Array<{ key: WorkColumnFilterKey; label: strin
   { key: 'owner', label: '견적서 작성자' },
   { key: 'visit', label: '방문 방식' },
   { key: 'paymentStatus', label: '결제여부' },
+];
+const INVENTORY_DEFAULT_SEARCH: InventorySearchState = {
+  code: '',
+  name: '',
+  spec: '',
+  note: '',
+  stock: 'all',
+  movement: 'all',
+  price: 'all',
+  sort: 'codeAsc',
+};
+const INVENTORY_COLUMN_FILTER_OPTIONS: Array<{ key: InventoryColumnFilterKey; label: string }> = [
+  { key: 'partNo', label: '품목코드' },
+  { key: 'name', label: '품목명' },
+  { key: 'spec', label: '규격' },
+  { key: 'previousQty', label: '전일재고' },
+  { key: 'inboundQty', label: '입고수량' },
+  { key: 'outboundQty', label: '출고수량' },
+  { key: 'stockQty', label: '재고수량' },
+  { key: 'inboundPrice', label: '입고단가' },
+  { key: 'outboundPrice', label: '출고단가' },
+  { key: 'exchangePrice', label: '교환단가' },
+  { key: 'note', label: '적요' },
 ];
 const REPAIR_AREA_OPTIONS = ['전면', '후면', '앞문(운)', '앞문(조)', '뒷문(운)', '뒷문(조)', '앞삼각(운)', '앞삼각(조)', 'QTR(운)', 'QTR(조)', '루프/파노라마', '기타'];
 const VEHICLE_LOOKUP_SUGGESTIONS = ['11호5871', '12어0423', '46로6650', '울산12바5122', '제네시스 GV80', 'K5 JF', '니로 SG2', '아이오닉5'];
@@ -2514,7 +2653,7 @@ const ledgerSheetTabs: Array<{ id: LedgerSheetId; label: string; source: string;
 
 const warrantyFilterOptions: Array<{ id: WarrantyFilter; label: string }> = [
   { id: 'all', label: '전체' },
-  { id: 'pending', label: '발행대기' },
+  { id: 'unissued', label: '미발행' },
   { id: 'issued', label: '발행완료' },
   { id: 'check', label: '확인필요' },
 ];
@@ -2988,8 +3127,8 @@ const warrantyRecords: WarrantyRecord[] = [
     sideFirstFilm: '',
     sideRearFilm: '',
     repairContent: '필름 시공 후 주의사항 안내 완료',
-    status: '발행대기',
-    tone: 'orange',
+    status: '미발행',
+    tone: 'red',
   },
   {
     id: 'warranty-002',
@@ -3023,7 +3162,7 @@ const warrantyRecords: WarrantyRecord[] = [
     sideRearFilm: '',
     repairContent: '전면유리 교환 작업 후 전면 필름 재시공',
     status: '확인필요',
-    tone: 'red',
+    tone: 'orange',
   },
 ];
 
@@ -3860,15 +3999,105 @@ function createWarrantyDraft(record?: WarrantyRecord): WarrantyDraft {
     sideFirstFilm: '',
     sideRearFilm: '',
     repairContent: WARRANTY_DEFAULT_REPAIR_CONTENT,
-    status: '발행대기',
+    status: '미발행',
     tone: 'orange',
     memo: '',
   };
 }
 
-function getWarrantyTone(status: WarrantyStatus): Tone {
+function isWarrantySourceWorkRecord(record: WorkerWorkListRecord) {
+  if (record.kind !== '작업' || record.status !== '완료') return false;
+
+  const target = [record.title, record.stock, record.vehicle, record.company].join(' ');
+  return /썬팅|필름|틴팅|tint|rayno|레이노|t-nine|티나인|llumar|루마|3m/i.test(target);
+}
+
+function findWarrantyCustomerPhone(record: WorkerWorkListRecord) {
+  const customerName = record.customer.trim();
+  const customer = customers.find(
+    (item) =>
+      item.name === customerName ||
+      item.name.includes(customerName) ||
+      customerName.includes(item.name) ||
+      matchesCustomerRecord(item, [record.customer, record.vehicle, record.plateNumber]),
+  );
+  if (customer?.phone) return customer.phone;
+
+  const estimate = estimates.find(
+    (item) =>
+      item.customer === record.customer &&
+      (item.vehicle === record.vehicle || normalizeWorkDate(item.scheduledWorkDate ?? '') === normalizeWorkDate(record.date)),
+  );
+  return estimate?.phone ?? '';
+}
+
+function normalizeWarrantyPartNoFromWork(record: WorkerWorkListRecord) {
+  const stock = record.stock.trim();
+  if (!stock || stock === '-') return '';
+  return stock.replace(/\s+\d+개$/u, '');
+}
+
+function inferWarrantyFilmFromWork(record: WorkerWorkListRecord) {
+  const target = [record.title, record.stock].join(' ');
+  if (/rayno|레이노/i.test(target)) return '[RAYNO] 시공 필름';
+  if (/t-nine|티나인/i.test(target)) return '[T-NINE] 시공 필름';
+  if (/llumar|루마/i.test(target)) return '[LLumar] 시공 필름';
+  if (/3m/i.test(target)) return '[3M] 시공 필름';
+  return '';
+}
+
+function createWarrantyDraftFromWorkRecord(record: WorkerWorkListRecord, current?: WarrantyDraft): WarrantyDraft {
+  const base = current ?? createWarrantyDraft();
+  const workDate = normalizeWorkDate(record.date) || base.workDate;
+  const workDescription = firstLine(record.title) || base.workDescription || '썬팅시공';
+  const status: WarrantyStatus = base.status === '발행완료' ? base.status : '미발행';
+  const frontFilm = inferWarrantyFilmFromWork(record) || base.frontFilm;
+
+  return normalizeWarrantyDraft({
+    ...base,
+    type: '썬팅',
+    workDate,
+    customerName: record.customer,
+    customerPhone: findWarrantyCustomerPhone(record) || base.customerPhone,
+    vehicle: record.vehicle,
+    plate: record.plateNumber === '-' ? base.plate : record.plateNumber,
+    workDescription,
+    partNo: normalizeWarrantyPartNoFromWork(record) || base.partNo,
+    frontFilm,
+    repairContent: `${workDescription} 작업 후 필름 보증 안내`,
+    status,
+    tone: getWarrantyTone(status, workDate),
+  });
+}
+
+function formatWarrantySourceWorkLabel(record: WorkerWorkListRecord) {
+  return compactTextParts([
+    normalizeWorkDate(record.date) || record.date,
+    record.customer,
+    record.vehicle,
+    record.plateNumber === '-' ? '' : record.plateNumber,
+    firstLine(record.title),
+  ]);
+}
+
+function isPastWarrantyWorkDate(workDate: string) {
+  const workDateValue = parseDateInput(workDate);
+  if (!workDateValue) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  workDateValue.setHours(0, 0, 0, 0);
+  return workDateValue.getTime() < today.getTime();
+}
+
+function isUnissuedWarranty(record: Pick<WarrantyRecord, 'status' | 'workDate'>) {
+  return record.status === '미발행' && isPastWarrantyWorkDate(record.workDate);
+}
+
+function getWarrantyTone(status: WarrantyStatus, workDate?: string): Tone {
   if (status === '발행완료') return 'green';
-  if (status === '확인필요') return 'red';
+  if (status === '확인필요') return 'orange';
+  if (workDate && isPastWarrantyWorkDate(workDate)) return 'red';
   return 'orange';
 }
 
@@ -3888,7 +4117,7 @@ function normalizeWarrantyDraft(draft: WarrantyDraft): WarrantyDraft {
     sideRearFilm: draft.sideRearFilm.trim(),
     repairContent: draft.repairContent.trim(),
     memo: draft.memo.trim(),
-    tone: getWarrantyTone(draft.status),
+    tone: getWarrantyTone(draft.status, draft.workDate),
   };
 }
 
@@ -4054,6 +4283,7 @@ function App() {
   const initialMode = appModeForPage(initialPage);
   const initialActivePage = normalizeInitialPage(initialMode, initialPage);
   const initialSidebarPath = findSidebarNavPath(initialMode, initialActivePage);
+  const todayHeaderLabel = useMemo(() => formatTodayHeaderLabel(), []);
   const [isAuthenticated, setIsAuthenticated] = useState(
     () =>
       readLoginStorageValue(LOGIN_STORAGE_KEYS.autoLogin) === 'true' &&
@@ -4231,6 +4461,31 @@ function App() {
     });
   }
 
+  function openPaymentSource(payment: PaymentScheduleItem) {
+    if (payment.id.startsWith('work-payment-')) {
+      const nextPage: PageId = 'work';
+      const workItem = payment.id.replace(/^work-payment-/u, '');
+      setAppMode(appModeForPage(nextPage));
+      setPurchasePartnerFilter('');
+      setPurchaseMonthFilter('');
+      setActivePage(nextPage);
+      setIsEstimateRegistrationOpen(false);
+      setIsVehicleRegistrationOpen(false);
+      updateUrlSearchParams({
+        page: nextPage,
+        workView: 'list',
+        workPage: '1',
+        workPageSize: '20',
+        workItem,
+        purchasePartner: null,
+        purchaseMonth: null,
+      });
+      return;
+    }
+
+    openPurchasePartner(payment.partner, paymentMonthKeyFromDate(payment.date));
+  }
+
   function handleGlobalSearchSelect(value: string) {
     const selectedSuggestion = globalSearchSuggestions.find((suggestion) => suggestion.value === value);
     if (!selectedSuggestion) return;
@@ -4245,6 +4500,13 @@ function App() {
     setAppMode(appModeForPage(page));
     setCustomerModalId(null);
     navigatePage(page);
+  }
+
+  function isTopNavActive(item: NavItem) {
+    if (activePage === item.id) return true;
+
+    const activePath = findSidebarNavPath(appMode, activePage);
+    return item.id === 'sales' && activePath?.group.id === 'sales';
   }
 
   function handleAddVehicle(draft: VehicleCatalogDraft) {
@@ -4302,7 +4564,7 @@ function App() {
         <nav className="app-top-nav" aria-label="상단 메뉴">
           {topNavItems.map((item) => (
             <button
-              className={activePage === item.id ? 'active' : ''}
+              className={isTopNavActive(item) ? 'active' : ''}
               key={item.id}
               onClick={() => navigatePage(item.id)}
             >
@@ -4392,7 +4654,7 @@ function App() {
       <section className="workspace">
         <header className="topbar">
           <div>
-            <p className="eyebrow">2026.05.20 수요일</p>
+            <p className="eyebrow">{todayHeaderLabel}</p>
             <div className="topbar-title-row">
               <h1>{activeNav.label}</h1>
               <span>{activeMode.label} 화면</span>
@@ -4437,11 +4699,19 @@ function App() {
             workRecords={workRecords}
           />
         )}
-        {activePage === 'schedule' && <SchedulePage linkedPayments={workPaymentScheduleItems} />}
-        {activePage === 'priceBook' && <PriceBookPage />}
+        {activePage === 'schedule' && (
+          <SchedulePage
+            cardSettlements={cardSalesSettlements}
+            linkedPayments={workPaymentScheduleItems}
+            onOpenPaymentSource={openPaymentSource}
+            workRecords={workRecords}
+          />
+        )}
+        {(activePage === 'priceBook' || activePage === 'partNumberList') && <PriceBookPage />}
         {activePage === 'warranty' && (
           <WarrantyPage
             vehicleModelSuggestions={vehicleSuggestions.model}
+            workRecords={workRecords}
           />
         )}
         {activePage === 'claims' && <ClaimsPage />}
@@ -4705,7 +4975,7 @@ function Dashboard({ onOpenCustomer }: { onOpenCustomer: () => void }) {
         </Panel>
 
         <Panel className="span-7" title="최근 견적">
-          <DataTable
+          <ListColumnTable
             columns={['견적번호', '고객/차량', '수리', '금액', '상태']}
             rows={estimates.slice(0, 4).map((estimate) => [
               estimate.no,
@@ -5080,7 +5350,7 @@ function RevenuePage() {
       </section>
 
       <Panel title="기간별 매출 상세">
-        <DataTable
+        <ListColumnTable
           columns={['기간', '현재 매출', '증감 금액', '증감률', '작업/판매']}
           rows={series.map((point, index) => {
             const previousPoint = previousSeries[index] ?? { label: point.label, work: 0, sales: 0 };
@@ -5197,30 +5467,6 @@ function RevenuePage() {
   );
 }
 
-function getSalesPaymentStatus(sale: ProductSale) {
-  if (sale.type === '매입입고') return sale.status === '입고대기' ? '매입확인' : '매입정리';
-  if (sale.paymentMethod.includes('외상') || sale.status === '결제대기') return '결제대기';
-  return '결제완료';
-}
-
-function getSalesPaymentTone(status: string): Tone {
-  if (status === '결제완료') return 'green';
-  if (status === '매입확인' || status === '매입정리') return 'purple';
-  return 'red';
-}
-
-function getSalesFulfillmentStatus(sale: ProductSale) {
-  if (sale.type === '매입입고') return sale.status === '입고대기' ? '입고대기' : '입고완료';
-  if (sale.status === '출고대기') return '출고대기';
-  return '출고완료';
-}
-
-function getSalesFulfillmentTone(status: string): Tone {
-  if (status === '출고완료' || status === '입고완료') return 'green';
-  if (status === '출고대기' || status === '입고대기') return 'orange';
-  return 'gray';
-}
-
 function getProductUsageTone(scope: ProductUsageScope): Tone {
   if (scope === '작업용') return 'blue';
   if (scope === '판매용') return 'green';
@@ -5265,111 +5511,69 @@ function downloadProductImportTemplate() {
 
 function SalesPage() {
   const [query, setQuery] = useState('');
-  const [mode, setMode] = useState<'all' | 'sale' | 'purchase' | 'payment' | 'release'>('all');
+  const [mode, setMode] = useState<SalesProductFilter>('all');
   const [isSalesRegistrationOpen, setIsSalesRegistrationOpen] = useState(false);
   const [isProductImportOpen, setIsProductImportOpen] = useState(false);
   const normalizedQuery = query.trim().toLowerCase();
-  const salesOrders = productSales.filter((sale) => sale.type === '상품판매');
-  const saleRevenue = productSales
-    .filter((sale) => sale.type === '상품판매')
-    .reduce((sum, sale) => sum + sale.salePrice, 0);
-  const purchaseWaiting = productSales.filter((sale) => sale.status === '입고대기').length;
-  const availableStock = inventory.reduce((sum, item) => sum + item.stock, 0);
-  const margin = productSales
-    .filter((sale) => sale.type === '상품판매')
-    .reduce((sum, sale) => sum + (sale.salePrice - sale.purchasePrice), 0);
-  const paymentWaiting = productSales.filter((sale) => getSalesPaymentStatus(sale) === '결제대기').length;
-  const releaseWaiting = productSales.filter((sale) => getSalesFulfillmentStatus(sale).endsWith('대기')).length;
-  const sellableStock = inventory.filter((item) => item.usageScope !== '작업용').reduce((sum, item) => sum + item.stock, 0);
-  const workOnlyCount = inventory.filter((item) => item.usageScope === '작업용').length;
-  const stockAlerts = inventory.filter((item) => item.status !== '정상' || item.stock <= item.minimum);
-  const salesStages = [
-    {
-      label: '1. 주문 접수',
-      value: `${salesOrders.length}건`,
-      detail: '고객/업체 판매 요청',
-      tone: 'blue' as Tone,
-    },
-    {
-      label: '2. 재고 확인',
-      value: `${stockAlerts.length}품목`,
-      detail: '부족/확인필요 먼저 확인',
-      tone: stockAlerts.length > 0 ? ('red' as Tone) : ('green' as Tone),
-    },
-    {
-      label: '3. 출고/입고',
-      value: `${releaseWaiting}건`,
-      detail: '출고대기와 입고대기',
-      tone: releaseWaiting > 0 ? ('orange' as Tone) : ('green' as Tone),
-    },
-    {
-      label: '4. 결제 확인',
-      value: `${paymentWaiting}건`,
-      detail: '외상/결제대기 추적',
-      tone: paymentWaiting > 0 ? ('purple' as Tone) : ('green' as Tone),
-    },
-  ];
+  const sellableItems = useMemo(() => inventory.filter((item) => item.usageScope !== '작업용'), []);
+  const salesOrders = useMemo(() => productSales.filter((sale) => sale.type === '상품판매'), []);
+  const latestSaleByPartNo = useMemo(() => {
+    const nextSales = new Map<string, ProductSale>();
+    salesOrders.forEach((sale) => {
+      if (!nextSales.has(sale.partNo)) nextSales.set(sale.partNo, sale);
+    });
+    return nextSales;
+  }, [salesOrders]);
   const searchSuggestions = useMemo(
     () =>
       Array.from(
         new Set(
-          productSales.flatMap((sale) => [
-            sale.no,
-            sale.type,
-            sale.customer,
-            sale.tradeType,
-            sale.itemName,
-            sale.partNo,
-            sale.paymentMethod,
-            sale.status,
-            inventory.find((item) => item.partNo === sale.partNo)?.usageScope,
+          sellableItems.flatMap((item) => [
+            item.partNo,
+            item.name,
+            item.usageScope,
+            item.compatible,
+            item.location,
+            item.status,
+            latestSaleByPartNo.get(item.partNo)?.customer,
           ]).filter((value): value is string => Boolean(value)),
         ),
       ),
-    [],
+    [latestSaleByPartNo, sellableItems],
   );
-  const filteredSales = useMemo(
+  const filteredProducts = useMemo(
     () =>
-      productSales.filter((sale) => {
+      sellableItems.filter((item) => {
+        const latestSale = latestSaleByPartNo.get(item.partNo);
         const target = [
-          sale.no,
-          sale.date,
-          sale.type,
-          sale.customer,
-          sale.tradeType,
-          sale.itemName,
-          sale.partNo,
-          sale.paymentMethod,
-          sale.status,
-          inventory.find((item) => item.partNo === sale.partNo)?.usageScope,
+          item.partNo,
+          item.name,
+          item.usageScope,
+          item.compatible,
+          item.location,
+          item.status,
+          latestSale?.customer,
+          latestSale?.status,
         ]
           .join(' ')
           .toLowerCase();
         const matchesQuery = normalizedQuery.length === 0 || target.includes(normalizedQuery);
         const matchesMode =
           mode === 'all' ||
-          (mode === 'sale' && sale.type === '상품판매') ||
-          (mode === 'purchase' && sale.type === '매입입고') ||
-          (mode === 'payment' && getSalesPaymentStatus(sale) === '결제대기') ||
-          (mode === 'release' && getSalesFulfillmentStatus(sale).endsWith('대기'));
+          (mode === 'saleOnly' && item.usageScope === '판매용') ||
+          (mode === 'shared' && item.usageScope === '공용') ||
+          (mode === 'alert' && (item.status !== '정상' || item.stock <= item.minimum)) ||
+          (mode === 'ready' && item.status === '정상' && item.stock > item.minimum);
 
         return matchesQuery && matchesMode;
       }),
-    [mode, normalizedQuery],
+    [latestSaleByPartNo, mode, normalizedQuery, sellableItems],
   );
 
   return (
     <div className="page-stack sales-page">
-      <section className="kpi-grid" aria-label="판매 요약">
-        <KpiCard icon={WalletCards} label="상품 판매액" value={formatMoney(saleRevenue)} detail="작업 매출과 별도 관리" tone="blue" />
-        <KpiCard icon={Package} label="판매가능 상품" value={`${sellableStock}개`} detail={`전체 ${availableStock}개 · 작업용 ${workOnlyCount}품목`} tone="green" />
-        <KpiCard icon={Download} label="출고/입고 대기" value={`${releaseWaiting}건`} detail={`입고대기 ${purchaseWaiting}건 포함`} tone="orange" />
-        <KpiCard icon={CreditCard} label="결제 대기" value={`${paymentWaiting}건`} detail={`예상 마진 ${formatMoney(margin)}`} tone="purple" />
-        <KpiCard icon={AlertCircle} label="재고 부족" value={`${inventory.filter((item) => item.status === '부족').length}품목`} detail="판매 전 확인 필요" tone="red" />
-      </section>
-
-      <section className="sales-ops-grid">
-        <Panel className="sales-orders-panel" title="판매 주문 처리">
+      <section className="workbench-grid">
+        <Panel className="span-12 sales-orders-panel sales-product-list-panel" title="판매 상품 목록">
           <RecordToolbar
             action={
               <div className="sales-toolbar-actions">
@@ -5383,17 +5587,17 @@ function SalesPage() {
                 </button>
               </div>
             }
-            count={`총 ${filteredSales.length}건`}
+            count={`총 ${filteredProducts.length}품목`}
             filters={
               <FilterTabs
-                ariaLabel="판매 처리 필터"
-                onChange={(value) => setMode(value as 'all' | 'sale' | 'purchase' | 'payment' | 'release')}
+                ariaLabel="판매 상품 필터"
+                onChange={(value) => setMode(value as SalesProductFilter)}
                 options={[
                   { id: 'all', label: '전체' },
-                  { id: 'sale', label: '상품판매' },
-                  { id: 'purchase', label: '매입입고' },
-                  { id: 'payment', label: '결제대기' },
-                  { id: 'release', label: '출고/입고대기' },
+                  { id: 'saleOnly', label: '판매용' },
+                  { id: 'shared', label: '공용' },
+                  { id: 'alert', label: '부족/확인' },
+                  { id: 'ready', label: '판매가능' },
                 ]}
                 value={mode}
               />
@@ -5403,115 +5607,51 @@ function SalesPage() {
                 label="판매 검색"
                 listId="sales-search-suggestions"
                 onChange={setQuery}
-                placeholder="품목, 품번, 고객/업체, 결제수단, 상태 검색"
+                placeholder="품목, 품번, 차종/호환, 위치, 상태 검색"
                 suggestions={searchSuggestions}
                 value={query}
               />
             }
           />
-          <DataTable
-            columns={['주문번호', '접수/거래처', '품목/품번', '주문/재고', '금액/마진', '결제', '출고/입고', '처리']}
-            rows={filteredSales.map((sale) => {
-              const paymentStatus = getSalesPaymentStatus(sale);
-              const fulfillmentStatus = getSalesFulfillmentStatus(sale);
-              const grossMargin = sale.type === '상품판매' ? sale.salePrice - sale.purchasePrice : 0;
-              const inventoryItem = inventory.find((item) => item.partNo === sale.partNo);
+          <ListColumnTable
+            columns={['품목/품번', '호환/위치', '용도', '재고', '판매단가', '최근 판매', '상태', '판매 체크']}
+            rows={filteredProducts.map((item) => {
+              const latestSale = latestSaleByPartNo.get(item.partNo);
+              const grossMargin = Math.max(item.claimPrice - item.centerPrice, 0);
 
               return [
-                sale.no,
-                `${sale.date}\n${sale.tradeType} · ${sale.customer}`,
-                <div className="sales-product-cell" key={`${sale.no}-product`}>
-                  <strong>{sale.itemName}</strong>
-                  <span>{sale.partNo}</span>
-                  {inventoryItem ? <StatusPill label={inventoryItem.usageScope} tone={getProductUsageTone(inventoryItem.usageScope)} /> : null}
+                <div className="sales-product-cell" key={`${item.partNo}-product`}>
+                  <strong>{item.name}</strong>
+                  <span>{item.partNo}</span>
                 </div>,
-                `${sale.qty}개 요청\n처리 후 ${sale.stockAfter}개`,
-                sale.type === '상품판매'
-                  ? `${formatMoney(sale.salePrice)}\n마진 ${formatMoney(grossMargin)}`
-                  : `${formatMoney(sale.purchasePrice)}\n매입 입고`,
-                <div className="sales-status-cell" key={`${sale.no}-payment`}>
-                  <StatusPill label={paymentStatus} tone={getSalesPaymentTone(paymentStatus)} />
-                  <span>{sale.paymentMethod}</span>
+                <div className="sales-inventory-cell" key={`${item.partNo}-location`}>
+                  <span>{item.compatible}</span>
+                  <small>{item.location}</small>
                 </div>,
-                <div className="sales-status-cell" key={`${sale.no}-fulfillment`}>
-                  <StatusPill label={fulfillmentStatus} tone={getSalesFulfillmentTone(fulfillmentStatus)} />
-                  <span>{sale.type === '상품판매' ? '판매 수량 재고 차감' : '입고 완료 시 재고 증가'}</span>
+                <StatusPill key={`${item.partNo}-scope`} label={item.usageScope} tone={getProductUsageTone(item.usageScope)} />,
+                `${item.stock}개\n최소 ${item.minimum}개`,
+                `${formatMoney(item.claimPrice)}\n마진 ${formatMoney(grossMargin)}`,
+                latestSale ? `${latestSale.date}\n${latestSale.customer}` : '판매 이력 없음',
+                <div className="sales-status-cell" key={`${item.partNo}-status`}>
+                  <StatusPill label={item.status} tone={statusTone(item.status)} />
+                  <span>{item.stock <= item.minimum ? '판매 전 확인' : '판매 가능'}</span>
                 </div>,
-                <div className="sales-row-actions" key={`${sale.no}-actions`}>
+                <div className="sales-row-actions" key={`${item.partNo}-actions`}>
                   <button className="mini-button" type="button">
-                    처리
-                  </button>
-                  <button className="secondary-button compact" type="button">
-                    상세
+                    판매 체크
                   </button>
                 </div>,
               ];
             })}
           />
         </Panel>
-
-        <div className="sales-side-stack">
-          <Panel title="처리 흐름">
-            <div className="sales-stage-list">
-              {salesStages.map((stage) => (
-                <article className={`sales-stage-card ${stage.tone}`} key={stage.label}>
-                  <span>{stage.label}</span>
-                  <strong>{stage.value}</strong>
-                  <small>{stage.detail}</small>
-                </article>
-              ))}
-            </div>
-          </Panel>
-
-          <Panel title="재고/입고 알림">
-            <div className="stock-alert-list">
-              {stockAlerts.map((item) => (
-                <article key={`${item.partNo}-sales-alert`}>
-                  <div className="row-title">
-                    <strong>{item.name}</strong>
-                    <span className="status-pair">
-                      <StatusPill label={item.usageScope} tone={getProductUsageTone(item.usageScope)} />
-                      <StatusPill label={item.status} tone={statusTone(item.status)} />
-                    </span>
-                  </div>
-                  <p>{item.partNo} · {item.location}</p>
-                  <div className="stock-meter">
-                    <span style={{ width: `${Math.min(100, (item.stock / Math.max(item.minimum * 2, 1)) * 100)}%` }} />
-                  </div>
-                  <small>현재 {item.stock}개 · 최소 {item.minimum}개 · 판매가 {formatMoney(item.claimPrice)}</small>
-                </article>
-              ))}
-            </div>
-          </Panel>
-        </div>
       </section>
-
-      <Panel title="판매관리 운영 기준">
-        <div className="sales-note-list">
-          <article>
-            <strong>작업용과 판매용 상품 분리</strong>
-            <span>작업 투입 부품은 작업원가와 재고 차감에, 판매용 상품은 별도 판매매출과 정산에 연결합니다.</span>
-          </article>
-          <article>
-            <strong>공용 상품은 양쪽에서 사용</strong>
-            <span>유리, 실란트처럼 작업에도 쓰고 외부 판매도 가능한 품목은 공용으로 등록하고 사용처별 이력을 남깁니다.</span>
-          </article>
-          <article>
-            <strong>결제대기 건은 미결로 연결</strong>
-            <span>외상 또는 결제대기 상태는 거래처 미결 리스트와 카드/계좌 정산 화면에서 추적해야 합니다.</span>
-          </article>
-          <article>
-            <strong>입고 완료 전 재고 차감 금지</strong>
-            <span>매입입고 건은 입고완료 처리 후 판매 가능 수량에 반영합니다.</span>
-          </article>
-        </div>
-      </Panel>
 
       {isSalesRegistrationOpen ? (
         <DetailDrawer
           eyebrow="판매관리"
           onClose={() => setIsSalesRegistrationOpen(false)}
-          title="판매/매입 등록"
+          title="판매 등록"
           variant="modal"
         >
           <SalesRegistrationForm onClose={() => setIsSalesRegistrationOpen(false)} />
@@ -5522,7 +5662,7 @@ function SalesPage() {
         <DetailDrawer
           eyebrow="상품 마스터"
           onClose={() => setIsProductImportOpen(false)}
-          title="상품 엑셀 일괄등록"
+          title="판매상품 엑셀 일괄등록"
           variant="modal"
         >
           <ProductBulkImportPanel />
@@ -5578,24 +5718,16 @@ function ProductBulkImportPanel() {
 }
 
 function SalesRegistrationForm({ onClose }: { onClose?: () => void }) {
-  const [saleType, setSaleType] = useState<ProductSaleType>('상품판매');
   const [tradeType, setTradeType] = useState<EstimateTradeType>('업체');
-  const selectableInventory = saleType === '상품판매' ? inventory.filter((item) => item.usageScope !== '작업용') : inventory;
+  const selectableInventory = inventory.filter((item) => item.usageScope !== '작업용');
+  const defaultPartNo = selectableInventory[0]?.partNo ?? '';
 
   return (
     <form className="sales-registration-form" onSubmit={(event) => event.preventDefault()}>
-      <div className="sales-mode-tabs" role="group" aria-label="판매 등록 유형">
-        {(['상품판매', '매입입고'] as ProductSaleType[]).map((type) => (
-          <button className={saleType === type ? 'selected' : ''} key={type} onClick={() => setSaleType(type)} type="button">
-            {type}
-          </button>
-        ))}
-      </div>
-
       <div className="sales-form-grid">
         <label className="estimate-control">
           <span>
-            {saleType === '상품판매' ? '판매일' : '매입일'}
+            판매일
             <em>필수</em>
           </span>
           <input defaultValue="2026-05-21" required type="date" />
@@ -5626,7 +5758,7 @@ function SalesRegistrationForm({ onClose }: { onClose?: () => void }) {
             품목
             <em>필수</em>
           </span>
-          <select defaultValue="UNI-SEAL-01" required>
+          <select defaultValue={defaultPartNo} required>
             {selectableInventory.map((item) => (
               <option key={`${item.partNo}-option`} value={item.partNo}>
                 {item.name} · {item.partNo} · {item.usageScope}
@@ -5636,8 +5768,7 @@ function SalesRegistrationForm({ onClose }: { onClose?: () => void }) {
         </label>
         <label className="estimate-control">
           <span>상품용도</span>
-          <select defaultValue={saleType === '상품판매' ? '판매용' : '공용'}>
-            <option>작업용</option>
+          <select defaultValue="판매용">
             <option>판매용</option>
             <option>공용</option>
           </select>
@@ -5655,34 +5786,32 @@ function SalesRegistrationForm({ onClose }: { onClose?: () => void }) {
         </label>
         <label className="estimate-control">
           <span>매입단가</span>
-          <input defaultValue="18,000" inputMode="numeric" />
+          <input defaultValue="18,000" inputMode="numeric" onChange={formatMoneyInputElement} />
         </label>
         <label className="estimate-control">
           <span>판매단가</span>
-          <input defaultValue={saleType === '상품판매' ? '25,000' : ''} inputMode="numeric" placeholder="판매 시 입력" />
+          <input defaultValue="25,000" inputMode="numeric" onChange={formatMoneyInputElement} placeholder="판매 시 입력" />
         </label>
         <label className="estimate-control">
           <span>결제구분</span>
-          <select defaultValue={saleType === '상품판매' ? '카드' : '매입'}>
+          <select defaultValue="카드">
             <option>카드</option>
             <option>현금</option>
             <option>계좌</option>
             <option>외상</option>
-            <option>매입</option>
           </select>
         </label>
         <label className="estimate-control">
           <span>재고처리</span>
-          <select defaultValue={saleType === '상품판매' ? '자동차감' : '입고대기'}>
+          <select defaultValue="자동차감">
             <option>자동차감</option>
-            <option>입고완료</option>
-            <option>입고대기</option>
+            <option>출고대기</option>
             <option>보류</option>
           </select>
         </label>
         <label className="estimate-control full">
           <span>비고</span>
-          <input placeholder="단순 상품판매, 작업과 별도 판매, 매입처 메모 등" />
+          <input placeholder="단순 상품판매, 작업과 별도 판매, 거래처 메모 등" />
         </label>
       </div>
 
@@ -5691,7 +5820,7 @@ function SalesRegistrationForm({ onClose }: { onClose?: () => void }) {
           닫기
         </button>
         <button className="primary-button" type="submit">
-          {saleType === '상품판매' ? '판매 저장' : '입고 저장'}
+          판매 저장
         </button>
       </div>
     </form>
@@ -5809,7 +5938,7 @@ function EstimatesPage({
             }
           />
           {filteredEstimates.length > 0 ? (
-            <DataTable
+            <ListColumnTable
               columns={['견적번호', '일자/견적자', '거래/고객', '차종', '수리부위', '금액', '작업예정', '상태', '후속']}
               onRowClick={(rowIndex) => setSelectedEstimate(filteredEstimates[rowIndex] ?? null)}
               rows={filteredEstimates.map((estimate) => [
@@ -6145,7 +6274,7 @@ function EstimateRegistrationPanel({
           </label>
           <label className="estimate-control">
             <span>매입금액</span>
-            <input inputMode="numeric" placeholder="원" />
+            <input inputMode="numeric" onChange={formatMoneyInputElement} placeholder="원" />
           </label>
           <label className="estimate-control full">
             <span>최종견적내용</span>
@@ -6191,11 +6320,17 @@ function EstimateRegistrationPanel({
           </label>
           <label className="estimate-control">
             <span>보험청구금액</span>
-            <input inputMode="numeric" name="insuranceClaimAmount" placeholder="원" />
+            <input inputMode="numeric" name="insuranceClaimAmount" onChange={formatMoneyInputElement} placeholder="원" />
           </label>
           <label className="estimate-control">
             <span>결제금액</span>
-            <input defaultValue={estimate?.amount ? String(estimate.amount) : undefined} inputMode="numeric" name="paymentAmount" placeholder="원" />
+            <input
+              defaultValue={estimate?.amount ? formatMoneyInputValue(estimate.amount) : undefined}
+              inputMode="numeric"
+              name="paymentAmount"
+              onChange={formatMoneyInputElement}
+              placeholder="원"
+            />
           </label>
         </div>
       </FormSection>
@@ -6434,6 +6569,20 @@ function createPaymentScheduleDraft(): PaymentScheduleDraft {
   };
 }
 
+function createPaymentScheduleDraftFromItem(payment: PaymentScheduleItem): PaymentScheduleDraft {
+  return {
+    date: paymentDateInputValue(payment.date),
+    partner: payment.partner,
+    item: payment.item,
+    amount: payment.amount.toLocaleString('ko-KR'),
+    paidAmount: payment.paidAmount.toLocaleString('ko-KR'),
+    status: payment.status,
+    method: payment.method,
+    source: payment.source,
+    memo: payment.memo,
+  };
+}
+
 function normalizePaymentDate(value: string) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return value.replaceAll('-', '.');
@@ -6443,8 +6592,11 @@ function normalizePaymentDate(value: string) {
 }
 
 function parseMoneyText(value: string) {
-  const amount = Number(value.replace(/[^\d.-]/g, ''));
-  return Number.isFinite(amount) ? amount : 0;
+  return parseMoneyInputValue(value);
+}
+
+function formatMoneyInputElement(event: ChangeEvent<HTMLInputElement>) {
+  event.currentTarget.value = formatMoneyInputValue(event.currentTarget.value);
 }
 
 function parseDateInput(value: string) {
@@ -6753,6 +6905,185 @@ function matchesPaymentFilter(payment: PaymentScheduleItem, filter: PaymentSched
   return payment.status === '연체';
 }
 
+function matchesPaymentGroupFilter(payment: PaymentScheduleItem, groupFilter: PaymentScheduleGroupFilter) {
+  if (groupFilter === 'all') return true;
+
+  const sourceText = compactPaymentSearchValue(`${payment.source} ${payment.item}`);
+  const methodText = compactPaymentSearchValue(payment.method);
+
+  if (groupFilter === 'purchase') return /매입|입고|자재|구매/u.test(sourceText);
+  if (groupFilter === 'work') return /작업|정산|외주|거래처|자동등록/u.test(sourceText);
+  if (groupFilter === 'transfer') return /계좌|이체/u.test(methodText);
+  if (groupFilter === 'card') return /카드/u.test(methodText);
+  return !/계좌|이체|카드/u.test(methodText);
+}
+
+function compactPaymentSearchValue(value: string) {
+  return value.toLowerCase().replace(/[^0-9a-z가-힣]+/gi, '');
+}
+
+function paymentStatusSearchAliases(payment: PaymentScheduleItem) {
+  const balanceAmount = Math.max(0, payment.amount - payment.paidAmount);
+  const baseAliases =
+    payment.status === '결제예정'
+      ? ['예정', '대기', '미지급', '미결', '미결제', '잔액있음']
+      : payment.status === '결제완료'
+        ? ['완료', '완납', '지급완료', '잔액없음']
+        : payment.status === '부분결제'
+          ? ['부분', '일부', '일부결제', '부분지급', '잔액있음']
+          : ['연체', '지연', '미지급', '미결', '미결제', '잔액있음'];
+
+  return balanceAmount > 0 ? [...baseAliases, '잔액', '미수'] : [...baseAliases, '정산완료'];
+}
+
+function buildPaymentSearchText(payment: PaymentScheduleItem) {
+  const balanceAmount = Math.max(0, payment.amount - payment.paidAmount);
+  const paymentDateInput = payment.date.replaceAll('.', '-');
+  const paymentMonth = payment.date.split('.').slice(0, 2).join('.');
+
+  return [
+    payment.date,
+    paymentDateInput,
+    paymentMonth,
+    payment.partner,
+    payment.item,
+    payment.status,
+    payment.method,
+    payment.source,
+    payment.memo,
+    String(payment.amount),
+    payment.amount.toLocaleString('ko-KR'),
+    formatMoney(payment.amount),
+    String(payment.paidAmount),
+    payment.paidAmount.toLocaleString('ko-KR'),
+    formatMoney(payment.paidAmount),
+    String(balanceAmount),
+    balanceAmount.toLocaleString('ko-KR'),
+    formatMoney(balanceAmount),
+    `지급 ${payment.paidAmount}`,
+    `지급액 ${payment.paidAmount}`,
+    `잔액 ${balanceAmount}`,
+    ...paymentStatusSearchAliases(payment),
+    balanceAmount > 0 ? '미지급 미결제 잔액있음' : '잔액없음 완납',
+  ]
+    .join(' ')
+    .toLowerCase();
+}
+
+function matchesPaymentSearch(payment: PaymentScheduleItem, normalizedQuery: string) {
+  if (!normalizedQuery) return true;
+
+  const searchText = buildPaymentSearchText(payment);
+  const compactSearchText = compactPaymentSearchValue(searchText);
+  const tokens = normalizedQuery.split(/\s+/u).map((token) => token.trim()).filter(Boolean);
+
+  return tokens.every((token) => {
+    if (searchText.includes(token)) return true;
+
+    const compactToken = compactPaymentSearchValue(token);
+    return compactToken.length > 0 && compactSearchText.includes(compactToken);
+  });
+}
+
+function filterPaymentScheduleItems(
+  payments: PaymentScheduleItem[],
+  filter: PaymentScheduleFilter,
+  normalizedQuery: string,
+  groupFilter: PaymentScheduleGroupFilter = 'all',
+) {
+  return payments.filter(
+    (payment) =>
+      matchesPaymentFilter(payment, filter) &&
+      matchesPaymentGroupFilter(payment, groupFilter) &&
+      matchesPaymentSearch(payment, normalizedQuery),
+  );
+}
+
+function paymentDatePart(value: number) {
+  return String(value).padStart(2, '0');
+}
+
+function formatPaymentDateKey(date: Date) {
+  return `${date.getFullYear()}.${paymentDatePart(date.getMonth() + 1)}.${paymentDatePart(date.getDate())}`;
+}
+
+function getPaymentScheduleToday() {
+  return formatPaymentDateKey(new Date());
+}
+
+function getDefaultPaymentScheduleMonth() {
+  return paymentMonthKeyFromDate(getPaymentScheduleToday());
+}
+
+function formatTodayHeaderLabel(date = new Date()) {
+  return `${formatPaymentDateKey(date)} ${KOREAN_WEEKDAY_LABELS[date.getDay()]}요일`;
+}
+
+function parsePaymentMonthKey(monthKey: string) {
+  const [yearText, monthText] = monthKey.split('.');
+  const year = Number(yearText);
+  const month = Number(monthText);
+
+  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return null;
+
+  return { year, monthIndex: month - 1 };
+}
+
+function paymentMonthKeyFromDate(date: string) {
+  return date.split('.').slice(0, 2).join('.');
+}
+
+function accountingDateKeyFromDate(value: string) {
+  const normalizedDate = normalizeWorkDate(value);
+  if (normalizedDate) return normalizedDate.replaceAll('-', '.');
+
+  return normalizePaymentDate(value).replaceAll('-', '.');
+}
+
+function accountingMonthKeyFromDate(value: string) {
+  return accountingDateKeyFromDate(value).split('.').slice(0, 2).join('.');
+}
+
+function formatPaymentMonthKey(year: number, monthIndex: number) {
+  const normalizedDate = new Date(year, monthIndex, 1);
+  return `${normalizedDate.getFullYear()}.${paymentDatePart(normalizedDate.getMonth() + 1)}`;
+}
+
+function formatPaymentMonthLabel(monthKey: string) {
+  const month = parsePaymentMonthKey(monthKey);
+  if (!month) return monthKey;
+
+  return `${month.year}년 ${month.monthIndex + 1}월`;
+}
+
+function shiftPaymentMonth(monthKey: string, offset: number) {
+  const month = parsePaymentMonthKey(monthKey) ?? parsePaymentMonthKey(getDefaultPaymentScheduleMonth())!;
+  return formatPaymentMonthKey(month.year, month.monthIndex + offset);
+}
+
+function daysInPaymentMonth(monthKey: string) {
+  const month = parsePaymentMonthKey(monthKey) ?? parsePaymentMonthKey(getDefaultPaymentScheduleMonth())!;
+  return new Date(month.year, month.monthIndex + 1, 0).getDate();
+}
+
+function paymentDateForMonthDay(monthKey: string, day: number) {
+  return `${monthKey}.${paymentDatePart(day)}`;
+}
+
+function paymentDateInputValue(date: string) {
+  return accountingDateKeyFromDate(date).replaceAll('.', '-');
+}
+
+function paymentDateKeyInputValue(date: string) {
+  return date.replaceAll('.', '-');
+}
+
+function alignPaymentDateToMonth(date: string, monthKey: string) {
+  const day = Number(date.split('.')[2] ?? '1');
+  const safeDay = Math.min(Math.max(Number.isFinite(day) && day > 0 ? day : 1, 1), daysInPaymentMonth(monthKey));
+  return paymentDateForMonthDay(monthKey, safeDay);
+}
+
 function createPaymentScheduleItem(draft: PaymentScheduleDraft): PaymentScheduleItem {
   const amount = parseMoneyText(draft.amount);
   const paidAmount = draft.status === '결제완료' ? amount : parseMoneyText(draft.paidAmount);
@@ -6769,6 +7100,32 @@ function createPaymentScheduleItem(draft: PaymentScheduleDraft): PaymentSchedule
     source: draft.source.trim() || '직접등록',
     memo: draft.memo.trim() || '메모 없음',
   };
+}
+
+function downloadPaymentScheduleCsv(rows: PaymentScheduleItem[], startDate: string, endDate: string) {
+  const headers = ['결제일자', '거래처', '결제항목', '금액', '지급액', '잔액', '상태', '결제수단', '출처', '메모'];
+  const body = rows.map((payment) => [
+    payment.date,
+    payment.partner,
+    payment.item,
+    payment.amount,
+    payment.paidAmount,
+    Math.max(0, payment.amount - payment.paidAmount),
+    payment.status,
+    payment.method,
+    payment.source,
+    payment.memo,
+  ]);
+  const csv = `\uFEFF${[headers, ...body].map((row) => row.map(csvCell).join(',')).join('\r\n')}`;
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `결제상세_${startDate.replaceAll('.', '')}_${endDate.replaceAll('.', '')}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function PurchasePage({
@@ -6909,7 +7266,7 @@ function PurchasePage({
             />
           }
         />
-        <DataTable
+        <ListColumnTable
           columns={['기준월', '결제월', '변동', '구분', '거래처', '은행', '계좌번호', '금액', '계산서', '결제여부', '메모']}
           rows={filteredPurchases.map((entry) => [
             formatShortMonth(entry.baseMonth),
@@ -7293,8 +7650,12 @@ function PaymentListPage({
           </div>
         }
       >
-        <DataTable
-          columns={['기준월', '결제월', '변동', '구분', '거래처', '은행', '계좌번호', '금액', '계산서', '결제여부', '상세']}
+        <ListColumnTable
+          columns={['기준월', '결제월', '변동', '구분', '거래처', '은행', '계좌번호', '금액', '계산서', '결제여부']}
+          onRowClick={(rowIndex) => {
+            const aggregate = filteredAggregates[rowIndex];
+            if (aggregate) onOpenPurchasePartner(aggregate.partner, aggregate.baseMonth);
+          }}
           rows={filteredAggregates.map((aggregate) => [
             formatShortMonth(aggregate.baseMonth),
             aggregate.paymentMonth,
@@ -7312,14 +7673,6 @@ function PaymentListPage({
               {aggregate.amount > 0 && aggregate.paidAmount >= aggregate.amount ? <span>{aggregate.dueDateSummary}</span> : null}
               <StatusPill label={aggregate.status} tone={paymentStatusTone(aggregate.status)} />
             </div>,
-            <button
-              className="mini-button"
-              key={`${aggregate.key}-detail`}
-              onClick={() => onOpenPurchasePartner(aggregate.partner, aggregate.baseMonth)}
-              type="button"
-            >
-              상세
-            </button>,
           ])}
         />
         {filteredAggregates.length === 0 ? (
@@ -7390,11 +7743,11 @@ function PaymentListPage({
                   금액
                   <em>필수</em>
                 </span>
-                <input inputMode="numeric" onChange={(event) => updateDraft('amount', event.target.value)} placeholder="1,000,000" required value={draft.amount} />
+                <input inputMode="numeric" onChange={(event) => updateDraft('amount', formatMoneyInputValue(event.target.value))} placeholder="1,000,000" required value={draft.amount} />
               </label>
               <label className="estimate-control">
                 <span>지급액</span>
-                <input inputMode="numeric" onChange={(event) => updateDraft('paidAmount', event.target.value)} placeholder="0" value={draft.paidAmount} />
+                <input inputMode="numeric" onChange={(event) => updateDraft('paidAmount', formatMoneyInputValue(event.target.value))} placeholder="0" value={draft.paidAmount} />
               </label>
               <label className="estimate-control">
                 <span>은행</span>
@@ -7439,95 +7792,354 @@ function PaymentListPage({
           </form>
         </DetailDrawer>
       ) : null}
+
     </div>
   );
 }
 
-function SchedulePage({ linkedPayments }: { linkedPayments: PaymentScheduleItem[] }) {
+function createAccountingDaySummary(): AccountingDaySummary {
+  return {
+    paymentCount: 0,
+    cardCount: 0,
+    accountCount: 0,
+    totalCount: 0,
+    paymentAmount: 0,
+    cardDepositAmount: 0,
+    accountReceiptAmount: 0,
+  };
+}
+
+function addAccountingDaySummary(
+  summaries: Map<string, AccountingDaySummary>,
+  date: string,
+  update: Partial<Omit<AccountingDaySummary, 'totalCount'>>,
+) {
+  const key = accountingDateKeyFromDate(date);
+  const current = summaries.get(key) ?? createAccountingDaySummary();
+  const next = {
+    ...current,
+    paymentCount: current.paymentCount + (update.paymentCount ?? 0),
+    cardCount: current.cardCount + (update.cardCount ?? 0),
+    accountCount: current.accountCount + (update.accountCount ?? 0),
+    paymentAmount: current.paymentAmount + (update.paymentAmount ?? 0),
+    cardDepositAmount: current.cardDepositAmount + (update.cardDepositAmount ?? 0),
+    accountReceiptAmount: current.accountReceiptAmount + (update.accountReceiptAmount ?? 0),
+  };
+  next.totalCount = next.paymentCount + next.cardCount + next.accountCount;
+  summaries.set(key, next);
+}
+
+function cardSettlementAccountingDate(settlement: CardSettlement) {
+  if (settlement.depositDate) return accountingDateKeyFromDate(settlement.depositDate);
+  if (settlement.paid > 0) return accountingDateKeyFromDate(defaultCardDepositDate(settlement.date));
+  return accountingDateKeyFromDate(settlement.date);
+}
+
+function SchedulePage({
+  cardSettlements: scheduleCardSettlements,
+  linkedPayments,
+  onOpenPaymentSource,
+  workRecords,
+}: {
+  cardSettlements: CardSettlement[];
+  linkedPayments: PaymentScheduleItem[];
+  onOpenPaymentSource: (payment: PaymentScheduleItem) => void;
+  workRecords: WorkerWorkListRecord[];
+}) {
   const [manualPayments, setManualPayments] = useState<PaymentScheduleItem[]>(paymentScheduleSeed);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<PaymentScheduleFilter>('all');
-  const [selectedDate, setSelectedDate] = useState('2026.05.21');
+  const [groupFilter, setGroupFilter] = useState<PaymentScheduleGroupFilter>('all');
+  const todayPaymentDate = useMemo(() => getPaymentScheduleToday(), []);
+  const defaultPaymentMonth = useMemo(() => paymentMonthKeyFromDate(todayPaymentDate), [todayPaymentDate]);
+  const [selectedMonth, setSelectedMonth] = useState(defaultPaymentMonth);
+  const [selectedDate, setSelectedDate] = useState(todayPaymentDate);
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
+  const [listRangeStart, setListRangeStart] = useState(() => paymentDateKeyInputValue(todayPaymentDate));
+  const [listRangeEnd, setListRangeEnd] = useState(() => paymentDateKeyInputValue(todayPaymentDate));
   const [draft, setDraft] = useState<PaymentScheduleDraft>(() => createPaymentScheduleDraft());
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
+  const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
+  const [paymentDownloadNotice, setPaymentDownloadNotice] = useState<{ id: number; message: string } | null>(null);
   const [shortcutTitle, setShortcutTitle] = useState('');
   const [shortcutUrl, setShortcutUrl] = useState('');
   const [shortcuts, setShortcuts] = useState<DashboardShortcut[]>(defaultPaymentShortcuts);
+  const [settlementMemo, setSettlementMemo] = useState('');
   const normalizedQuery = query.trim().toLowerCase();
   const canAddShortcut = shortcutTitle.trim().length > 0 && shortcutUrl.trim().length > 0;
   const payments = useMemo(() => [...linkedPayments, ...manualPayments], [linkedPayments, manualPayments]);
-  const totalScheduledAmount = payments.reduce((sum, payment) => sum + payment.amount, 0);
-  const completedAmount = payments.reduce((sum, payment) => sum + payment.paidAmount, 0);
-  const unpaidAmount = payments.reduce((sum, payment) => sum + Math.max(0, payment.amount - payment.paidAmount), 0);
-  const overdueItems = payments.filter((payment) => payment.status === '연체');
-  const filteredPayments = useMemo(
+  const selectedPayment = useMemo(
+    () => payments.find((payment) => payment.id === selectedPaymentId) ?? null,
+    [payments, selectedPaymentId],
+  );
+  const canEditSelectedPaymentInSchedule = selectedPayment
+    ? manualPayments.some((payment) => payment.id === selectedPayment.id)
+    : false;
+  const monthPayments = useMemo(() => payments.filter((payment) => paymentMonthKeyFromDate(payment.date) === selectedMonth), [payments, selectedMonth]);
+  const normalizedListRangeStartDate = normalizePaymentDate(listRangeStart);
+  const normalizedListRangeEndDate = normalizePaymentDate(listRangeEnd);
+  const listRangeStartDate = normalizedListRangeStartDate || selectedDate;
+  const listRangeEndDate = normalizedListRangeEndDate || listRangeStartDate;
+  const [listRangeFromDate, listRangeToDate] =
+    listRangeStartDate <= listRangeEndDate ? [listRangeStartDate, listRangeEndDate] : [listRangeEndDate, listRangeStartDate];
+  const listRangeLabel =
+    listRangeFromDate === listRangeToDate ? `${listRangeFromDate} 기준` : `${listRangeFromDate} ~ ${listRangeToDate}`;
+  const listRangePayments = useMemo(
     () =>
       payments.filter((payment) => {
-        const matchesQuery =
-          normalizedQuery.length === 0 ||
-          [
-            payment.date,
-            payment.partner,
-            payment.item,
-            payment.status,
-            payment.method,
-            payment.source,
-            payment.memo,
-            String(payment.amount),
-          ]
-            .join(' ')
-            .toLowerCase()
-            .includes(normalizedQuery);
-
-        return matchesPaymentFilter(payment, filter) && matchesQuery;
+        const paymentDate = accountingDateKeyFromDate(payment.date);
+        return paymentDate >= listRangeFromDate && paymentDate <= listRangeToDate;
       }),
-    [filter, normalizedQuery, payments],
+    [listRangeFromDate, listRangeToDate, payments],
   );
-  const selectedDatePayments = payments.filter((payment) => payment.date === selectedDate);
+  const monthCardSettlements = useMemo(
+    () => scheduleCardSettlements.filter((settlement) => accountingMonthKeyFromDate(cardSettlementAccountingDate(settlement)) === selectedMonth),
+    [scheduleCardSettlements, selectedMonth],
+  );
+  const monthAccountTransferReceipts = useMemo(
+    () =>
+      workRecords
+        .flatMap((record) =>
+          record.payments
+            .filter((payment) => payment.method === '계좌이체' && parseWorkAmountInput(payment.amount) > 0)
+            .map((payment, index) => ({
+              id: `${record.id}-account-transfer-${index}`,
+              date: accountingDateKeyFromDate(record.date),
+              amount: parseWorkAmountInput(payment.amount),
+              customer: record.customer,
+              title: record.title,
+              vehicle: record.vehicle,
+            })),
+        )
+        .filter((receipt) => accountingMonthKeyFromDate(receipt.date) === selectedMonth),
+    [workRecords, selectedMonth],
+  );
+  const selectedMonthParts = parsePaymentMonthKey(selectedMonth) ?? parsePaymentMonthKey(defaultPaymentMonth)!;
+  const selectedMonthLabel = formatPaymentMonthLabel(selectedMonth);
+  const holidaysByDate = useMemo(
+    () => new Map((PAYMENT_CALENDAR_HOLIDAYS_BY_YEAR[selectedMonthParts.year] ?? []).map((holiday) => [holiday.date, holiday.name])),
+    [selectedMonthParts.year],
+  );
+  const selectedMonthHolidayCount = useMemo(
+    () => Array.from(holidaysByDate.keys()).filter((date) => paymentMonthKeyFromDate(date) === selectedMonth).length,
+    [holidaysByDate, selectedMonth],
+  );
+  const totalScheduledAmount = monthPayments.reduce((sum, payment) => sum + payment.amount, 0);
+  const completedAmount = monthPayments.reduce((sum, payment) => sum + payment.paidAmount, 0);
+  const completedPaymentCount = monthPayments.filter((payment) => payment.status === '결제완료').length;
+  const todayPayments = payments.filter((payment) => payment.date === todayPaymentDate);
+  const todayPaymentAmount = todayPayments.reduce((sum, payment) => sum + payment.amount, 0);
+  const cardSalesAmount = monthCardSettlements.reduce((sum, settlement) => sum + settlement.amount, 0);
+  const cardDepositAmount = monthCardSettlements.reduce((sum, settlement) => sum + settlement.paid, 0);
+  const cardPendingAmount = monthCardSettlements.reduce((sum, settlement) => sum + Math.max(0, settlement.amount - settlement.paid), 0);
+  const cardPendingCount = monthCardSettlements.filter((settlement) => settlement.paid <= 0).length;
+  const accountTransferReceiptAmount = monthAccountTransferReceipts.reduce((sum, receipt) => sum + receipt.amount, 0);
+  const filteredPayments = useMemo(
+    () => filterPaymentScheduleItems(listRangePayments, filter, normalizedQuery, groupFilter),
+    [filter, groupFilter, listRangePayments, normalizedQuery],
+  );
+  const paymentFilterOptions = useMemo(
+    () =>
+      PAYMENT_SCHEDULE_FILTER_OPTIONS.map((option) => {
+        const count = filterPaymentScheduleItems(listRangePayments, option.id, normalizedQuery, groupFilter).length;
+        return {
+          ...option,
+          label: `${option.label} ${count}`,
+        };
+      }),
+    [groupFilter, listRangePayments, normalizedQuery],
+  );
+  const paymentGroupFilterOptions = useMemo(
+    () =>
+      PAYMENT_SCHEDULE_GROUP_FILTER_OPTIONS.map((option) => {
+        const count = filterPaymentScheduleItems(listRangePayments, filter, normalizedQuery, option.id).length;
+        return {
+          ...option,
+          label: `${option.label} ${count}`,
+        };
+      }),
+    [filter, listRangePayments, normalizedQuery],
+  );
+  const accountingSummaryByDate = useMemo(() => {
+    const summaries = new Map<string, AccountingDaySummary>();
+    monthPayments.forEach((payment) =>
+      addAccountingDaySummary(summaries, payment.date, {
+        paymentCount: 1,
+        paymentAmount: payment.amount,
+      }),
+    );
+    monthCardSettlements.forEach((settlement) =>
+      addAccountingDaySummary(summaries, cardSettlementAccountingDate(settlement), {
+        cardCount: 1,
+        cardDepositAmount: settlement.paid,
+      }),
+    );
+    monthAccountTransferReceipts.forEach((receipt) =>
+      addAccountingDaySummary(summaries, receipt.date, {
+        accountCount: 1,
+        accountReceiptAmount: receipt.amount,
+      }),
+    );
+    return summaries;
+  }, [monthPayments, monthCardSettlements, monthAccountTransferReceipts]);
+  const selectedDateAccountingSummary = accountingSummaryByDate.get(selectedDate) ?? createAccountingDaySummary();
+  const selectedDateHolidayName = holidaysByDate.get(selectedDate);
   const paymentSuggestions = useMemo(
     () =>
       Array.from(
         new Set(
-          payments.flatMap((payment) => [
+          listRangePayments.flatMap((payment) => [
             payment.partner,
             payment.item,
             payment.status,
             payment.method,
             payment.source,
+            formatMoney(payment.amount),
+            formatMoney(Math.max(0, payment.amount - payment.paidAmount)),
           ]),
         ),
       ),
-    [payments],
+    [listRangePayments],
   );
-  const calendarCells = useMemo<Array<{ key: string; day: string; date: string; payments: PaymentScheduleItem[] }>>(
-    () => [
-      ...Array.from({ length: 5 }, (_, index) => ({ key: `empty-${index}`, day: '', date: '', payments: [] })),
-      ...Array.from({ length: 31 }, (_, index) => {
+  const calendarCells = useMemo<PaymentCalendarCell[]>(() => {
+    const emptyCells = Array.from({ length: new Date(selectedMonthParts.year, selectedMonthParts.monthIndex, 1).getDay() }, (_, index) => ({
+      key: `empty-${index}`,
+      day: '',
+      date: '',
+      payments: [],
+      accountingSummary: createAccountingDaySummary(),
+      isToday: false,
+    }));
+
+    return [
+      ...emptyCells,
+      ...Array.from({ length: daysInPaymentMonth(selectedMonth) }, (_, index) => {
         const day = index + 1;
-        const date = `2026.05.${String(day).padStart(2, '0')}`;
+        const date = paymentDateForMonthDay(selectedMonth, day);
         return {
           key: date,
           day: String(day),
           date,
-          payments: payments.filter((payment) => payment.date === date),
+          payments: monthPayments.filter((payment) => payment.date === date),
+          accountingSummary: accountingSummaryByDate.get(date) ?? createAccountingDaySummary(),
+          holidayName: holidaysByDate.get(date),
+          isToday: date === todayPaymentDate,
         };
       }),
-    ],
-    [payments],
-  );
-
+    ];
+  }, [accountingSummaryByDate, holidaysByDate, monthPayments, selectedMonth, selectedMonthParts.monthIndex, selectedMonthParts.year, todayPaymentDate]);
   function updateDraft<Key extends keyof PaymentScheduleDraft>(key: Key, value: PaymentScheduleDraft[Key]) {
     setDraft((current) => ({ ...current, [key]: value }));
   }
 
-  function addPaymentSchedule(event: FormEvent<HTMLFormElement>) {
+  function setPaymentListRangeToDate(date: string) {
+    const nextValue = paymentDateKeyInputValue(date);
+    setListRangeStart(nextValue);
+    setListRangeEnd(nextValue);
+  }
+
+  function selectPaymentCalendarDate(date: string) {
+    const nextValue = paymentDateKeyInputValue(date);
+    setSelectedDate(date);
+
+    if (!normalizedListRangeStartDate || normalizedListRangeEndDate) {
+      setListRangeStart(nextValue);
+      setListRangeEnd('');
+      return;
+    }
+
+    if (date < normalizedListRangeStartDate) {
+      setListRangeStart(nextValue);
+      setListRangeEnd('');
+      return;
+    }
+
+    setListRangeEnd(nextValue);
+  }
+
+  function movePaymentMonth(offset: number) {
+    const nextMonth = shiftPaymentMonth(selectedMonth, offset);
+    setSelectedMonth(nextMonth);
+  }
+
+  function movePaymentCalendarToToday() {
+    const nextToday = getPaymentScheduleToday();
+    setSelectedMonth(paymentMonthKeyFromDate(nextToday));
+    setSelectedDate(nextToday);
+    setPaymentListRangeToDate(nextToday);
+  }
+
+  function openPaymentRegistration() {
+    setDraft(createPaymentScheduleDraft());
+    setEditingPaymentId(null);
+    setSelectedPaymentId(null);
+    setIsRegistrationOpen(true);
+  }
+
+  function closePaymentForm() {
+    setDraft(createPaymentScheduleDraft());
+    setEditingPaymentId(null);
+    setIsRegistrationOpen(false);
+  }
+
+  function openPaymentEdit(payment: PaymentScheduleItem) {
+    setDraft(createPaymentScheduleDraftFromItem(payment));
+    setEditingPaymentId(payment.id);
+    setSelectedPaymentId(null);
+    setIsRegistrationOpen(true);
+  }
+
+  function handlePaymentInfoEdit() {
+    if (!selectedPayment) return;
+
+    if (canEditSelectedPaymentInSchedule) {
+      openPaymentEdit(selectedPayment);
+      return;
+    }
+
+    setSelectedPaymentId(null);
+    onOpenPaymentSource(selectedPayment);
+  }
+
+  useEffect(() => {
+    if (!paymentDownloadNotice) return undefined;
+
+    const timer = window.setTimeout(() => setPaymentDownloadNotice(null), 3500);
+    return () => window.clearTimeout(timer);
+  }, [paymentDownloadNotice]);
+
+  function downloadVisiblePaymentList() {
+    if (filteredPayments.length === 0) {
+      setPaymentDownloadNotice({
+        id: Date.now(),
+        // 회계 일정 관리에서 결제 정보 없이 엑셀 다운요청 했을 경우
+        message: '다운로드할 결제 정보가 없습니다.',
+      });
+      return;
+    }
+
+    downloadPaymentScheduleCsv(filteredPayments, listRangeFromDate, listRangeToDate);
+  }
+
+  function submitPaymentSchedule(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const nextPayment = createPaymentScheduleItem(draft);
 
+    if (editingPaymentId) {
+      const editedPayment = { ...nextPayment, id: editingPaymentId };
+      setManualPayments((current) => current.map((payment) => (payment.id === editingPaymentId ? editedPayment : payment)));
+      setSelectedMonth(paymentMonthKeyFromDate(editedPayment.date));
+      setSelectedDate(editedPayment.date);
+      setPaymentListRangeToDate(editedPayment.date);
+      closePaymentForm();
+      return;
+    }
+
     setManualPayments((current) => [nextPayment, ...current]);
+    setSelectedMonth(paymentMonthKeyFromDate(nextPayment.date));
     setSelectedDate(nextPayment.date);
-    setDraft(createPaymentScheduleDraft());
-    setIsRegistrationOpen(false);
+    setPaymentListRangeToDate(nextPayment.date);
+    closePaymentForm();
   }
 
   function handleAddShortcut(event: FormEvent<HTMLFormElement>) {
@@ -7547,111 +8159,202 @@ function SchedulePage({ linkedPayments }: { linkedPayments: PaymentScheduleItem[
 
   return (
     <div className="page-stack settlement-page">
-      <section className="settlement-filter-bar" aria-label="대금결제 기준 조건">
-        <div className="payment-month-control">
-          <span>기준월</span>
-          <button className="ghost-button" title="이전 달" type="button">
-            <ChevronLeft size={16} />
-          </button>
-          <strong>2026년 5월</strong>
-          <button className="ghost-button" title="다음 달" type="button">
-            <ChevronRight size={16} />
-          </button>
+      {paymentDownloadNotice ? (
+        <div className="payment-download-toast" key={paymentDownloadNotice.id} role="status" aria-live="polite">
+          {paymentDownloadNotice.message}
         </div>
-        <label className="settlement-status-filter">
-          <span>상태</span>
-          <select onChange={(event) => setFilter(event.target.value as PaymentScheduleFilter)} value={filter}>
-            {PAYMENT_SCHEDULE_FILTER_OPTIONS.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <SearchInput
-          label="거래처명"
-          listId="payment-schedule-search-suggestions"
-          onChange={setQuery}
-          placeholder="거래처, 결제항목, 상태 검색"
-          suggestions={paymentSuggestions}
-          value={query}
+      ) : null}
+      <section className="kpi-grid" aria-label="회계 일정 KPI">
+        <KpiCard icon={ReceiptText} label={`${selectedMonthLabel} 총 결제 예정액`} value={formatMoney(totalScheduledAmount)} detail={`지급 일정 ${monthPayments.length}건`} tone="blue" />
+        <KpiCard icon={CheckCircle2} label={`${selectedMonthLabel} 결제 완료`} value={formatMoney(completedAmount)} detail={`${completedPaymentCount}건 완료`} tone="green" />
+        <KpiCard
+          icon={CalendarDays}
+          label="오늘 결제"
+          value={`${todayPayments.length}건`}
+          detail={`${todayPaymentDate} · ${formatMoney(todayPaymentAmount)}`}
+          tone="purple"
         />
-        <button className="primary-button" onClick={() => setIsRegistrationOpen(true)} type="button">
-          <Plus size={16} />
-          결제 등록
-        </button>
-      </section>
-
-      <section className="kpi-grid" aria-label="대금결제 요약">
-        <KpiCard icon={ReceiptText} label="총 결제 예정액" value={formatMoney(totalScheduledAmount)} detail="월 기준 매입/외주/거래처" tone="blue" />
-        <KpiCard icon={CheckCircle2} label="결제 완료" value={formatMoney(completedAmount)} detail={`${payments.filter((payment) => payment.status === '결제완료').length}건 완료`} tone="green" />
-        <KpiCard icon={AlertCircle} label="미결/연체" value={formatMoney(unpaidAmount)} detail={`연체 ${overdueItems.length}건 발생`} tone={overdueItems.length > 0 ? 'red' : 'orange'} />
-        <KpiCard icon={CalendarDays} label="오늘 결제" value={`${selectedDatePayments.length}건`} detail={`${selectedDate} 기준`} tone="purple" />
-        <KpiCard icon={Download} label="엑셀 관리" value="양식" detail="다운로드/업로드 기준 필요" tone="yellow" />
+        <KpiCard
+          icon={CreditCard}
+          label={`${selectedMonthLabel} 카드매출 입금`}
+          value={formatMoney(cardDepositAmount)}
+          detail={`매출 ${formatMoney(cardSalesAmount)} · 미입금 ${formatMoney(cardPendingAmount)} (${cardPendingCount}건)`}
+          tone={cardPendingCount > 0 ? 'orange' : 'purple'}
+        />
+        <KpiCard
+          icon={WalletCards}
+          label={`${selectedMonthLabel} 계좌이체 매출`}
+          value={formatMoney(accountTransferReceiptAmount)}
+          detail={`작업 계좌입금 ${monthAccountTransferReceipts.length}건`}
+          tone="yellow"
+        />
       </section>
 
       <section className="settlement-layout">
-        <Panel className="payment-calendar-panel" title="결제 캘린더">
+        <Panel
+          className="payment-calendar-panel"
+          title="회계 캘린더"
+          action={
+            <div className="payment-month-control payment-calendar-month-control" aria-label="월 선택">
+              <button className="ghost-button" onClick={() => movePaymentMonth(-1)} title="이전 달" type="button">
+                <ChevronLeft size={16} />
+              </button>
+              <strong>{selectedMonthLabel}</strong>
+              <button className="ghost-button" onClick={() => movePaymentMonth(1)} title="다음 달" type="button">
+                <ChevronRight size={16} />
+              </button>
+              <button className="secondary-button payment-today-button" onClick={movePaymentCalendarToToday} type="button">
+                오늘
+              </button>
+            </div>
+          }
+        >
           <div className="payment-calendar-weekdays">
             {['일', '월', '화', '수', '목', '금', '토'].map((weekday) => (
               <span key={weekday}>{weekday}</span>
             ))}
           </div>
           <div className="payment-calendar-grid">
-            {calendarCells.map((cell) => (
-              <button
-                className={`payment-calendar-day ${cell.date === selectedDate ? 'selected' : ''} ${
-                  cell.payments.some((payment) => payment.status === '연체') ? 'has-overdue' : ''
-                }`}
-                disabled={!cell.date}
-                key={cell.key}
-                onClick={() => setSelectedDate(cell.date)}
-                type="button"
-              >
-                <span>{cell.day}</span>
-                {cell.payments.length > 0 ? <em>{cell.payments.length}</em> : null}
-              </button>
-            ))}
+            {calendarCells.map((cell) => {
+              const hasDate = cell.date.length > 0;
+              const isRangeStart = hasDate && cell.date === normalizedListRangeStartDate;
+              const isRangeEnd = hasDate && cell.date === normalizedListRangeEndDate && cell.date !== normalizedListRangeStartDate;
+              const isInRange =
+                Boolean(hasDate && normalizedListRangeStartDate && normalizedListRangeEndDate) &&
+                cell.date > normalizedListRangeStartDate &&
+                cell.date < normalizedListRangeEndDate;
+
+              return (
+                <button
+                  aria-label={
+                    cell.date
+                      ? [
+                          cell.date,
+                          cell.isToday ? '오늘' : null,
+                          cell.holidayName,
+                          isRangeStart ? '조회 시작일' : null,
+                          isRangeEnd ? '조회 종료일' : null,
+                          `회계 일정 ${cell.accountingSummary.totalCount}건`,
+                        ]
+                          .filter(Boolean)
+                          .join(' ')
+                      : undefined
+                  }
+                  className={`payment-calendar-day ${isRangeStart ? 'selected range-start' : ''} ${
+                    isRangeEnd ? 'range-end' : ''
+                  } ${isInRange ? 'in-range' : ''} ${cell.isToday ? 'is-today' : ''} ${cell.holidayName ? 'has-holiday' : ''} ${
+                    cell.payments.some((payment) => payment.status === '연체') ? 'has-overdue' : ''
+                  }`}
+                  disabled={!cell.date}
+                  key={cell.key}
+                  onClick={() => selectPaymentCalendarDate(cell.date)}
+                  title={cell.holidayName ? `${cell.date} ${cell.holidayName}` : cell.date}
+                  type="button"
+                >
+                  <span className="payment-calendar-day-number">{cell.day}</span>
+                  {cell.isToday ? <strong className="payment-calendar-today-label">오늘</strong> : null}
+                  {cell.holidayName ? <small className="payment-calendar-holiday">{cell.holidayName}</small> : null}
+                  {cell.accountingSummary.totalCount > 0 ? <em>{cell.accountingSummary.totalCount}</em> : null}
+                </button>
+              );
+            })}
           </div>
           <div className="payment-day-summary">
-            <strong>{selectedDate} 결제 요약</strong>
-            <span>{selectedDatePayments.length}건 · 합계 {formatMoney(selectedDatePayments.reduce((sum, payment) => sum + payment.amount, 0))}</span>
+            <strong>{selectedDate} 회계 요약</strong>
+            <span>
+              {selectedDateAccountingSummary.totalCount}건 · 지급 {formatMoney(selectedDateAccountingSummary.paymentAmount)}
+              {' · '}카드입금 {formatMoney(selectedDateAccountingSummary.cardDepositAmount)}
+              {' · '}계좌입금 {formatMoney(selectedDateAccountingSummary.accountReceiptAmount)}
+              {selectedDateHolidayName ? ` · ${selectedDateHolidayName}` : ''}
+            </span>
+            <span>{selectedMonthLabel} 공휴일 {selectedMonthHolidayCount}일</span>
           </div>
         </Panel>
 
         <Panel
           className="payment-detail-panel"
-          title={`결제 상세 리스트 (${selectedDate} 기준)`}
+          title={`결제 상세 리스트 (${listRangeLabel})`}
           action={
-            <button className="secondary-button" type="button">
-              <Download size={16} />
-              엑셀 다운로드
-            </button>
+            <div className="payment-detail-header-actions">
+              <button className="secondary-button" onClick={downloadVisiblePaymentList} type="button">
+                <Download size={16} />
+                엑셀 다운로드
+              </button>
+            </div>
           }
         >
           <RecordToolbar
-            count={`총 ${filteredPayments.length}건`}
-            filters={
-              <FilterTabs
-                ariaLabel="대금결제 상태 필터"
-                onChange={(value) => setFilter(value as PaymentScheduleFilter)}
-                options={PAYMENT_SCHEDULE_FILTER_OPTIONS}
-                value={filter}
+            search={
+              <SearchInput
+                label="거래처명 검색"
+                labelHidden
+                listId="payment-schedule-search-suggestions"
+                onChange={setQuery}
+                placeholder="거래처, 결제항목, 상태 검색"
+                suggestions={paymentSuggestions}
+                value={query}
               />
             }
+            count={`총 ${filteredPayments.length}건`}
+            filters={
+              <div className="payment-detail-filter-row">
+                <FilterTabs
+                  ariaLabel="대금결제 상태 필터"
+                  onChange={(value) => setFilter(value as PaymentScheduleFilter)}
+                  options={paymentFilterOptions}
+                  value={filter}
+                />
+                <label className="payment-detail-group-filter">
+                  <span>구분</span>
+                  <select onChange={(event) => setGroupFilter(event.target.value as PaymentScheduleGroupFilter)} value={groupFilter}>
+                    {paymentGroupFilterOptions.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            }
+            action={
+              <div className="payment-detail-toolbar-actions">
+                <button className="primary-button" onClick={openPaymentRegistration} type="button">
+                  <Plus size={16} />
+                  결제 등록
+                </button>
+              </div>
+            }
           />
-          <DataTable
-            columns={['결제일자', '거래처', '결제항목', '금액', '지급/잔액', '상태', '관리']}
+          <ListColumnTable
+            className={`payment-detail-table ${filteredPayments.length >= 6 ? 'scrollable' : ''}`}
+            columns={['결제일자', '거래처', '결제항목', '금액', '지급/잔액', '상태']}
+            emptyMessage="결제 정보가 없습니다."
+            onRowClick={(rowIndex) => {
+              const payment = filteredPayments[rowIndex];
+              if (!payment) return;
+              setSelectedPaymentId(payment.id);
+            }}
             rows={filteredPayments.map((payment) => [
-              payment.date,
-              <strong key={`${payment.id}-partner`}>{payment.partner}</strong>,
-              `${payment.item}\n${payment.source} · ${payment.method}`,
-              formatMoney(payment.amount),
-              `${formatMoney(payment.paidAmount)}\n잔액 ${formatMoney(Math.max(0, payment.amount - payment.paidAmount))}`,
-              <StatusPill key={`${payment.id}-status`} label={payment.status} tone={paymentStatusTone(payment.status)} />,
-              <button className="mini-button" key={`${payment.id}-action`} onClick={() => setSelectedDate(payment.date)} type="button">
-                보기
-              </button>,
+              <time className="payment-date-cell" dateTime={payment.date.replaceAll('.', '-')} key={`${payment.id}-date`}>
+                {payment.date}
+              </time>,
+              <strong className="payment-partner-name" key={`${payment.id}-partner`}>
+                {payment.partner}
+              </strong>,
+              <div className="payment-item-cell" key={`${payment.id}-item`}>
+                <strong>{payment.item}</strong>
+                <span>{payment.source} · {payment.method}</span>
+              </div>,
+              <span className="payment-money-cell" key={`${payment.id}-amount`}>
+                {formatMoney(payment.amount)}
+              </span>,
+              <div className="payment-balance-cell" key={`${payment.id}-balance`}>
+                <strong>{formatMoney(payment.paidAmount)}</strong>
+                <span>잔액 {formatMoney(Math.max(0, payment.amount - payment.paidAmount))}</span>
+              </div>,
+              <span className="payment-status-cell" key={`${payment.id}-status`}>
+                <StatusPill label={payment.status} tone={paymentStatusTone(payment.status)} />
+              </span>,
             ])}
           />
         </Panel>
@@ -7696,19 +8399,83 @@ function SchedulePage({ linkedPayments }: { linkedPayments: PaymentScheduleItem[
         <Panel title="업무 메모">
           <label className="settlement-memo-box">
             <span>결제 관련 특이사항</span>
-            <textarea placeholder="거래처별 지급 조건, 연체 사유, 증빙 확인 메모를 입력하세요." />
+            <AutoResizeTextarea
+              minHeight={160}
+              onChange={setSettlementMemo}
+              placeholder="거래처별 지급 조건, 연체 사유, 증빙 확인 메모를 입력하세요."
+              value={settlementMemo}
+            />
           </label>
         </Panel>
       </section>
 
+      {selectedPayment ? (
+        <DetailDrawer
+          eyebrow="결제 상세"
+          footer={
+            <div className="payment-detail-modal-footer">
+              <button className="secondary-button" onClick={() => setSelectedPaymentId(null)} type="button">
+                닫기
+              </button>
+              <button className="primary-button" onClick={handlePaymentInfoEdit} type="button">
+                정보 수정
+              </button>
+            </div>
+          }
+          onClose={() => setSelectedPaymentId(null)}
+          title={selectedPayment.partner}
+          variant="modal"
+        >
+          <div className="payment-detail-modal-summary">
+            <div>
+              <span>결제항목</span>
+              <strong>{selectedPayment.item}</strong>
+              <small>{selectedPayment.source} · {selectedPayment.method}</small>
+            </div>
+            <StatusPill label={selectedPayment.status} tone={paymentStatusTone(selectedPayment.status)} />
+          </div>
+          <div className="payment-detail-modal-amounts">
+            <article>
+              <span>결제 금액</span>
+              <strong>{formatMoney(selectedPayment.amount)}</strong>
+            </article>
+            <article>
+              <span>지급액</span>
+              <strong>{formatMoney(selectedPayment.paidAmount)}</strong>
+            </article>
+            <article>
+              <span>잔액</span>
+              <strong>{formatMoney(Math.max(0, selectedPayment.amount - selectedPayment.paidAmount))}</strong>
+            </article>
+          </div>
+          <div className="payment-detail-modal-grid">
+            <InfoItem icon={CalendarDays} label="결제일자" value={selectedPayment.date} />
+            <InfoItem icon={Building2} label="거래처" value={selectedPayment.partner} />
+            <InfoItem icon={ReceiptText} label="결제항목" value={selectedPayment.item} />
+            <InfoItem icon={CreditCard} label="결제수단" value={selectedPayment.method} />
+            <InfoItem icon={Database} label="연결업무" value={selectedPayment.source} />
+            <InfoItem icon={WalletCards} label="상태" value={selectedPayment.status} />
+          </div>
+          <div className="payment-detail-modal-memo">
+            <strong>메모</strong>
+            <p>{selectedPayment.memo || '등록된 메모가 없습니다.'}</p>
+          </div>
+          <p className="helper-text">
+            {canEditSelectedPaymentInSchedule
+              ? '이 결제 정보는 일정 화면에서 바로 수정할 수 있습니다.'
+              : '작업 자동등록 정보는 원본 작업 페이지로 이동해 수정합니다.'}
+          </p>
+        </DetailDrawer>
+      ) : null}
+
       {isRegistrationOpen ? (
         <DetailDrawer
           eyebrow="대금결제"
-          onClose={() => setIsRegistrationOpen(false)}
-          title="결제 일정 등록"
+          onClose={closePaymentForm}
+          title={editingPaymentId ? '결제 일정 수정' : '결제 일정 등록'}
           variant="modal"
         >
-          <form className="payment-registration-form" onSubmit={addPaymentSchedule}>
+          <form className="payment-registration-form" onSubmit={submitPaymentSchedule}>
             <div className="sales-form-grid">
               <label className="estimate-control">
                 <span>
@@ -7736,11 +8503,11 @@ function SchedulePage({ linkedPayments }: { linkedPayments: PaymentScheduleItem[
                   금액
                   <em>필수</em>
                 </span>
-                <input inputMode="numeric" onChange={(event) => updateDraft('amount', event.target.value)} placeholder="2,500,000" required value={draft.amount} />
+                <input inputMode="numeric" onChange={(event) => updateDraft('amount', formatMoneyInputValue(event.target.value))} placeholder="2,500,000" required value={draft.amount} />
               </label>
               <label className="estimate-control">
                 <span>지급액</span>
-                <input inputMode="numeric" onChange={(event) => updateDraft('paidAmount', event.target.value)} placeholder="0" value={draft.paidAmount} />
+                <input inputMode="numeric" onChange={(event) => updateDraft('paidAmount', formatMoneyInputValue(event.target.value))} placeholder="0" value={draft.paidAmount} />
               </label>
               <label className="estimate-control">
                 <span>상태</span>
@@ -7763,6 +8530,7 @@ function SchedulePage({ linkedPayments }: { linkedPayments: PaymentScheduleItem[
                 <span>연결업무</span>
                 <select onChange={(event) => updateDraft('source', event.target.value)} value={draft.source}>
                   <option>매입입고</option>
+                  <option>자재 매입</option>
                   <option>작업 정산</option>
                   <option>거래처 미결</option>
                   <option>외주</option>
@@ -7775,16 +8543,17 @@ function SchedulePage({ linkedPayments }: { linkedPayments: PaymentScheduleItem[
               </label>
             </div>
             <div className="estimate-save-row">
-              <button className="secondary-button" onClick={() => setIsRegistrationOpen(false)} type="button">
+              <button className="secondary-button" onClick={closePaymentForm} type="button">
                 닫기
               </button>
               <button className="primary-button" type="submit">
-                결제 일정 저장
+                {editingPaymentId ? '수정 저장' : '결제 일정 저장'}
               </button>
             </div>
           </form>
         </DetailDrawer>
       ) : null}
+
     </div>
   );
 }
@@ -8128,39 +8897,56 @@ function KpStatisticsPage({
       className="kp-inline-input"
       inputMode="numeric"
       key={`${row.id}-${key}`}
-      onChange={(event) => updateDraft(row, key, event.target.value)}
+      onChange={(event) => updateDraft(row, key, formatMoneyInputValue(event.target.value))}
       placeholder={placeholder}
       value={row.draft[key]}
     />
+  );
+  const amountVatInput = (
+    row: KpSettlementBaseRow & { draft: KpSettlementDraft },
+    amountKey: keyof KpSettlementDraft,
+    vatKey: 'glassVat' | 'tintVat' | 'extraVat',
+  ) => (
+    <div className="kp-amount-vat-cell" key={`${row.id}-${amountKey}-${vatKey}`}>
+      {amountInput(row, amountKey)}
+      {vatSelect(row, vatKey)}
+    </div>
   );
 
   return (
     <div className="page-stack kp-statistics-page">
       <section className="kp-filter-panel" aria-label="KP 검색 조건">
-        <div className="kp-filter-row">
+        <div className="kp-filter-row kp-period-row">
           <strong>기간</strong>
-          <label>
-            <input checked={periodBasis === 'work'} onChange={() => setPeriodBasis('work')} type="radio" />
-            작업일
-          </label>
-          <label>
-            <input checked={periodBasis === 'payment'} onChange={() => setPeriodBasis('payment')} type="radio" />
-            지급일
-          </label>
-          <input onChange={(event) => setPeriodStart(event.target.value)} type="date" value={periodStart} />
-          <span>~</span>
-          <input onChange={(event) => setPeriodEnd(event.target.value)} type="date" value={periodEnd} />
-          <button type="button" onClick={() => setPeriodStart(formatDateInputValue(new Date(2026, 4, 20)))}>오늘</button>
-          <button type="button" onClick={() => selectQuickRange(3)}>3일</button>
-          <button className="active" type="button" onClick={() => selectQuickRange(7)}>1주</button>
-          <button type="button" onClick={() => selectQuickRange(14)}>2주</button>
-          <button type="button" onClick={() => setPeriodEnd(formatDateInputValue(addMonths(parseDateInput(periodStart) ?? new Date(), 1)))}>1개월</button>
+          <div className="kp-radio-group">
+            <label>
+              <input checked={periodBasis === 'work'} onChange={() => setPeriodBasis('work')} type="radio" />
+              작업일
+            </label>
+            <label>
+              <input checked={periodBasis === 'payment'} onChange={() => setPeriodBasis('payment')} type="radio" />
+              지급일
+            </label>
+          </div>
+          <div className="kp-date-range">
+            <input onChange={(event) => setPeriodStart(event.target.value)} type="date" value={periodStart} />
+            <span>~</span>
+            <input onChange={(event) => setPeriodEnd(event.target.value)} type="date" value={periodEnd} />
+          </div>
+          <div className="kp-quick-range">
+            <button type="button" onClick={() => setPeriodStart(formatDateInputValue(new Date(2026, 4, 20)))}>오늘</button>
+            <button type="button" onClick={() => selectQuickRange(3)}>3일</button>
+            <button className="active" type="button" onClick={() => selectQuickRange(7)}>1주</button>
+            <button type="button" onClick={() => selectQuickRange(14)}>2주</button>
+            <button type="button" onClick={() => setPeriodEnd(formatDateInputValue(addMonths(parseDateInput(periodStart) ?? new Date(), 1)))}>1개월</button>
+          </div>
         </div>
         <div className="kp-filter-row kp-search-row">
-          <span className="kp-filter-indent" aria-hidden="true" />
+          <strong>업체</strong>
           <SearchInput
             className="kp-partner-search"
             label="업체"
+            labelHidden
             listId="kp-partner-search-suggestions"
             onChange={setPartnerQuery}
             placeholder="업체명"
@@ -8177,8 +8963,10 @@ function KpStatisticsPage({
             placeholder="차량번호/브랜드/모델명/부품번호"
             value={keyword}
           />
-          <button className="primary-button" type="button">검색</button>
-          <button className="secondary-button" onClick={resetFilters} type="button">초기화</button>
+          <div className="kp-filter-actions">
+            <button className="primary-button" type="button">검색</button>
+            <button className="secondary-button" onClick={resetFilters} type="button">초기화</button>
+          </div>
         </div>
       </section>
 
@@ -8195,8 +8983,12 @@ function KpStatisticsPage({
           </div>
         }
       >
-        <DataTable
-          columns={['업체(거래처)', '작업일', '지급일', '차종', '차량번호', '지급금액', '유리지급가', 'VAT', '썬팅지급가', 'VAT', '추가지급가', 'VAT', '공제금액', '면책금', '썬팅', '상세']}
+        <ListColumnTable
+          columns={['업체', '작업일', '지급일', '차종', '차량번호', '지급액', '유리', '썬팅', '추가', '공제', '면책', '팅']}
+          onRowClick={(rowIndex) => {
+            const row = filteredRows[rowIndex];
+            if (row) setSelectedRow(row);
+          }}
             rows={filteredRows.map((row) => [
               row.partner,
               row.workDate,
@@ -8210,16 +9002,12 @@ function KpStatisticsPage({
               row.vehicle,
               row.plateNumber,
             <strong className="kp-paid-amount" key={`${row.id}-paid`}>{row.paidAmount.toLocaleString('ko-KR')}</strong>,
-            amountInput(row, 'glassAmount'),
-            vatSelect(row, 'glassVat'),
-            amountInput(row, 'tintPaymentAmount'),
-            vatSelect(row, 'tintVat'),
-            amountInput(row, 'extraAmount'),
-            vatSelect(row, 'extraVat'),
+            amountVatInput(row, 'glassAmount', 'glassVat'),
+            amountVatInput(row, 'tintPaymentAmount', 'tintVat'),
+            amountVatInput(row, 'extraAmount', 'extraVat'),
             amountInput(row, 'deductionAmount'),
             amountInput(row, 'waiverAmount'),
             amountInput(row, 'tintingAmount'),
-            <button className="mini-button" key={`${row.id}-detail`} onClick={() => setSelectedRow(row)} type="button">상세</button>,
           ])}
         />
       </Panel>
@@ -8280,6 +9068,15 @@ function KpStatisticsPage({
 }
 
 type CardSalesSort = 'workAsc' | 'paymentAsc' | 'amountDesc' | 'cardAsc';
+type CardSalesDepositFilter = 'all' | 'pending' | 'deposited';
+type CardSalesSearchState = {
+  category: string;
+  company: string;
+  plate: string;
+  card: string;
+  deposit: CardSalesDepositFilter;
+  sort: CardSalesSort;
+};
 type CardSalesOverride = {
   depositDate: string;
   depositAmount: string;
@@ -8289,9 +9086,17 @@ type CardSalesStorageState = {
   bulkDepositDate: string;
 };
 
+const CARD_SALES_DEFAULT_SEARCH: CardSalesSearchState = {
+  category: '',
+  company: '',
+  plate: '',
+  card: '',
+  deposit: 'all',
+  sort: 'workAsc',
+};
+
 function formatCardSalesMoneyInput(value: string) {
-  const digits = value.replace(/[^\d]/g, '');
-  return digits ? Number(digits).toLocaleString('ko-KR') : '';
+  return formatMoneyInputValue(value);
 }
 
 function normalizeCardSalesDateInput(value: string) {
@@ -8463,13 +9268,12 @@ function todayDateInputValue() {
 
 function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
   const initialCardSalesStorage = useMemo(() => readCardSalesStorage(), []);
-  const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<CardSalesSort>('workAsc');
+  const [searchDraft, setSearchDraft] = useState<CardSalesSearchState>(CARD_SALES_DEFAULT_SEARCH);
+  const [appliedSearch, setAppliedSearch] = useState<CardSalesSearchState>(CARD_SALES_DEFAULT_SEARCH);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [overrides, setOverrides] = useState<Record<string, CardSalesOverride>>(() => initialCardSalesStorage.overrides);
   const [bulkDepositDate, setBulkDepositDate] = useState(() => initialCardSalesStorage.bulkDepositDate);
   const [bulkDepositAmount, setBulkDepositAmount] = useState('');
-  const normalizedQuery = query.trim().toLowerCase();
   const rows = useMemo(
     () =>
       settlements.map((settlement, index) => {
@@ -8500,32 +9304,33 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
     [overrides, settlements],
   );
   const filteredRows = useMemo(() => {
+    const categoryQuery = appliedSearch.category.trim().toLowerCase();
+    const companyQuery = appliedSearch.company.trim().toLowerCase();
+    const plateQuery = appliedSearch.plate.trim().toLowerCase();
+    const cardQuery = appliedSearch.card.trim().toLowerCase();
     const filtered = rows.filter((row) => {
-      const haystack = [
-        row.workDate,
-        row.paymentDate,
-        row.category,
-        row.company,
-        row.settlement.plate,
-        row.settlement.vehicle,
-        row.settlement.brand,
-        row.settlement.amount,
-        row.settlement.status,
-        row.settlement.source,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-      return normalizedQuery.length === 0 || haystack.includes(normalizedQuery);
+      const matchesCategory = categoryQuery.length === 0 || row.category.toLowerCase().includes(categoryQuery);
+      const matchesCompany = companyQuery.length === 0 || row.company.toLowerCase().includes(companyQuery);
+      const matchesPlate =
+        plateQuery.length === 0 ||
+        row.settlement.plate.toLowerCase().includes(plateQuery) ||
+        (row.settlement.vehicle ?? '').toLowerCase().includes(plateQuery);
+      const matchesCard = cardQuery.length === 0 || row.settlement.brand.toLowerCase().includes(cardQuery);
+      const matchesDeposit =
+        appliedSearch.deposit === 'all' ||
+        (appliedSearch.deposit === 'pending' && row.depositAmount <= 0) ||
+        (appliedSearch.deposit === 'deposited' && row.depositAmount > 0);
+
+      return matchesCategory && matchesCompany && matchesPlate && matchesCard && matchesDeposit;
     });
 
     return [...filtered].sort((left, right) => {
-      if (sort === 'amountDesc') return right.settlement.amount - left.settlement.amount;
-      if (sort === 'cardAsc') return left.settlement.brand.localeCompare(right.settlement.brand, 'ko-KR');
-      if (sort === 'paymentAsc') return left.paymentDate.localeCompare(right.paymentDate, 'ko-KR');
+      if (appliedSearch.sort === 'amountDesc') return right.settlement.amount - left.settlement.amount;
+      if (appliedSearch.sort === 'cardAsc') return left.settlement.brand.localeCompare(right.settlement.brand, 'ko-KR');
+      if (appliedSearch.sort === 'paymentAsc') return left.paymentDate.localeCompare(right.paymentDate, 'ko-KR');
       return left.workDate.localeCompare(right.workDate, 'ko-KR');
     });
-  }, [normalizedQuery, rows, sort]);
+  }, [appliedSearch, rows]);
   const selectableFilteredRows = filteredRows.filter((row) => row.depositAmount <= 0);
   const selectedRows = rows.filter((row) => row.depositAmount <= 0 && selectedKeys.has(row.key));
   const selectedAmount = selectedRows.reduce((sum, row) => sum + row.settlement.amount, 0);
@@ -8534,23 +9339,13 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
   const totalDepositAmount = rows.reduce((sum, row) => sum + row.depositAmount, 0);
   const totalFee = rows.reduce((sum, row) => sum + row.fee, 0);
   const pendingCount = rows.filter((row) => row.depositAmount <= 0).length;
-  const searchSuggestions = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          rows.flatMap((row) => [
-            row.workDate,
-            row.paymentDate,
-            row.category,
-            row.company,
-            row.settlement.plate,
-            row.settlement.brand,
-            row.settlement.status,
-          ]),
-        ),
-      ).filter(Boolean),
+  const categorySuggestions = useMemo(() => Array.from(new Set(rows.map((row) => row.category))).filter(Boolean), [rows]);
+  const companySuggestions = useMemo(() => Array.from(new Set(rows.map((row) => row.company))).filter(Boolean), [rows]);
+  const plateSuggestions = useMemo(
+    () => Array.from(new Set(rows.flatMap((row) => [row.settlement.plate, row.settlement.vehicle]).filter((value): value is string => Boolean(value)))),
     [rows],
   );
+  const cardSuggestions = useMemo(() => Array.from(new Set(rows.map((row) => row.settlement.brand))).filter(Boolean), [rows]);
   const allFilteredSelected = selectableFilteredRows.length > 0 && selectableFilteredRows.every((row) => selectedKeys.has(row.key));
 
   useEffect(() => {
@@ -8583,6 +9378,19 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
         [field]: nextValue,
       },
     }));
+  }
+
+  function updateCardSalesSearch<Key extends keyof CardSalesSearchState>(key: Key, value: CardSalesSearchState[Key]) {
+    setSearchDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  function applyCardSalesSearch() {
+    setAppliedSearch(searchDraft);
+  }
+
+  function resetCardSalesSearch() {
+    setSearchDraft(CARD_SALES_DEFAULT_SEARCH);
+    setAppliedSearch(CARD_SALES_DEFAULT_SEARCH);
   }
 
   function setDefaultDepositDateIfEmpty(key: string, currentDepositDate: string, input: HTMLInputElement) {
@@ -8669,29 +9477,68 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
         className="card-sales-panel"
         title="카드매출 목록"
       >
-        <RecordToolbar
-          count={`총 ${filteredRows.length}건 · 선택 ${selectedRows.length}건`}
-          filters={
-            <div className="card-sales-toolbar">
-              <select onChange={(event) => setSort(event.target.value as CardSalesSort)} value={sort}>
+        <div className="card-sales-search-panel" aria-label="카드매출 검색 조건">
+          <div className="card-sales-filter-grid">
+            <SearchInput
+              className="card-sales-filter-input"
+              label="구분"
+              listId="card-sales-category-suggestions"
+              onChange={(value) => updateCardSalesSearch('category', value)}
+              placeholder="구분"
+              suggestions={categorySuggestions}
+              value={searchDraft.category}
+            />
+            <SearchInput
+              className="card-sales-filter-input"
+              label="업체"
+              listId="card-sales-company-suggestions"
+              onChange={(value) => updateCardSalesSearch('company', value)}
+              placeholder="업체"
+              suggestions={companySuggestions}
+              value={searchDraft.company}
+            />
+            <SearchInput
+              className="card-sales-filter-input"
+              label="차량번호"
+              listId="card-sales-plate-suggestions"
+              onChange={(value) => updateCardSalesSearch('plate', value)}
+              placeholder="차량번호/차종"
+              suggestions={plateSuggestions}
+              value={searchDraft.plate}
+            />
+            <SearchInput
+              className="card-sales-filter-input"
+              label="카드사"
+              listId="card-sales-card-suggestions"
+              onChange={(value) => updateCardSalesSearch('card', value)}
+              placeholder="카드사"
+              suggestions={cardSuggestions}
+              value={searchDraft.card}
+            />
+            <label className="card-sales-filter-select">
+              <span>입금여부</span>
+              <select onChange={(event) => updateCardSalesSearch('deposit', event.target.value as CardSalesDepositFilter)} value={searchDraft.deposit}>
+                <option value="all">전체</option>
+                <option value="pending">입금대기</option>
+                <option value="deposited">입금완료</option>
+              </select>
+            </label>
+            <label className="card-sales-filter-select">
+              <span>정렬</span>
+              <select onChange={(event) => updateCardSalesSearch('sort', event.target.value as CardSalesSort)} value={searchDraft.sort}>
                 <option value="workAsc">작업일 빠른순</option>
                 <option value="paymentAsc">결제일 빠른순</option>
                 <option value="amountDesc">결제금액 높은순</option>
                 <option value="cardAsc">카드사 가나다순</option>
               </select>
+            </label>
+            <div className="card-sales-search-actions">
+              <button className="primary-button" onClick={applyCardSalesSearch} type="button">검색</button>
+              <button className="secondary-button" onClick={resetCardSalesSearch} type="button">초기화</button>
             </div>
-          }
-          search={
-            <SearchInput
-              label="카드매출 검색"
-              listId="card-sales-search-suggestions"
-              onChange={setQuery}
-              placeholder="차량번호, 업체, 카드사 검색"
-              suggestions={searchSuggestions}
-              value={query}
-            />
-          }
-        />
+          </div>
+          <div className="card-sales-result-count">총 {filteredRows.length}건 · 선택 {selectedRows.length}건</div>
+        </div>
         <div className="card-sales-bulk-row">
           <div className="card-sales-selected-summary" aria-label="선택 일괄입금 요약">
             <span>
@@ -8722,7 +9569,7 @@ function CardSalesPage({ settlements }: { settlements: CardSettlement[] }) {
             </button>
           </div>
         </div>
-        <DataTable
+        <ListColumnTable
           columns={[
             <input
               aria-label="전체 선택"
@@ -9598,6 +10445,7 @@ function WorkPage({
                     onDragStart={(event) => handleWorkScheduleDragStart(record, event)}
                     onSelect={() => openCalendarWorkRecord(record)}
                     selected={selectedCalendarRecord?.id === record.id}
+                    status={resolveWorkRuntimeStatus(record, workRuntimeNow)}
                   />
                 ))}
                 {cell.records.length > 2 ? (
@@ -9942,8 +10790,7 @@ function formatWorkLedgerAmount(value: number) {
 }
 
 function parseWorkAmountInput(value: string) {
-  const normalizedValue = value.replace(/[^\d]/g, '');
-  return normalizedValue ? Number(normalizedValue) : 0;
+  return parseMoneyInputValue(value);
 }
 
 function formDataText(formData: FormData, key: string) {
@@ -10193,9 +11040,105 @@ function getWorkColumnFilterValue(record: WorkerWorkListRecord, key: WorkColumnF
   return String(record[key] ?? '');
 }
 
+function getInventoryColumnFilterValue(item: InventoryItem, key: InventoryColumnFilterKey) {
+  if (key === 'stockQty') return item.stockQty || `${item.stock}`;
+
+  return String(item[key] ?? '');
+}
+
+function getInventoryQuantity(value: string) {
+  return parseMoneyInputValue(value);
+}
+
+function getInventoryStockQuantity(item: InventoryItem) {
+  return getInventoryQuantity(item.stockQty || `${item.stock}`);
+}
+
+function hasInventoryValue(value: string) {
+  return value.trim().length > 0;
+}
+
+function inventoryMatchesSearch(item: InventoryItem, search: InventorySearchState) {
+  const codeQuery = search.code.trim().toLowerCase();
+  const nameQuery = search.name.trim().toLowerCase();
+  const specQuery = search.spec.trim().toLowerCase();
+  const noteQuery = search.note.trim().toLowerCase();
+  const stockQty = getInventoryStockQuantity(item);
+  const inboundQty = getInventoryQuantity(item.inboundQty);
+  const outboundQty = getInventoryQuantity(item.outboundQty);
+  const hasInboundPrice = hasInventoryValue(item.inboundPrice);
+  const hasOutboundPrice = hasInventoryValue(item.outboundPrice);
+  const hasExchangePrice = hasInventoryValue(item.exchangePrice);
+  const priceAndNoteText = [item.note, item.inboundPrice, item.outboundPrice, item.exchangePrice].join(' ').toLowerCase();
+  const matchesText =
+    (codeQuery.length === 0 || item.partNo.toLowerCase().includes(codeQuery)) &&
+    (nameQuery.length === 0 || item.name.toLowerCase().includes(nameQuery)) &&
+    (specQuery.length === 0 || item.spec.toLowerCase().includes(specQuery)) &&
+    (noteQuery.length === 0 || priceAndNoteText.includes(noteQuery));
+  const matchesStock =
+    search.stock === 'all' ||
+    (search.stock === 'hasStock' && stockQty > 0) ||
+    (search.stock === 'emptyStock' && stockQty === 0) ||
+    (search.stock === 'negativeStock' && stockQty < 0);
+  const matchesMovement =
+    search.movement === 'all' ||
+    (search.movement === 'inbound' && inboundQty !== 0) ||
+    (search.movement === 'outbound' && outboundQty !== 0) ||
+    (search.movement === 'changed' && (inboundQty !== 0 || outboundQty !== 0)) ||
+    (search.movement === 'noMovement' && inboundQty === 0 && outboundQty === 0);
+  const matchesPrice =
+    search.price === 'all' ||
+    (search.price === 'hasInboundPrice' && hasInboundPrice) ||
+    (search.price === 'hasOutboundPrice' && hasOutboundPrice) ||
+    (search.price === 'hasExchangePrice' && hasExchangePrice) ||
+    (search.price === 'missingPrice' && !hasInboundPrice && !hasOutboundPrice && !hasExchangePrice);
+
+  return matchesText && matchesStock && matchesMovement && matchesPrice;
+}
+
+function sortInventoryItems(items: InventoryItem[], sort: InventorySort) {
+  return [...items].sort((left, right) => {
+    if (sort === 'nameAsc') return left.name.localeCompare(right.name, 'ko-KR');
+    if (sort === 'stockDesc') return getInventoryStockQuantity(right) - getInventoryStockQuantity(left);
+    if (sort === 'stockAsc') return getInventoryStockQuantity(left) - getInventoryStockQuantity(right);
+    if (sort === 'inboundDesc') return getInventoryQuantity(right.inboundQty) - getInventoryQuantity(left.inboundQty);
+    if (sort === 'outboundDesc') return Math.abs(getInventoryQuantity(right.outboundQty)) - Math.abs(getInventoryQuantity(left.outboundQty));
+
+    return left.partNo.localeCompare(right.partNo, 'ko-KR');
+  });
+}
+
 function csvCell(value: string | number) {
   const text = String(value).replace(/\r?\n/g, '\n');
   return `"${text.replace(/"/g, '""')}"`;
+}
+
+function downloadInventoryRows(rows: InventoryItem[]) {
+  const headers = ['품목코드', '품목명', '규격', '전일재고', '입고수량', '출고수량', '재고수량', '입고단가', '출고단가', '교환단가', '적요'];
+  const csvRows = [
+    headers,
+    ...rows.map((item) => [
+      item.partNo,
+      item.name,
+      item.spec,
+      item.previousQty,
+      item.inboundQty,
+      item.outboundQty,
+      item.stockQty || `${item.stock}`,
+      item.inboundPrice,
+      item.outboundPrice,
+      item.exchangePrice,
+      item.note,
+    ]),
+  ];
+  const csv = csvRows.map((row) => row.map(csvCell).join(',')).join('\r\n');
+  const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = '재고리스트.csv';
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 function workPaymentSummary(payments: WorkPaymentEntry[]) {
@@ -10403,7 +11346,6 @@ function SortableWorkListTable({
           <col className="work-col-money" />
           <col className="work-col-payment" />
           <col className="work-col-status" />
-          <col className="work-col-detail" />
         </colgroup>
         <thead>
           <tr>
@@ -10418,7 +11360,6 @@ function SortableWorkListTable({
                 </button>
               </th>
             ))}
-            <th>상세</th>
           </tr>
         </thead>
         <tbody>
@@ -10448,18 +11389,6 @@ function SortableWorkListTable({
               </td>
               <td>
                 <StatusPill label={record.status} tone={statusTone(record.status)} />
-              </td>
-              <td>
-                <button
-                  className="mini-button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onOpen(record);
-                  }}
-                  type="button"
-                >
-                  보기
-                </button>
               </td>
             </tr>
           ))}
@@ -11085,15 +12014,15 @@ function WorkListRegistrationDrawer({
           <div className="estimate-form-grid">
             <label className="estimate-control">
               <span>보험청구액</span>
-              <input onChange={(event) => updateDraft('insuranceClaimAmount', event.target.value)} value={draft.insuranceClaimAmount} />
+              <input inputMode="numeric" onChange={(event) => updateDraft('insuranceClaimAmount', formatMoneyInputValue(event.target.value))} value={draft.insuranceClaimAmount} />
             </label>
             <label className="estimate-control">
               <span>보험입금액</span>
-              <input onChange={(event) => updateDraft('insurancePaidAmount', event.target.value)} value={draft.insurancePaidAmount} />
+              <input inputMode="numeric" onChange={(event) => updateDraft('insurancePaidAmount', formatMoneyInputValue(event.target.value))} value={draft.insurancePaidAmount} />
             </label>
             <label className="estimate-control">
               <span>결제금액</span>
-              <input onChange={(event) => updateDraft('paymentAmount', event.target.value)} value={draft.paymentAmount} />
+              <input inputMode="numeric" onChange={(event) => updateDraft('paymentAmount', formatMoneyInputValue(event.target.value))} value={draft.paymentAmount} />
             </label>
             <label className="estimate-control">
               <span>결제여부</span>
@@ -11429,9 +12358,9 @@ function WorkRecordDetailDrawer({
                     <span>결제액</span>
                     <input
                       inputMode="numeric"
-                      onChange={(event) => updatePaymentDraft(payment.id, 'amount', event.target.value)}
+                      onChange={(event) => updatePaymentDraft(payment.id, 'amount', formatMoneyInputValue(event.target.value))}
                       placeholder="0"
-                      value={payment.amount}
+                      value={formatMoneyInputValue(payment.amount)}
                     />
                   </label>
                   {payment.method === '카드' ? (
@@ -11654,31 +12583,36 @@ function InventoryDetailDrawer({ item, onClose }: { item: InventoryItem; onClose
     >
       <div className="drawer-summary">
         <div>
-          <span>품명</span>
+          <span>품목명</span>
           <strong>{item.name}</strong>
         </div>
         <div>
-          <span>재고</span>
-          <strong>{item.stock}개</strong>
+          <span>규격</span>
+          <strong>{item.spec || '-'}</strong>
         </div>
         <div>
-          <span>상태</span>
-          <StatusPill label={item.status} tone={statusTone(item.status)} />
+          <span>재고수량</span>
+          <strong>{item.stockQty || `${item.stock}`}</strong>
+        </div>
+        <div>
+          <span>품목코드</span>
+          <strong>{item.partNo}</strong>
         </div>
       </div>
-      <FormSection title="부품 정보">
+      <FormSection title="재고리스트">
         <div className="detail-fields">
-          <InfoItem icon={Car} label="호환" value={item.compatible} />
-          <InfoItem icon={Package} label="위치" value={item.location} />
-          <InfoItem icon={CreditCard} label="센터가" value={formatMoney(item.centerPrice)} />
-          <InfoItem icon={ReceiptText} label="청구단가" value={formatMoney(item.claimPrice)} />
+          <InfoItem icon={Database} label="전일재고" value={item.previousQty || '-'} />
+          <InfoItem icon={Download} label="입고수량" value={item.inboundQty || '-'} />
+          <InfoItem icon={Upload} label="출고수량" value={item.outboundQty || '-'} />
+          <InfoItem icon={Package} label="재고수량" value={item.stockQty || `${item.stock}`} />
         </div>
       </FormSection>
-      <FormSection title="입출고 이력">
-        <div className="flow-check-list">
-          <span>입고 2개 · 울산유리도매</span>
-          <span>출고 1개 · 작업 WO-2026-0042 연결</span>
-          <span>최소 재고 {item.minimum}개 기준으로 부족 여부를 표시합니다.</span>
+      <FormSection title="품목리스트 단가">
+        <div className="detail-fields">
+          <InfoItem icon={CreditCard} label="입고단가" value={formatProductListPrice(item.inboundPrice) || '-'} />
+          <InfoItem icon={WalletCards} label="출고단가" value={formatProductListPrice(item.outboundPrice) || '-'} />
+          <InfoItem icon={ReceiptText} label="교환단가" value={formatProductListPrice(item.exchangePrice) || '-'} />
+          <InfoItem icon={FileText} label="적요" value={item.note || '-'} />
         </div>
       </FormSection>
     </DetailDrawer>
@@ -11791,8 +12725,12 @@ function ClaimsPage() {
             />
           }
         />
-        <DataTable
-          columns={['청구번호', '고객/차량', '구분', '보험사', '청구금액', '입금액', '고객결제', '상태', '상세']}
+        <ListColumnTable
+          columns={['청구번호', '고객/차량', '구분', '보험사', '청구금액', '입금액', '고객결제', '상태']}
+          onRowClick={(rowIndex) => {
+            const claim = filteredClaims[rowIndex];
+            if (claim) setSelectedClaim(claim);
+          }}
           rows={filteredClaims.map((claim) => [
             claim.no,
             `${claim.customer}\n${claim.vehicle}`,
@@ -11802,9 +12740,6 @@ function ClaimsPage() {
             formatMoney(claim.paidAmount),
             formatMoney(claim.customerAmount),
             <StatusPill key={claim.no} label={claim.status} tone={statusTone(claim.status)} />,
-            <button className="mini-button" key={`${claim.no}-open`} onClick={() => setSelectedClaim(claim)} type="button">
-              보기
-            </button>,
           ])}
         />
       </Panel>
@@ -11833,120 +12768,314 @@ function ClaimsPage() {
 }
 
 function InventoryPage() {
-  const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<InventoryFilter>('all');
+  const [searchDraft, setSearchDraft] = useState<InventorySearchState>(INVENTORY_DEFAULT_SEARCH);
+  const [appliedSearch, setAppliedSearch] = useState<InventorySearchState>(INVENTORY_DEFAULT_SEARCH);
+  const [columnFilterDraftKey, setColumnFilterDraftKey] = useState<InventoryColumnFilterKey>('partNo');
+  const [columnFilterDraftValue, setColumnFilterDraftValue] = useState('');
+  const [columnFilters, setColumnFilters] = useState<InventoryColumnFilterRule[]>([]);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
-  const normalizedQuery = query.trim().toLowerCase();
-  const totalStockCount = inventory.reduce((sum, item) => sum + item.stock, 0);
-  const shortageItems = inventory.filter((item) => item.stock < item.minimum);
-  const checkItems = inventory.filter((item) => statusTone(item.status) === 'orange');
-  const stockValue = inventory.reduce((sum, item) => sum + item.stock * item.centerPrice, 0);
-  const claimValue = inventory.reduce((sum, item) => sum + item.stock * item.claimPrice, 0);
-  const searchSuggestions = useMemo(
-    () =>
-      Array.from(
-        new Set(inventory.flatMap((item) => [item.partNo, item.name, item.compatible, item.location, item.status])),
-      ),
+  const codeSuggestions = useMemo(() => uniqueNonEmptyStrings(inventory.map((item) => item.partNo)), []);
+  const nameSuggestions = useMemo(() => uniqueNonEmptyStrings(inventory.map((item) => item.name)), []);
+  const specSuggestions = useMemo(() => uniqueNonEmptyStrings(inventory.map((item) => item.spec)), []);
+  const noteSuggestions = useMemo(
+    () => uniqueNonEmptyStrings(inventory.flatMap((item) => [item.note, item.inboundPrice, item.outboundPrice, item.exchangePrice])),
     [],
   );
-  const filteredInventory = useMemo(
+  const columnFilterValues = useMemo(
     () =>
-      inventory.filter((item) => {
-        const target = [item.partNo, item.name, item.compatible, item.location, item.status].join(' ').toLowerCase();
-        const matchesQuery = normalizedQuery.length === 0 || target.includes(normalizedQuery);
-        const matchesFilter =
-          filter === 'all' ||
-          (filter === 'shortage' && item.status === '부족') ||
-          (filter === 'check' && item.status === '확인필요') ||
-          (filter === 'normal' && item.status === '정상');
-
-        return matchesQuery && matchesFilter;
-      }),
-    [filter, normalizedQuery],
+      uniqueNonEmptyStrings(inventory.map((item) => getInventoryColumnFilterValue(item, columnFilterDraftKey))).sort((left, right) =>
+        left.localeCompare(right, 'ko-KR', { numeric: true }),
+      ),
+    [columnFilterDraftKey],
   );
+  const columnFilterGroups = useMemo(
+    () =>
+      columnFilters.reduce((groups, filter) => {
+        const values = groups.get(filter.key) ?? new Set<string>();
+        values.add(filter.value);
+        groups.set(filter.key, values);
+        return groups;
+      }, new Map<InventoryColumnFilterKey, Set<string>>()),
+    [columnFilters],
+  );
+  const filteredInventory = useMemo(() => {
+    const filtered = inventory.filter((item) => {
+      const matchesColumnFilters =
+        columnFilterGroups.size === 0 ||
+        Array.from(columnFilterGroups.entries()).every(([key, values]) => values.has(getInventoryColumnFilterValue(item, key)));
+
+      return inventoryMatchesSearch(item, appliedSearch) && matchesColumnFilters;
+    });
+
+    return sortInventoryItems(filtered, appliedSearch.sort);
+  }, [appliedSearch, columnFilterGroups]);
+  const hasStockCount = inventory.filter((item) => getInventoryStockQuantity(item) > 0).length;
+  const inboundCount = inventory.filter((item) => getInventoryQuantity(item.inboundQty) !== 0).length;
+  const outboundCount = inventory.filter((item) => getInventoryQuantity(item.outboundQty) !== 0).length;
+  const missingPriceCount = inventory.filter(
+    (item) => !hasInventoryValue(item.inboundPrice) && !hasInventoryValue(item.outboundPrice) && !hasInventoryValue(item.exchangePrice),
+  ).length;
+
+  function updateSearch<Key extends keyof InventorySearchState>(key: Key, value: InventorySearchState[Key]) {
+    setSearchDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  function applySearch() {
+    setAppliedSearch(searchDraft);
+  }
+
+  function resetFilters() {
+    setSearchDraft(INVENTORY_DEFAULT_SEARCH);
+    setAppliedSearch(INVENTORY_DEFAULT_SEARCH);
+    setColumnFilterDraftKey('partNo');
+    setColumnFilterDraftValue('');
+    setColumnFilters([]);
+  }
+
+  function addColumnFilter(nextValue = columnFilterDraftValue) {
+    const value = nextValue.trim();
+    if (!value) return;
+
+    setColumnFilters((current) => {
+      if (current.some((filter) => filter.key === columnFilterDraftKey && filter.value === value)) return current;
+
+      return [
+        ...current,
+        {
+          id: `${columnFilterDraftKey}-${value}-${Date.now()}`,
+          key: columnFilterDraftKey,
+          value,
+        },
+      ];
+    });
+    setColumnFilterDraftValue('');
+  }
+
+  function removeColumnFilter(filterId: string) {
+    setColumnFilters((current) => current.filter((filter) => filter.id !== filterId));
+  }
 
   return (
-    <div className="page-stack">
-      <section className="kpi-grid" aria-label="부품 재고 요약">
-        <KpiCard
-          icon={Package}
-          label="총 보유수량"
-          value={`${totalStockCount}개`}
-          detail={`${inventory.length}개 품목`}
-          tone="blue"
-        />
-        <KpiCard
-          icon={AlertCircle}
-          label="부족 재고"
-          value={`${shortageItems.length}품목`}
-          detail={shortageItems[0]?.name ?? '발주 필요 없음'}
-          tone={shortageItems.length > 0 ? 'red' : 'green'}
-        />
-        <KpiCard
-          icon={CheckCircle2}
-          label="확인 필요"
-          value={`${checkItems.length}품목`}
-          detail={checkItems[0]?.name ?? '확인 대기 없음'}
-          tone={checkItems.length > 0 ? 'orange' : 'green'}
-        />
-        <KpiCard icon={CreditCard} label="재고 금액" value={formatMoney(stockValue)} detail="센터가 기준" tone="purple" />
-        <KpiCard
-          icon={ReceiptText}
-          label="청구 기준 금액"
-          value={formatMoney(claimValue)}
-          detail={`예상 차이 ${formatMoney(claimValue - stockValue)}`}
-          tone="yellow"
-        />
+    <div className="page-stack inventory-page">
+      <section className="inventory-summary-strip" aria-label="재고 요약">
+        <span>
+          전체 재고
+          <strong>{inventory.length.toLocaleString('ko-KR')}건</strong>
+          <em>재고리스트 기준</em>
+        </span>
+        <span>
+          재고있음
+          <strong>{hasStockCount.toLocaleString('ko-KR')}건</strong>
+          <em>재고수량 1 이상</em>
+        </span>
+        <span>
+          입고수량
+          <strong>{inboundCount.toLocaleString('ko-KR')}건</strong>
+          <em>입고수량 입력</em>
+        </span>
+        <span>
+          출고수량
+          <strong>{outboundCount.toLocaleString('ko-KR')}건</strong>
+          <em>출고수량 입력</em>
+        </span>
+        <span>
+          단가없음
+          <strong>{missingPriceCount.toLocaleString('ko-KR')}건</strong>
+          <em>품목리스트 단가 미입력</em>
+        </span>
       </section>
-
       <section className="workbench-grid">
-        <Panel className="span-12" title="부품/재고">
-          <RecordToolbar
-            action={
-              <button className="primary-button" type="button">
-                <Plus size={16} />
-                부품 등록
+        <Panel
+          action={
+            <div className="inventory-header-actions">
+              <button className="secondary-button" onClick={() => downloadInventoryRows(filteredInventory)} type="button">
+                <Download size={16} />
+                엑셀 다운로드
               </button>
-            }
-            count={`총 ${filteredInventory.length}건`}
-            filters={
-              <FilterTabs
-                ariaLabel="재고 필터"
-                onChange={(value) => setFilter(value as InventoryFilter)}
-                options={[
-                  { id: 'all', label: '전체' },
-                  { id: 'shortage', label: '부족' },
-                  { id: 'check', label: '확인필요' },
-                  { id: 'normal', label: '정상' },
-                ]}
-                value={filter}
-              />
-            }
-            search={
+            </div>
+          }
+          className="span-12 inventory-list-panel"
+          title="전체 재고 목록"
+        >
+          <div className="inventory-search-panel" aria-label="재고 검색 조건">
+            <div className="inventory-filter-grid">
               <SearchInput
-                label="전체 검색"
-                listId="inventory-search-suggestions"
-                onChange={setQuery}
-                placeholder="부품번호, 품명, 호환차종, 위치 검색"
-                suggestions={searchSuggestions}
-                value={query}
+                className="inventory-filter-input"
+                label="품목코드"
+                listId="inventory-code-suggestions"
+                onChange={(value) => updateSearch('code', value)}
+                placeholder="품목코드"
+                suggestions={codeSuggestions}
+                value={searchDraft.code}
               />
-            }
-          />
-          <DataTable
-            columns={['부품번호', '품명', '호환차종', '위치', '재고', '센터가', '보험청구단가', '상태', '상세']}
+              <SearchInput
+                className="inventory-filter-input"
+                label="품목명"
+                listId="inventory-name-suggestions"
+                onChange={(value) => updateSearch('name', value)}
+                placeholder="품목명"
+                suggestions={nameSuggestions}
+                value={searchDraft.name}
+              />
+              <SearchInput
+                className="inventory-filter-input"
+                label="규격"
+                listId="inventory-spec-suggestions"
+                onChange={(value) => updateSearch('spec', value)}
+                placeholder="규격"
+                suggestions={specSuggestions}
+                value={searchDraft.spec}
+              />
+              <SearchInput
+                className="inventory-filter-input"
+                label="적요/단가"
+                listId="inventory-note-suggestions"
+                onChange={(value) => updateSearch('note', value)}
+                placeholder="적요 또는 단가"
+                suggestions={noteSuggestions}
+                value={searchDraft.note}
+              />
+              <label className="inventory-filter-select">
+                <span>재고상태</span>
+                <select onChange={(event) => updateSearch('stock', event.target.value as InventoryStockFilter)} value={searchDraft.stock}>
+                  <option value="all">전체</option>
+                  <option value="hasStock">재고있음</option>
+                  <option value="emptyStock">재고없음</option>
+                  <option value="negativeStock">마이너스</option>
+                </select>
+              </label>
+              <label className="inventory-filter-select">
+                <span>입출고</span>
+                <select onChange={(event) => updateSearch('movement', event.target.value as InventoryMovementFilter)} value={searchDraft.movement}>
+                  <option value="all">전체</option>
+                  <option value="inbound">입고 있음</option>
+                  <option value="outbound">출고 있음</option>
+                  <option value="changed">입/출고 있음</option>
+                  <option value="noMovement">입/출고 없음</option>
+                </select>
+              </label>
+              <label className="inventory-filter-select">
+                <span>단가</span>
+                <select onChange={(event) => updateSearch('price', event.target.value as InventoryPriceFilter)} value={searchDraft.price}>
+                  <option value="all">전체</option>
+                  <option value="hasInboundPrice">입고단가 있음</option>
+                  <option value="hasOutboundPrice">출고단가 있음</option>
+                  <option value="hasExchangePrice">교환단가 있음</option>
+                  <option value="missingPrice">단가없음</option>
+                </select>
+              </label>
+              <label className="inventory-filter-select">
+                <span>정렬</span>
+                <select onChange={(event) => updateSearch('sort', event.target.value as InventorySort)} value={searchDraft.sort}>
+                  <option value="codeAsc">품목코드순</option>
+                  <option value="nameAsc">품목명순</option>
+                  <option value="stockDesc">재고 많은순</option>
+                  <option value="stockAsc">재고 적은순</option>
+                  <option value="inboundDesc">입고 많은순</option>
+                  <option value="outboundDesc">출고 많은순</option>
+                </select>
+              </label>
+              <div className="inventory-search-actions">
+                <button className="primary-button" onClick={applySearch} type="button">검색</button>
+                <button className="secondary-button" onClick={resetFilters} type="button">초기화</button>
+              </div>
+            </div>
+            <div className="inventory-result-count">
+              총 {filteredInventory.length.toLocaleString('ko-KR')}건 · 컬럼필터 {columnFilters.length}개
+            </div>
+          </div>
+          <div className="inventory-advanced-filters">
+            <label>
+              <span>필터 컬럼</span>
+              <select
+                onChange={(event) => {
+                  setColumnFilterDraftKey(event.target.value as InventoryColumnFilterKey);
+                  setColumnFilterDraftValue('');
+                }}
+                value={columnFilterDraftKey}
+              >
+                {INVENTORY_COLUMN_FILTER_OPTIONS.map((option) => (
+                  <option key={option.key} value={option.key}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>값 선택</span>
+              <input
+                list="inventory-column-filter-values"
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  setColumnFilterDraftValue(nextValue);
+                  if (columnFilterValues.includes(nextValue)) {
+                    addColumnFilter(nextValue);
+                  }
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter') return;
+                  event.preventDefault();
+                  addColumnFilter();
+                }}
+                placeholder="값 검색 후 선택"
+                value={columnFilterDraftValue}
+              />
+              <datalist id="inventory-column-filter-values">
+                {columnFilterValues.map((value) => (
+                  <option key={value} value={value} />
+                ))}
+              </datalist>
+            </label>
+            <button className="secondary-button" onClick={() => addColumnFilter()} type="button">
+              필터 추가
+            </button>
+            <button className="secondary-button" onClick={resetFilters} type="button">
+              필터 초기화
+            </button>
+            {columnFilters.length > 0 ? (
+              <div className="work-active-filters inventory-active-filters" aria-label="적용된 필터">
+                {columnFilters.map((filter) => {
+                  const option = INVENTORY_COLUMN_FILTER_OPTIONS.find((item) => item.key === filter.key);
+
+                  return (
+                    <button key={filter.id} onClick={() => removeColumnFilter(filter.id)} type="button">
+                      <span>{option?.label ?? filter.key}</span>
+                      <strong>{filter.value}</strong>
+                      <X size={13} />
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+          <ListColumnTable
+            columns={[
+              '품목코드',
+              '품목명',
+              '규격',
+              '전일재고',
+              '입고수량',
+              '출고수량',
+              '재고수량',
+              '입고단가',
+              '출고단가',
+              '교환단가',
+            ]}
+            onRowClick={(rowIndex) => {
+              const item = filteredInventory[rowIndex];
+              if (item) setSelectedItem(item);
+            }}
             rows={filteredInventory.map((item) => [
               item.partNo,
               item.name,
-              item.compatible,
-              item.location,
-              `${item.stock} / 최소 ${item.minimum}`,
-              formatMoney(item.centerPrice),
-              formatMoney(item.claimPrice),
-              <StatusPill key={item.partNo} label={item.status} tone={statusTone(item.status)} />,
-              <button className="mini-button" key={`${item.partNo}-open`} onClick={() => setSelectedItem(item)} type="button">
-                보기
-              </button>,
+              item.spec,
+              item.previousQty,
+              item.inboundQty,
+              item.outboundQty,
+              item.stockQty || `${item.stock}`,
+              formatProductListPrice(item.inboundPrice),
+              formatProductListPrice(item.outboundPrice),
+              formatProductListPrice(item.exchangePrice),
             ])}
           />
         </Panel>
@@ -12119,7 +13248,7 @@ function VehicleInformationPage({
         />
 
         {filteredVehicles.length > 0 ? (
-          <DataTable
+          <ListColumnTable
             columns={['브랜드/모델', '세대/연식', '분류', '입력 카테고리', '필름재단', '별칭', '출처', '메모']}
             rows={filteredVehicles.map((vehicle) => [
               <div className="vehicle-name-cell" key={`${vehicle.id}-name`}>
@@ -12440,8 +13569,12 @@ function CustomersPage({ onOpenCustomer }: { onOpenCustomer: (customerId: string
       />
 
       {filteredCustomers.length > 0 ? (
-        <DataTable
-          columns={['고객명', '연락처', '차량', '연결 업무', '매출', '미수', '최근 작업', '상태', '상세']}
+        <ListColumnTable
+          columns={['고객명', '연락처', '차량', '연결 업무', '매출', '미수', '최근 작업', '상태']}
+          onRowClick={(rowIndex) => {
+            const customer = filteredCustomers[rowIndex];
+            if (customer) onOpenCustomer(customer.id);
+          }}
           rows={filteredCustomers.map((customer) => {
             const linkedSections = linkedSectionsByCustomerId.get(customer.id) ?? buildCustomerLinkedSections(customer);
 
@@ -12464,9 +13597,6 @@ function CustomersPage({ onOpenCustomer }: { onOpenCustomer: (customerId: string
                 label={customer.unpaid > 0 ? '미수' : '정상'}
                 tone={customer.unpaid > 0 ? 'red' : 'green'}
               />,
-              <button className="mini-button" key={`${customer.id}-open`} onClick={() => onOpenCustomer(customer.id)}>
-                보기
-              </button>,
             ];
           })}
         />
@@ -12675,7 +13805,7 @@ function PartnersPage() {
           />
         }
       />
-      <DataTable
+      <ListColumnTable
         columns={['구분', '업체명', '담당자', '연락처', '미수/미지급', '자료']}
         rows={filteredPartners.map((partner) => [
           partner.type,
@@ -12752,16 +13882,17 @@ function AttachmentsPage() {
           />
         }
       />
-      <DataTable
-        columns={['파일명', '연결 업무', '구분', '고객/거래처', '상세']}
+      <ListColumnTable
+        columns={['파일명', '연결 업무', '구분', '고객/거래처']}
+        onRowClick={(rowIndex) => {
+          const file = filteredAttachments[rowIndex];
+          if (file) setSelectedFile(file);
+        }}
         rows={filteredAttachments.map((file) => [
           file.name,
           file.target,
           file.type,
           file.owner,
-          <button className="mini-button" key={`${file.name}-open`} onClick={() => setSelectedFile(file)} type="button">
-            보기
-          </button>,
         ])}
       />
     </Panel>
@@ -12863,7 +13994,7 @@ function LedgerWorkbookPage({ vehicleModelSuggestions }: { vehicleModelSuggestio
             <span>확인 필요 {pendingCount}건</span>
             <span>{activeSheet.source}</span>
           </div>
-          <DataTable
+          <ListColumnTable
             columns={['행', ...ledgerSheetColumns[activeSheet.id]]}
             rows={filteredRows.map((row, rowIndex) => [
               <span className="ledger-row-number" key={`${row.key}-row-number`}>
@@ -13220,7 +14351,7 @@ function PriceBookPage() {
               />
             }
           />
-          <DataTable
+          <ListColumnTable
             columns={productListColumns.map((column) => column.label)}
             onRowClick={(rowIndex) => selectProductRow(filteredRows[rowIndex]!)}
             rows={filteredRows.map(productListRowCells)}
@@ -13238,8 +14369,13 @@ function PriceBookPage() {
                   ) : (
                     <input
                       inputMode={column.key.includes('Price') ? 'numeric' : undefined}
-                      onChange={(event) => updateEditDraft(column.key, event.target.value)}
-                      value={editDraft[column.key]}
+                      onChange={(event) =>
+                        updateEditDraft(
+                          column.key,
+                          column.key.includes('Price') ? formatMoneyInputValue(event.target.value) : event.target.value,
+                        )
+                      }
+                      value={column.key.includes('Price') ? formatMoneyInputValue(editDraft[column.key]) : editDraft[column.key]}
                     />
                   )}
                 </label>
@@ -13277,9 +14413,14 @@ function PriceBookPage() {
                   ) : (
                     <input
                       inputMode={column.key.includes('Price') ? 'numeric' : undefined}
-                      onChange={(event) => updateRegistrationDraft(column.key, event.target.value)}
+                      onChange={(event) =>
+                        updateRegistrationDraft(
+                          column.key,
+                          column.key.includes('Price') ? formatMoneyInputValue(event.target.value) : event.target.value,
+                        )
+                      }
                       required={column.key === 'itemCode' || column.key === 'itemName'}
-                      value={registrationDraft[column.key]}
+                      value={column.key.includes('Price') ? formatMoneyInputValue(registrationDraft[column.key]) : registrationDraft[column.key]}
                     />
                   )}
                 </label>
@@ -13365,17 +14506,31 @@ function WarrantyCertificatePreview({ draft }: { draft: WarrantyDraft }) {
 
 function WarrantyPage({
   vehicleModelSuggestions,
+  workRecords,
 }: {
   vehicleModelSuggestions: string[];
+  workRecords: WorkerWorkListRecord[];
 }) {
   const [records, setRecords] = useState<WarrantyRecord[]>(warrantyRecords);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<WarrantyFilter>('all');
   const [draft, setDraft] = useState<WarrantyDraft>(() => createWarrantyDraft());
+  const [selectedSourceWorkId, setSelectedSourceWorkId] = useState('');
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [previewDraft, setPreviewDraft] = useState<WarrantyDraft | null>(null);
   const [pdfDraft, setPdfDraft] = useState<WarrantyDraft | null>(null);
   const normalizedQuery = query.trim().toLowerCase();
+  const warrantySourceWorks = useMemo(
+    () =>
+      [...workRecords]
+        .filter(isWarrantySourceWorkRecord)
+        .sort((left, right) => (normalizeWorkDate(right.date) || right.date).localeCompare(normalizeWorkDate(left.date) || left.date)),
+    [workRecords],
+  );
+  const selectedSourceWork = useMemo(
+    () => warrantySourceWorks.find((record) => record.id === selectedSourceWorkId) ?? null,
+    [selectedSourceWorkId, warrantySourceWorks],
+  );
 
   const filteredRecords = useMemo(
     () =>
@@ -13395,13 +14550,14 @@ function WarrantyPage({
             record.sideFirstFilm,
             record.sideRearFilm,
             record.status,
+            isUnissuedWarranty(record) ? '미발행건' : '',
           ]
             .join(' ')
             .toLowerCase()
             .includes(normalizedQuery);
         const matchesFilter =
           filter === 'all' ||
-          (filter === 'pending' && record.status === '발행대기') ||
+          (filter === 'unissued' && isUnissuedWarranty(record)) ||
           (filter === 'issued' && record.status === '발행완료') ||
           (filter === 'check' && record.status === '확인필요');
 
@@ -13425,7 +14581,7 @@ function WarrantyPage({
       ).filter(Boolean),
     [records, vehicleModelSuggestions],
   );
-  const pendingCount = records.filter((record) => record.status === '발행대기').length;
+  const unissuedCount = records.filter(isUnissuedWarranty).length;
   const issuedCount = records.filter((record) => record.status === '발행완료').length;
   const checkCount = records.filter((record) => record.status === '확인필요').length;
 
@@ -13433,12 +14589,33 @@ function WarrantyPage({
     setDraft((current) => ({ ...current, [key]: value }));
   }
 
+  function findSourceWorkForWarranty(record: WarrantyRecord) {
+    return (
+      warrantySourceWorks.find((workRecord) => {
+        const sameDate = normalizeWorkDate(workRecord.date) === normalizeWorkDate(record.workDate);
+        const samePlate = workRecord.plateNumber !== '-' && workRecord.plateNumber === record.plate;
+        const sameVehicle = workRecord.vehicle === record.vehicle;
+        return sameDate && (samePlate || sameVehicle);
+      }) ?? null
+    );
+  }
+
+  function handleSourceWorkChange(sourceWorkId: string) {
+    setSelectedSourceWorkId(sourceWorkId);
+    const sourceWork = warrantySourceWorks.find((record) => record.id === sourceWorkId);
+    if (!sourceWork) return;
+
+    setDraft((current) => createWarrantyDraftFromWorkRecord(sourceWork, current));
+  }
+
   function openNewWarranty() {
+    setSelectedSourceWorkId('');
     setDraft(createWarrantyDraft());
     setIsEditorOpen(true);
   }
 
   function openExistingWarranty(record: WarrantyRecord) {
+    setSelectedSourceWorkId(findSourceWorkForWarranty(record)?.id ?? '');
     setDraft(createWarrantyDraft(record));
     setIsEditorOpen(true);
   }
@@ -13466,13 +14643,19 @@ function WarrantyPage({
     setPreviewDraft(normalized);
   }
 
+  function handleMarkIssued(nextDraft: WarrantyDraft) {
+    const issuedDraft = saveDraft({ ...nextDraft, status: '발행완료', tone: 'green' });
+    setPreviewDraft(null);
+    setPdfDraft(issuedDraft);
+  }
+
   return (
     <div className="page-stack warranty-page">
       <section className="kpi-grid" aria-label="보증서 요약">
         <KpiCard icon={ShieldCheck} label="보증서 전체" value={`${records.length}건`} detail="썬팅 보증서 발행 대상" tone="blue" />
-        <KpiCard icon={FileText} label="발행대기" value={`${pendingCount}건`} detail="미리보기 후 PDF 발행 가능" tone="orange" />
-        <KpiCard icon={CheckCircle2} label="발행완료" value={`${issuedCount}건`} detail="고객 전달 완료 기준" tone="green" />
-        <KpiCard icon={AlertCircle} label="확인필요" value={`${checkCount}건`} detail="차량/필름 정보 확인 대상" tone="red" />
+        <KpiCard icon={AlertCircle} label="미발행건" value={`${unissuedCount}건`} detail="작업일 경과 후 발행 안 됨" tone="red" />
+        <KpiCard icon={CheckCircle2} label="발행완료" value={`${issuedCount}건`} detail="PDF 출력/전달 완료 기준" tone="green" />
+        <KpiCard icon={AlertCircle} label="확인필요" value={`${checkCount}건`} detail="차량/필름 정보 확인 대상" tone="orange" />
         <KpiCard icon={Car} label="템플릿" value="A4" detail="BOB0 썬팅보증서 항목 반영" tone="purple" />
       </section>
 
@@ -13481,7 +14664,7 @@ function WarrantyPage({
         action={
           <button className="primary-button" onClick={openNewWarranty} type="button">
             <Plus size={16} />
-            보증서 등록
+            보증서 작성
           </button>
         }
       >
@@ -13506,7 +14689,7 @@ function WarrantyPage({
             />
           }
         />
-        <DataTable
+        <ListColumnTable
           columns={['구분', '작업일', '차종', '차량번호', '작업내역', '품번', '썬팅', '보증서', '정보']}
           onRowClick={(rowIndex) => openExistingWarranty(filteredRecords[rowIndex]!)}
           rows={filteredRecords.map((record) => [
@@ -13517,13 +14700,13 @@ function WarrantyPage({
             record.workDescription,
             record.partNo || '-',
             formatWarrantyFilmSummary(record) || '-',
-            <StatusPill key={`${record.id}-status`} label={record.status} tone={record.tone} />,
+            <StatusPill key={`${record.id}-status`} label={record.status} tone={getWarrantyTone(record.status, record.workDate)} />,
             <div className="warranty-table-actions" key={`${record.id}-actions`}>
               <button className="mini-button" onClick={() => openExistingWarranty(record)} type="button">
                 상세
               </button>
-              <button className="mini-button" onClick={() => setPreviewDraft(createWarrantyDraft(record))} type="button">
-                미리보기
+              <button className="mini-button" onClick={() => setPdfDraft(createWarrantyDraft(record))} type="button">
+                PDF 출력
               </button>
             </div>,
           ])}
@@ -13543,13 +14726,47 @@ function WarrantyPage({
               </button>
               <button className="primary-button" onClick={handlePreview} type="button">
                 <FileText size={16} />
-                미리보기
+                PDF 미리보기
               </button>
             </div>
           }
           onClose={() => setIsEditorOpen(false)}
-          title="보증서 등록"
+          title="보증서 작성"
         >
+          <FormSection title="작업 정보 불러오기">
+            <div className="warranty-source-loader">
+              <label>
+                <span>썬팅 작업</span>
+                <select onChange={(event) => handleSourceWorkChange(event.target.value)} value={selectedSourceWorkId}>
+                  <option value="">직접 입력</option>
+                  {warrantySourceWorks.map((record) => (
+                    <option key={record.id} value={record.id}>
+                      {formatWarrantySourceWorkLabel(record)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {selectedSourceWork ? (
+                <div className="warranty-source-summary">
+                  <strong>{compactTextParts([selectedSourceWork.customer, selectedSourceWork.vehicle])}</strong>
+                  <span>
+                    {compactTextParts([
+                      normalizeWorkDate(selectedSourceWork.date) || selectedSourceWork.date,
+                      selectedSourceWork.time,
+                      selectedSourceWork.plateNumber === '-' ? '' : selectedSourceWork.plateNumber,
+                      selectedSourceWork.stock,
+                    ])}
+                  </span>
+                  <p>{firstLine(selectedSourceWork.title)}</p>
+                </div>
+              ) : warrantySourceWorks.length === 0 ? (
+                <div className="warranty-source-summary empty">
+                  <span>완료된 썬팅 작업 없음</span>
+                </div>
+              ) : null}
+            </div>
+          </FormSection>
+
           <FormSection title="고객 및 차량">
             <div className="warranty-form-grid">
               <label>
@@ -13619,12 +14836,12 @@ function WarrantyPage({
                 />
               </label>
               <label>
-                <span>보증서 상태</span>
+                <span>발행 상태</span>
                 <select
                   onChange={(event) => updateDraftField('status', event.target.value as WarrantyStatus)}
                   value={draft.status}
                 >
-                  <option value="발행대기">발행대기</option>
+                  <option value="미발행">미발행</option>
                   <option value="발행완료">발행완료</option>
                   <option value="확인필요">확인필요</option>
                 </select>
@@ -13703,7 +14920,7 @@ function WarrantyPage({
                 type="button"
               >
                 <ExternalLink size={16} />
-                PDF 보기
+                PDF 보기/출력
               </button>
             </div>
           }
@@ -13720,9 +14937,13 @@ function WarrantyPage({
         <DetailDrawer
           eyebrow="A4 출력 보기"
           footer={
-            <div className="action-footer">
+            <div className="action-footer warranty-pdf-footer">
               <button className="secondary-button" onClick={() => setPdfDraft(null)} type="button">
                 닫기
+              </button>
+              <button className="secondary-button" onClick={() => handleMarkIssued(pdfDraft)} type="button">
+                <CheckCircle2 size={16} />
+                발행완료 처리
               </button>
               <button
                 className="primary-button"
@@ -13733,13 +14954,13 @@ function WarrantyPage({
                 }}
                 type="button"
               >
-                <ExternalLink size={16} />
+                <Download size={16} />
                 PDF 저장/인쇄
               </button>
             </div>
           }
           onClose={() => setPdfDraft(null)}
-          title="PDF 보기"
+          title="PDF 출력"
           variant="modal"
         >
           <div className="warranty-pdf-viewer-shell">
@@ -13747,7 +14968,7 @@ function WarrantyPage({
               className="warranty-pdf-frame"
               id="warranty-pdf-frame"
               srcDoc={buildWarrantyPrintHtml(pdfDraft)}
-              title="보증서 PDF 보기"
+              title="보증서 PDF 출력"
             />
           </div>
         </DetailDrawer>
@@ -13833,7 +15054,7 @@ function SheetImportPage() {
               />
             }
           />
-          <DataTable
+          <ListColumnTable
             columns={['시트', '업무화 방향', 'DB 후보', '상태', '검토']}
             rows={filteredSheets.map((item) => [
               `${item.sheet}\n${item.rows}`,

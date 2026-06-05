@@ -673,7 +673,7 @@
     "sourceRow": 69,
     "itemCode": "3M_XP(35%)",
     "itemName": "3M_XP",
-    "spec": "0.35",
+    "spec": "35%",
     "previousQty": "",
     "inboundQty": "11.0",
     "outboundQty": "",
@@ -3144,9 +3144,9 @@
     "itemCode": "보유8501",
     "itemName": "보유8501",
     "spec": "20ea",
-    "previousQty": "-1100.0",
+    "previousQty": "-1,100",
     "inboundQty": "10.0",
-    "outboundQty": "-1129.0",
+    "outboundQty": "-1,129",
     "stockQty": "39.0"
   },
   {
@@ -3194,9 +3194,9 @@
     "itemCode": "합계",
     "itemName": "",
     "spec": "",
-    "previousQty": "-1180.0",
+    "previousQty": "-1,180",
     "inboundQty": "428.0",
-    "outboundQty": "-1239.0",
+    "outboundQty": "-1,239",
     "stockQty": "487.0"
   }
 ]
