@@ -211,6 +211,10 @@ type ModeOption = {
 };
 
 type EstimateStatus = '견적중' | '부품확인' | '확정' | '작업전환' | '취소';
+type EstimateListStatus = '대기' | '재고확인' | '확정';
+type EstimateOutsourceType = '일반' | '외주' | '소개';
+type EstimateOutsourceFilter = 'all' | EstimateOutsourceType;
+type EstimateStatusFilter = 'stock' | 'outsource' | 'intro';
 type WorkStatus = '예정' | '진행중' | '완료' | '보류';
 type WorkVisitType = '방문' | '출장' | '픽업' | '탁송';
 type ClaimStatus = '청구대기' | '청구완료' | '일부입금' | '입금완료';
@@ -222,11 +226,19 @@ type Estimate = {
   estimateDate: string;
   estimatorName: string;
   tradeType: EstimateTradeType;
+  outsourceType: EstimateOutsourceType;
   customer: string;
   phone: string;
   vehicle: string;
+  plateNumber: string;
+  vin: string;
   repair: string;
   area: string[];
+  repairType: string;
+  estimateContent: string;
+  deductibleAmount?: number;
+  tintAmount?: number;
+  paymentAmount?: number;
   amount: number;
   status: EstimateStatus;
   source: string;
@@ -353,6 +365,13 @@ type WorkerWorkListRecord = {
   paymentAmount: number;
   paymentStatus: string;
   payments: WorkPaymentEntry[];
+  addressPayload?: {
+    roadAddress: string;
+    detailAddress: string;
+    latitude?: number;
+    longitude?: number;
+    source: string;
+  };
   entry: CalendarEntry;
 };
 
@@ -746,6 +765,16 @@ type CardSettlement = {
   status: string;
   tone: Tone;
   source?: string;
+};
+
+type AddressSearchResult = {
+  id: string;
+  placeName: string;
+  roadAddress: string;
+  jibunAddress: string;
+  latitude: number;
+  longitude: number;
+  postalCode?: string;
 };
 
 type WarrantyRecord = {
@@ -1439,6 +1468,12 @@ const PLACEHOLDER_PAGE_IDS = new Set<PageId>([
 ]);
 
 const ESTIMATOR_OPTIONS = ['정보경', '정원철', '박승주'];
+const ESTIMATE_LIST_STATUS_OPTIONS: EstimateListStatus[] = ['대기', '재고확인', '확정'];
+const ESTIMATE_OUTSOURCE_OPTIONS: EstimateOutsourceType[] = ['일반', '외주', '소개'];
+const ESTIMATE_DEFAULT_INSURANCE_TYPE = '자차';
+const ESTIMATE_INSURANCE_TYPE_OPTIONS = [ESTIMATE_DEFAULT_INSURANCE_TYPE, '대물', '배상책임'];
+const ESTIMATE_DEFAULT_PERIOD_START = '2026-06-01';
+const ESTIMATE_DEFAULT_PERIOD_END = '2026-06-08';
 const INQUIRY_SOURCE_OPTIONS = ['전화', '문자', '정비소 소개', '거래처', '방문', '글로벌 홈페이지'];
 const CLAIM_TYPE_OPTIONS = ['일반', '자차', '대물(무과실)', '대물(과실)', '배상책임'];
 const WORK_TYPE_OPTIONS = ['교체', '복원', '탈부착', '썬팅', '기타'];
@@ -1449,6 +1484,44 @@ const PAYMENT_STATUS_OPTIONS = ['Y', 'N'];
 const PAYMENT_METHOD_OPTIONS: WorkPaymentMethod[] = ['카드', '계좌이체'];
 const CARD_COMPANY_OPTIONS = ['신한카드', '삼성카드', '현대카드', '롯데카드', 'KB국민카드', 'BC카드', 'NH농협카드', '하나카드', '우리카드', '기타'];
 const BANK_OPTIONS = ['국민은행', '신한은행', '우리은행', '하나은행', '농협은행', '기업은행', '부산은행', '경남은행', '카카오뱅크', '토스뱅크', '기타'];
+const ADDRESS_SEARCH_RESULTS: AddressSearchResult[] = [
+  {
+    id: 'gn-glass-shop',
+    placeName: '경남차유리 작업장',
+    roadAddress: '울산광역시 남구 삼산로 255',
+    jibunAddress: '울산광역시 남구 삼산동 1523-3',
+    latitude: 35.5389,
+    longitude: 129.3383,
+    postalCode: '44705',
+  },
+  {
+    id: 'ulsan-hyundai-bluehands',
+    placeName: '언양현대블루핸즈',
+    roadAddress: '울산광역시 울주군 언양읍 반구대로 130',
+    jibunAddress: '울산광역시 울주군 언양읍 동부리 253-1',
+    latitude: 35.5688,
+    longitude: 129.1267,
+    postalCode: '44946',
+  },
+  {
+    id: 'daesung-motors',
+    placeName: '정비소 대성모터스',
+    roadAddress: '울산광역시 남구 산업로 625',
+    jibunAddress: '울산광역시 남구 삼산동 1590-1',
+    latitude: 35.5415,
+    longitude: 129.3371,
+    postalCode: '44716',
+  },
+  {
+    id: 'global-partner',
+    placeName: '글로벌',
+    roadAddress: '울산광역시 북구 진장유통로 16',
+    jibunAddress: '울산광역시 북구 진장동 285-3',
+    latitude: 35.5766,
+    longitude: 129.3558,
+    postalCode: '44248',
+  },
+];
 const GENERAL_TASK_CATEGORY_OPTIONS: GeneralTaskCategory[] = ['일반', '보험', '재고', '정산'];
 const SCHEDULE_KIND_OPTIONS: ScheduleEventKind[] = ['작업', '일반', '청구', '휴무'];
 const PAYMENT_SCHEDULE_STATUS_OPTIONS: PaymentScheduleStatus[] = ['결제예정', '결제완료', '부분결제', '연체'];
@@ -1623,71 +1696,127 @@ const YEAR_CALENDAR: Array<[string, string, string]> = [
 const estimates: Estimate[] = [
   {
     no: 'EST-2026-0017',
-    estimateDate: '2026.05.20',
+    estimateDate: '2026.06.02',
     estimatorName: '정보경',
     tradeType: '개인',
+    outsourceType: '일반',
     customer: '김민수',
-    phone: '010-3182-****',
+    phone: '010-1234-1234',
     vehicle: '제네시스 GV80',
+    plateNumber: '00가1234',
+    vin: 'KMHGV80A2136700601',
     repair: '전면유리 교체',
     area: ['전면유리', 'ADAS'],
+    repairType: '보험(자차,대물)',
+    estimateContent:
+      'A2136700601(=4402/3203) // WINDSHIELD // 1237000\n* 센서/카메라 2EA/HUD/16~현재\n└ 0601은 열선이 있고\n└ 4402는 개선되어 나오면서 브라켓에 열선있음',
+    deductibleAmount: 3000000,
+    tintAmount: 2000000,
+    paymentAmount: 500000,
     amount: 1280000,
     status: '확정',
     source: '카카오톡',
-    createdAt: '05.20 10:14',
-    scheduledWorkDate: '2026.05.21',
+    createdAt: '06.02 10:14',
+    scheduledWorkDate: '2026.06.03',
     scheduledWorkTime: '11:00',
     scheduledVisit: '출장',
     scheduledTechnician: '정하늘',
   },
   {
     no: 'EST-2026-0016',
-    estimateDate: '2026.05.20',
+    estimateDate: '2026.06.03',
     estimatorName: '정원철',
     tradeType: '개인',
-    customer: '박지현',
-    phone: '010-7751-****',
+    outsourceType: '소개',
+    customer: '언양현대블루핸즈',
+    phone: '010-5678-1234',
     vehicle: '기아 카니발',
+    plateNumber: '울산006바2222',
+    vin: 'KNAKA4A1234567890',
     repair: '도어유리 교체',
     area: ['조수석 도어유리'],
+    repairType: '일반',
+    estimateContent: '조수석 도어유리 교체\n부자재 포함 견적',
+    deductibleAmount: 0,
+    tintAmount: 0,
+    paymentAmount: 360000,
     amount: 360000,
     status: '작업전환',
     source: '전화',
-    createdAt: '05.20 09:32',
-    scheduledWorkDate: '2026.05.20',
+    createdAt: '06.03 09:32',
+    scheduledWorkDate: '2026.06.04',
     scheduledWorkTime: '09:30',
     scheduledVisit: '방문',
     scheduledTechnician: '이준호',
   },
   {
     no: 'EST-2026-0015',
-    estimateDate: '2026.05.19',
+    estimateDate: '2026.06.04',
     estimatorName: '정원철',
     tradeType: '업체',
+    outsourceType: '외주',
     customer: '정비소 대성모터스',
-    phone: '052-268-****',
+    phone: '052-268-5678',
     vehicle: '현대 스타리아',
+    plateNumber: '00가5678',
+    vin: 'KMHSTARIA987654321',
     repair: '후면유리 교체',
     area: ['후면유리', '열선'],
+    repairType: '보험(자차)',
+    estimateContent: '후면유리 교체\n열선 포함',
+    deductibleAmount: 350000,
+    tintAmount: 0,
+    paymentAmount: 720000,
     amount: 720000,
     status: '부품확인',
     source: '정비소',
-    createdAt: '05.19 16:40',
+    createdAt: '06.04 16:40',
   },
   {
     no: 'EST-2026-0014',
-    estimateDate: '2026.05.19',
+    estimateDate: '2026.06.05',
     estimatorName: '정보경',
     tradeType: '개인',
+    outsourceType: '일반',
     customer: '최은우',
-    phone: '',
+    phone: '010-8899-5678',
     vehicle: 'BMW 520i',
+    plateNumber: '00가1234',
+    vin: 'WBA520I1234567890',
     repair: '스톤칩 복원',
     area: ['전면유리'],
+    repairType: '보험(배상책임)',
+    estimateContent: '전면유리 스톤칩 복원',
+    deductibleAmount: 0,
+    tintAmount: 0,
+    paymentAmount: 85000,
     amount: 85000,
     status: '견적중',
     source: '방문',
-    createdAt: '05.19 13:18',
+    createdAt: '06.05 13:18',
+  },
+  {
+    no: 'EST-2026-0013',
+    estimateDate: '2026.06.08',
+    estimatorName: '정보경',
+    tradeType: '업체',
+    outsourceType: '외주',
+    customer: '글로벌',
+    phone: '010-9999-5678',
+    vehicle: '제네시스 GV80',
+    plateNumber: '00가1234',
+    vin: 'KMHGV80B2136700602',
+    repair: '후면유리 탈부착',
+    area: ['후면유리'],
+    repairType: '보험(자차,대물)',
+    estimateContent: '후면유리 탈부착\n외주 작업 연결',
+    deductibleAmount: 350000,
+    tintAmount: 0,
+    paymentAmount: 1500000,
+    amount: 1500000,
+    status: '확정',
+    source: '정비소',
+    createdAt: '06.08 15:05',
   },
 ];
 
@@ -4687,6 +4816,7 @@ function App() {
         )}
         {activePage === 'estimates' && (
           <EstimatesPage
+            onCreateWorkRecord={handleCreateEstimateWorkRecord}
             onOpenRegistration={() => setIsEstimateRegistrationOpen(true)}
             vehicleSuggestions={vehicleSuggestions}
           />
@@ -5839,152 +5969,342 @@ function formatEstimateWorkSchedule(estimate: Estimate) {
   }`;
 }
 
+function normalizeEstimateDateInput(value: string) {
+  const trimmedValue = value.trim();
+  const digits = trimmedValue.replace(/\D/g, '');
+
+  if (digits.length >= 8) return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
+  if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(trimmedValue)) {
+    const [year = '', month = '', day = ''] = trimmedValue.split('-');
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+
+  if (digits.length > 4) return `${digits.slice(0, 4)}-${digits.slice(4, 6)}${digits.length > 6 ? `-${digits.slice(6, 8)}` : ''}`;
+  return digits;
+}
+
+function normalizeEstimateTimeRangeInput(value: string) {
+  if (value.includes(':') || value.includes('~')) return value.replace(/[^\d:\s~]/g, '');
+
+  const digits = value.replace(/\D/g, '');
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}:${digits.slice(2, 4)}`;
+  return `${digits.slice(0, 2)}:${digits.slice(2, 4)} ~ ${digits.slice(4, 6)}:${digits.slice(6, 8)}`;
+}
+
+function compactEstimateSearchValue(value: string) {
+  return value.toLowerCase().replace(/[^0-9a-z가-힣]+/gi, '');
+}
+
+function getEstimateSearchTerms(value: string) {
+  return value
+    .split(/[\s,，、/|]+/)
+    .map(compactEstimateSearchValue)
+    .filter(Boolean);
+}
+
+function matchesEstimateSearchTerms(value: string, target: string) {
+  const terms = getEstimateSearchTerms(value);
+  if (terms.length === 0) return true;
+
+  const normalizedTarget = compactEstimateSearchValue(target);
+  return terms.some((term) => normalizedTarget.includes(term));
+}
+
+function estimateDisplayStatus(estimate: Estimate): EstimateListStatus {
+  if (estimate.status === '부품확인') return '재고확인';
+  if (estimate.status === '확정' || estimate.status === '작업전환') return '확정';
+  return '대기';
+}
+
+function estimateListStatusTone(status: EstimateListStatus): Tone {
+  if (status === '재고확인') return 'red';
+  if (status === '확정') return 'blue';
+  return 'gray';
+}
+
+function isEstimateInPeriod(estimate: Estimate, startDate: string, endDate: string) {
+  const estimateDate = parseDateInput(estimate.estimateDate);
+  const start = parseDateInput(startDate);
+  const end = parseDateInput(endDate);
+  if (!estimateDate || !start || !end) return true;
+
+  return estimateDate >= start && estimateDate <= end;
+}
+
 function EstimatesPage({
+  onCreateWorkRecord,
   onOpenRegistration,
   vehicleSuggestions,
 }: {
+  onCreateWorkRecord: (record: WorkerWorkListRecord) => void;
   onOpenRegistration: () => void;
   vehicleSuggestions: VehicleSuggestionSet;
 }) {
-  const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<EstimateFilter>('all');
+  const [periodStart, setPeriodStart] = useState(ESTIMATE_DEFAULT_PERIOD_START);
+  const [periodEnd, setPeriodEnd] = useState(ESTIMATE_DEFAULT_PERIOD_END);
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [estimatorFilter, setEstimatorFilter] = useState('all');
+  const [statusFilters, setStatusFilters] = useState<EstimateStatusFilter[]>([]);
+  const [outsourceFilter, setOutsourceFilter] = useState<EstimateOutsourceFilter>('all');
+  const [partnerQuery, setPartnerQuery] = useState('');
+  const [vehicleQuery, setVehicleQuery] = useState('');
+  const [phoneQuery, setPhoneQuery] = useState('');
+  const [estimateStatuses, setEstimateStatuses] = useState<Record<string, EstimateListStatus>>(() =>
+    Object.fromEntries(estimates.map((estimate) => [estimate.no, estimateDisplayStatus(estimate)])),
+  );
   const [selectedEstimate, setSelectedEstimate] = useState<Estimate | null>(null);
   const [workDraftEstimate, setWorkDraftEstimate] = useState<Estimate | null>(null);
-  const normalizedQuery = query.trim().toLowerCase();
-  const searchSuggestions = useMemo(
+
+  const estimatorOptions = useMemo(() => Array.from(new Set([...ESTIMATOR_OPTIONS, ...estimates.map((estimate) => estimate.estimatorName)])), []);
+  const vehicleSuggestionsForSearch = useMemo(
     () =>
       Array.from(
         new Set(
-          estimates.flatMap((estimate) => [
-            estimate.no,
-            estimate.estimateDate,
-            estimate.estimatorName,
-            estimate.tradeType,
-            estimate.customer,
-            estimate.phone,
-            estimate.vehicle,
-            estimate.repair,
-            estimate.source,
-            ...estimate.area,
-            ...vehicleSuggestions.model,
-          ]).filter(Boolean),
+          estimates
+            .flatMap((estimate) => [estimate.vehicle, estimate.plateNumber, estimate.vin, ...vehicleSuggestions.model])
+            .filter(Boolean),
         ),
       ),
     [vehicleSuggestions.model],
   );
+  const partnerSuggestions = useMemo(() => Array.from(new Set(estimates.map((estimate) => estimate.customer).filter(Boolean))), []);
+  const phoneSuggestions = useMemo(() => Array.from(new Set(estimates.map((estimate) => estimate.phone).filter(Boolean))), []);
   const filteredEstimates = useMemo(
     () =>
       estimates.filter((estimate) => {
-        const target = [
-          estimate.no,
-          estimate.estimateDate,
-          estimate.estimatorName,
-          estimate.tradeType,
-          estimate.customer,
-          estimate.phone,
-          estimate.vehicle,
-          estimate.repair,
-          estimate.area.join(' '),
-          estimate.source,
-        ]
-          .join(' ')
-          .toLowerCase();
-        const matchesQuery = normalizedQuery.length === 0 || target.includes(normalizedQuery);
-        const matchesFilter =
-          filter === 'all' ||
-          (filter === 'pending' && estimate.status === '견적중') ||
-          (filter === 'ready' && estimate.status === '확정') ||
-          (filter === 'parts' && estimate.status === '부품확인');
+        const displayStatus = estimateStatuses[estimate.no] ?? estimateDisplayStatus(estimate);
+        const matchesPeriod = isEstimateInPeriod(estimate, periodStart, periodEnd);
+        const matchesEstimator = estimatorFilter === 'all' || estimate.estimatorName === estimatorFilter;
+        const matchesStatus =
+          statusFilters.length === 0 ||
+          statusFilters.some((statusFilter) => {
+            if (statusFilter === 'stock') return displayStatus === '재고확인';
+            if (statusFilter === 'outsource') return estimate.outsourceType === '외주';
+            return estimate.outsourceType === '소개';
+          });
+        const matchesOutsource = outsourceFilter === 'all' || estimate.outsourceType === outsourceFilter;
+        const matchesPartner = matchesEstimateSearchTerms(partnerQuery, estimate.customer);
+        const matchesVehicle = matchesEstimateSearchTerms(vehicleQuery, `${estimate.vehicle} ${estimate.plateNumber} ${estimate.vin}`);
+        const matchesPhone = matchesEstimateSearchTerms(phoneQuery, estimate.phone);
 
-        return matchesQuery && matchesFilter;
+        return matchesPeriod && matchesEstimator && matchesStatus && matchesOutsource && matchesPartner && matchesVehicle && matchesPhone;
       }),
-    [filter, normalizedQuery],
+    [estimateStatuses, estimatorFilter, outsourceFilter, partnerQuery, periodEnd, periodStart, phoneQuery, statusFilters, vehicleQuery],
   );
 
-  return (
-    <div className="page-stack">
-      <section className="workbench-grid">
-        <Panel className="span-12" title="견적 목록">
-          <RecordToolbar
-            action={
-              <button className="primary-button" onClick={onOpenRegistration} type="button">
-                <Plus size={16} />
-                견적 등록
-              </button>
-            }
-            count={`총 ${filteredEstimates.length}건`}
-            filters={
-              <FilterTabs
-                ariaLabel="견적 필터"
-                onChange={(value) => setFilter(value as EstimateFilter)}
-                options={[
-                  { id: 'all', label: '전체' },
-                  { id: 'pending', label: '견적중' },
-                  { id: 'ready', label: '확정' },
-                  { id: 'parts', label: '부품확인' },
-                ]}
-                value={filter}
-              />
-            }
-            search={
-              <SearchInput
-                label="전체 검색"
-                listId="estimate-search-suggestions"
-                onChange={setQuery}
-                placeholder="견적 담당자, 거래유형, 고객명, 차량, 연락처 검색"
-                suggestions={searchSuggestions}
-                value={query}
-              />
-            }
-          />
-          {filteredEstimates.length > 0 ? (
-            <ListColumnTable
-              columns={['견적번호', '일자/견적자', '거래/고객', '차종', '수리부위', '금액', '작업예정', '상태', '후속']}
-              onRowClick={(rowIndex) => setSelectedEstimate(filteredEstimates[rowIndex] ?? null)}
-              rows={filteredEstimates.map((estimate) => [
-                estimate.no,
-                `${estimate.estimateDate}\n${estimate.estimatorName}`,
-                `${estimate.tradeType} · ${estimate.customer}\n${estimate.phone || '연락처 미입력'}`,
-                estimate.vehicle,
-                `${estimate.repair}\n${estimate.area.join(', ')}`,
-                formatMoney(estimate.amount),
-                formatEstimateWorkSchedule(estimate),
-                <StatusPill key={estimate.no} label={estimate.status} tone={statusTone(estimate.status)} />,
-                <div className="estimate-followup-actions" key={`${estimate.no}-actions`}>
-                  {hasEstimateWorkSchedule(estimate) || estimate.status === '확정' ? (
-                    <button
-                      className="mini-button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setWorkDraftEstimate(estimate);
-                      }}
-                      type="button"
-                    >
-                      {hasEstimateWorkSchedule(estimate) ? '작업 보기' : '일정 배정'}
-                    </button>
-                  ) : null}
-                  <button
-                    className="mini-button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setSelectedEstimate(estimate);
-                    }}
-                    type="button"
-                  >
-                    상세
-                  </button>
-                </div>,
-              ])}
-            />
-          ) : (
-            <div className="empty-state">
-              <strong>검색 결과가 없습니다.</strong>
-              <span>검색어를 줄이거나 필터를 전체로 변경해보세요.</span>
-            </div>
-          )}
-        </Panel>
+  function updatePeriodStart(value: string) {
+    setPeriodStart(normalizeEstimateDateInput(value));
+  }
 
-      </section>
+  function updatePeriodEnd(value: string) {
+    setPeriodEnd(normalizeEstimateDateInput(value));
+  }
+
+  function toggleEstimateStatusFilter(filterId: EstimateStatusFilter) {
+    setStatusFilters((current) =>
+      current.includes(filterId) ? current.filter((item) => item !== filterId) : [...current, filterId],
+    );
+  }
+
+  function applyEstimateQuickPeriod(kind: '1week' | '1month' | '3months' | '6months' | '1year') {
+    const end = parseDateInput(periodEnd) ?? parseDateInput(ESTIMATE_DEFAULT_PERIOD_END) ?? new Date(2026, 5, 8);
+    const start =
+      kind === '1week'
+        ? addDays(end, -7)
+        : kind === '1month'
+          ? addMonths(end, -1)
+          : kind === '3months'
+            ? addMonths(end, -3)
+            : kind === '6months'
+              ? addMonths(end, -6)
+              : addMonths(end, -12);
+
+    setPeriodStart(formatDateInputValue(start));
+    setPeriodEnd(formatDateInputValue(end));
+  }
+
+  function resetEstimateSearch() {
+    setPeriodStart(ESTIMATE_DEFAULT_PERIOD_START);
+    setPeriodEnd(ESTIMATE_DEFAULT_PERIOD_END);
+    setEstimatorFilter('all');
+    setStatusFilters([]);
+    setOutsourceFilter('all');
+    setPartnerQuery('');
+    setVehicleQuery('');
+    setPhoneQuery('');
+    setIsDatePickerOpen(false);
+  }
+
+  function updateEstimateListStatus(estimate: Estimate, status: EstimateListStatus) {
+    setEstimateStatuses((current) => ({ ...current, [estimate.no]: status }));
+    if (status === '확정') setWorkDraftEstimate(estimate);
+  }
+
+  function openEstimateWorkConversion(estimate: Estimate) {
+    setEstimateStatuses((current) => ({ ...current, [estimate.no]: '확정' }));
+    setWorkDraftEstimate(estimate);
+  }
+
+  return (
+    <div className="page-stack estimates-page">
+      <Panel className="estimate-list-panel" title="견적 목록">
+        <div className="estimate-search-panel" aria-label="견적 조회 조건">
+          <div className="estimate-filter-line estimate-filter-line-primary">
+            <div className="estimate-filter-field estimate-period-field">
+              <span className="estimate-filter-label">기간</span>
+              <div className="estimate-period-control">
+                <input aria-label="견적 기간 시작일" inputMode="numeric" onChange={(event) => updatePeriodStart(event.target.value)} onFocus={() => setIsDatePickerOpen(true)} placeholder="YYYY-MM-DD" value={periodStart} />
+                <span>~</span>
+                <input aria-label="견적 기간 종료일" inputMode="numeric" onChange={(event) => updatePeriodEnd(event.target.value)} onFocus={() => setIsDatePickerOpen(true)} placeholder="YYYY-MM-DD" value={periodEnd} />
+                <button className="ghost-button" onClick={() => setIsDatePickerOpen((current) => !current)} title="기간 선택" type="button">
+                  <CalendarDays size={16} />
+                </button>
+                {isDatePickerOpen ? (
+                  <div className="estimate-period-popover">
+                    <label>
+                      <span>시작일</span>
+                      <input onChange={(event) => setPeriodStart(event.target.value)} type="date" value={periodStart} />
+                    </label>
+                    <label>
+                      <span>종료일</span>
+                      <input onChange={(event) => setPeriodEnd(event.target.value)} type="date" value={periodEnd} />
+                    </label>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            <div className="estimate-quick-range">
+              {[
+                { id: '1week', label: '1주' },
+                { id: '1month', label: '1개월' },
+                { id: '3months', label: '3개월' },
+                { id: '6months', label: '6개월' },
+                { id: '1year', label: '1년' },
+              ].map((option) => (
+                <button key={option.id} onClick={() => applyEstimateQuickPeriod(option.id as Parameters<typeof applyEstimateQuickPeriod>[0])} type="button">
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <label className="estimate-filter-field estimate-estimator-field">
+              <span className="estimate-filter-label">담당자</span>
+              <select className="estimate-filter-select" onChange={(event) => setEstimatorFilter(event.target.value)} value={estimatorFilter}>
+                <option value="all">전체</option>
+                {estimatorOptions.map((estimator) => (
+                  <option key={estimator} value={estimator}>{estimator}</option>
+                ))}
+              </select>
+            </label>
+            <div className="estimate-filter-field estimate-status-field">
+              <span className="estimate-filter-label">상태</span>
+              <div className="estimate-checkbox-group">
+                <label><input checked={statusFilters.length === 0} onChange={() => setStatusFilters([])} type="checkbox" />전체</label>
+                <label><input checked={statusFilters.includes('stock')} onChange={() => toggleEstimateStatusFilter('stock')} type="checkbox" />재고확인</label>
+                <label><input checked={statusFilters.includes('outsource')} onChange={() => toggleEstimateStatusFilter('outsource')} type="checkbox" />외주</label>
+                <label><input checked={statusFilters.includes('intro')} onChange={() => toggleEstimateStatusFilter('intro')} type="checkbox" />소개</label>
+              </div>
+            </div>
+          </div>
+
+          <div className="estimate-filter-line estimate-filter-line-secondary">
+            <div className="estimate-filter-field estimate-outsource-field">
+              <span className="estimate-filter-label">외주여부</span>
+              <div className="estimate-checkbox-group">
+                <label><input checked={outsourceFilter === 'all'} onChange={() => setOutsourceFilter('all')} type="radio" />전체</label>
+                {ESTIMATE_OUTSOURCE_OPTIONS.map((option) => (
+                  <label key={option}><input checked={outsourceFilter === option} onChange={() => setOutsourceFilter(option)} type="radio" />{option}</label>
+                ))}
+              </div>
+            </div>
+            <label className="estimate-icon-search estimate-partner-search">
+              <span>거래처</span>
+              <div>
+                <Search size={16} />
+                <input list="estimate-partner-search-suggestions" onChange={(event) => setPartnerQuery(event.target.value)} placeholder="거래처명" value={partnerQuery} />
+              </div>
+            </label>
+            <label className="estimate-icon-search">
+              <span>차종/차량번호/차대번호</span>
+              <div>
+                <Search size={16} />
+                <input list="estimate-vehicle-list-search-suggestions" onChange={(event) => setVehicleQuery(event.target.value)} placeholder="차종, 차량번호, 차대번호" value={vehicleQuery} />
+              </div>
+            </label>
+            <label className="estimate-icon-search">
+              <span>연락처</span>
+              <div>
+                <Search size={16} />
+                <input inputMode="tel" list="estimate-phone-search-suggestions" onChange={(event) => setPhoneQuery(event.target.value)} placeholder="연락처" value={phoneQuery} />
+              </div>
+            </label>
+            <div className="estimate-search-actions">
+              <button className="primary-button" onClick={() => setIsDatePickerOpen(false)} type="button">조회</button>
+              <button className="secondary-button" onClick={resetEstimateSearch} type="button">초기화</button>
+            </div>
+            <span className="estimate-list-count">총 {filteredEstimates.length}건</span>
+            <button className="primary-button" onClick={onOpenRegistration} type="button">
+              <Plus size={16} />
+              견적등록
+            </button>
+          </div>
+
+          <datalist id="estimate-partner-search-suggestions">
+            {partnerSuggestions.map((partner) => <option key={partner} value={partner} />)}
+          </datalist>
+          <datalist id="estimate-vehicle-list-search-suggestions">
+            {vehicleSuggestionsForSearch.map((suggestion) => <option key={suggestion} value={suggestion} />)}
+          </datalist>
+          <datalist id="estimate-phone-search-suggestions">
+            {phoneSuggestions.map((phone) => <option key={phone} value={phone} />)}
+          </datalist>
+        </div>
+
+        {filteredEstimates.length > 0 ? (
+          <ListColumnTable
+            className="estimate-list-table"
+            columns={['견적일', '담당자', '구분', '거래처', '차량정보', '수리부위', '견적내용', '수리구분', '금액', '연락처', '상태', '보기']}
+            onRowClick={(rowIndex) => {
+              const estimate = filteredEstimates[rowIndex];
+              if (estimate) setSelectedEstimate(estimate);
+            }}
+            rows={filteredEstimates.map((estimate) => {
+              const displayStatus = estimateStatuses[estimate.no] ?? estimateDisplayStatus(estimate);
+              const isStockCheck = displayStatus === '재고확인';
+              return [
+                estimate.estimateDate,
+                estimate.estimatorName,
+                estimate.outsourceType,
+                <span className="estimate-customer-cell" key={`${estimate.no}-customer`} title={estimate.customer || '-'}>
+                  {estimate.customer || '-'}
+                </span>,
+                <div className={isStockCheck ? 'estimate-vehicle-cell needs-stock' : 'estimate-vehicle-cell'} key={`${estimate.no}-vehicle`}>
+                  <strong>{estimate.vehicle}</strong>
+                  <span className={isStockCheck ? 'estimate-plate-cell needs-stock' : 'estimate-plate-cell'}>
+                    {estimate.plateNumber}
+                  </span>
+                </div>,
+                estimate.area.join(', '),
+                <div className="estimate-content-cell" key={`${estimate.no}-content`}>{estimate.estimateContent}</div>,
+                estimate.repairType,
+                formatMoney(estimate.amount),
+                estimate.phone || '연락처 미입력',
+                <select className={`estimate-status-select ${isStockCheck ? 'stock-check' : ''} ${displayStatus === '확정' ? 'confirmed' : ''}`} key={`${estimate.no}-status`} onChange={(event) => updateEstimateListStatus(estimate, event.target.value as EstimateListStatus)} value={displayStatus}>
+                  {ESTIMATE_LIST_STATUS_OPTIONS.map((status) => <option key={status}>{status}</option>)}
+                </select>,
+                <div className="estimate-followup-actions" key={`${estimate.no}-actions`}>
+                  <button className="mini-button" onClick={() => openEstimateWorkConversion(estimate)} type="button">작업전환</button>
+                </div>,
+              ];
+            })}
+          />
+        ) : (
+          <div className="empty-state">
+            <strong>검색 결과가 없습니다.</strong>
+            <span>기간이나 조회 조건을 바꿔 다시 검색해보세요.</span>
+          </div>
+        )}
+      </Panel>
 
       {selectedEstimate ? (
         <EstimateDetailModal
@@ -6001,6 +6321,7 @@ function EstimatesPage({
       {workDraftEstimate ? (
         <WorkRegistrationDrawer
           estimate={workDraftEstimate}
+          onCreateWorkRecord={onCreateWorkRecord}
           onClose={() => setWorkDraftEstimate(null)}
           vehicleModelSuggestions={vehicleSuggestions.model}
         />
@@ -6023,7 +6344,7 @@ function EstimateRegistrationModal({
       <section
         aria-labelledby="estimate-registration-title"
         aria-modal="true"
-        className="customer-modal estimate-registration-modal"
+        className="customer-modal estimate-registration-modal estimate-registration-client-modal"
         role="dialog"
         onMouseDown={(event) => event.stopPropagation()}
       >
@@ -6052,7 +6373,7 @@ function EstimateRegistrationPanel({
   estimate,
   onCreateWorkRecord,
   onSubmitComplete,
-  submitLabel = '견적 저장 + 작업 예약',
+  submitLabel = '견적등록',
   vehicleSuggestions,
 }: {
   estimate?: Estimate;
@@ -6061,373 +6382,390 @@ function EstimateRegistrationPanel({
   submitLabel?: string;
   vehicleSuggestions: VehicleSuggestionSet;
 }) {
-  const [tradeType, setTradeType] = useState<EstimateTradeType>(estimate?.tradeType ?? '개인');
+  const estimatorOptions = ['사용자1', '사용자2', '사용자3'];
+  const [estimateDate, setEstimateDate] = useState(estimate?.estimateDate.replace(/\./g, '-') ?? '');
+  const [estimatorName, setEstimatorName] = useState(estimate?.estimatorName ?? '');
+  const [repairDivision, setRepairDivision] = useState<'일반' | '보험'>(estimate?.repairType?.startsWith('보험') ? '보험' : '일반');
+  const [insuranceTypes, setInsuranceTypes] = useState<string[]>(() => {
+    if (!estimate?.repairType?.startsWith('보험')) return [];
+    const initialInsuranceTypes = ESTIMATE_INSURANCE_TYPE_OPTIONS.filter((type) => estimate.repairType.includes(type));
+    return initialInsuranceTypes.length > 0 ? initialInsuranceTypes : [ESTIMATE_DEFAULT_INSURANCE_TYPE];
+  });
+  const [outsourceType, setOutsourceType] = useState<EstimateOutsourceType>(estimate?.outsourceType ?? '일반');
+  const [outsourcePartner, setOutsourcePartner] = useState(outsourceType === '일반' ? '' : estimate?.customer ?? '');
+  const [phone, setPhone] = useState(formatPhoneInputValue(estimate?.phone ?? ''));
+  const [vehicle, setVehicle] = useState(estimate?.vehicle ?? '');
+  const [plateNumber, setPlateNumber] = useState(estimate?.plateNumber ?? '');
+  const [vin, setVin] = useState(estimate?.vin ?? '');
+  const [repairArea, setRepairArea] = useState(estimate?.area.join(', ') ?? '');
+  const [partNo, setPartNo] = useState('');
+  const [tintSpec, setTintSpec] = useState('');
+  const [estimateContent, setEstimateContent] = useState(estimate?.estimateContent ?? '');
+  const [replacementAmount, setReplacementAmount] = useState(formatMoneyInputValue(estimate?.deductibleAmount ?? ''));
+  const [tintAmount, setTintAmount] = useState(formatMoneyInputValue(estimate?.tintAmount ?? ''));
+  const [paymentAmount, setPaymentAmount] = useState(formatMoneyInputValue(estimate?.paymentAmount ?? estimate?.amount ?? ''));
+  const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
+  const [purchasePartner, setPurchasePartner] = useState('');
+  const [purchaseAmount, setPurchaseAmount] = useState('');
+  const [purchaseDate, setPurchaseDate] = useState('');
+  const [lookupTarget, setLookupTarget] = useState<'outsourcePartner' | 'vehicle' | 'partNo' | 'purchasePartner' | null>(null);
   const [lookupQuery, setLookupQuery] = useState('');
-  const [autoCreateWork, setAutoCreateWork] = useState(true);
-  const estimateDateValue = estimate?.estimateDate.replace(/\./g, '-') ?? '2026-05-21';
-  const scheduledWorkDateValue = estimate?.scheduledWorkDate?.replace(/\./g, '-') ?? '';
-  const estimateContentValue = estimate ? `${estimate.repair}\n${estimate.area.join(', ')}` : '전면유리.차음.습기.차선.HI\n86111-AT080';
-  const finalEstimateContentValue = estimate ? `${estimate.repair} / ${estimate.area.join(', ')}` : '교체 35만 + 썬팅 10만\n현금/카드 조건 확인';
-  const registrationSearchSuggestions = useMemo(
+  const partnerSuggestions = useMemo(
     () =>
       Array.from(
         new Set(
-          [
-            ...CUSTOMER_LOOKUP_SUGGESTIONS,
-            ...vehicleSuggestions.lookup,
-            ...PART_LOOKUP_SUGGESTIONS,
-            ...estimates.flatMap((estimate) => [
-              estimate.no,
-              estimate.customer,
-              estimate.phone,
-              estimate.vehicle,
-              estimate.repair,
-              estimate.source,
-              ...estimate.area,
-            ]),
-          ].filter(Boolean),
+          [...partners.map((partner) => partner.name), ...CUSTOMER_LOOKUP_SUGGESTIONS, ...estimates.map((item) => item.customer)]
+            .filter(Boolean),
         ),
       ),
-    [vehicleSuggestions.lookup],
+    [],
   );
+  const lookupConfig = lookupTarget
+    ? {
+        outsourcePartner: {
+          title: '거래처 검색',
+          placeholder: '거래처명 입력',
+          suggestions: partnerSuggestions,
+          canCreate: true,
+          onSelect: setOutsourcePartner,
+        },
+        vehicle: {
+          title: '차종 검색',
+          placeholder: '차종 입력',
+          suggestions: vehicleSuggestions.model,
+          canCreate: false,
+          onSelect: setVehicle,
+        },
+        partNo: {
+          title: '품번 검색',
+          placeholder: '품번 입력',
+          suggestions: PART_LOOKUP_SUGGESTIONS,
+          canCreate: false,
+          onSelect: setPartNo,
+        },
+        purchasePartner: {
+          title: '매입처 검색',
+          placeholder: '매입처명 입력',
+          suggestions: partnerSuggestions,
+          canCreate: true,
+          onSelect: setPurchasePartner,
+        },
+      }[lookupTarget]
+    : null;
+  const filteredLookupSuggestions = lookupConfig
+    ? lookupConfig.suggestions.filter((suggestion) => suggestion.toLowerCase().includes(lookupQuery.trim().toLowerCase())).slice(0, 8)
+    : [];
+  const selectedPaymentMethod = paymentMethods.includes('카드')
+    ? '카드'
+    : paymentMethods.includes('계좌')
+      ? '계좌'
+      : paymentMethods.includes('현금')
+        ? '현금'
+        : '';
+  const claimTypeValue = repairDivision === '일반' ? '일반' : `보험(${(insuranceTypes.length > 0 ? insuranceTypes : [ESTIMATE_DEFAULT_INSURANCE_TYPE]).join(', ')})`;
+  const nativeEstimateDate = /^\d{4}-\d{2}-\d{2}$/.test(estimateDate) ? estimateDate : '';
+  const nativePurchaseDate = /^\d{4}-\d{2}-\d{2}$/.test(purchaseDate) ? purchaseDate : '';
+
+  function formatPhoneInputValue(value: string) {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 4) return digits;
+    if (digits.length === 8) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+    if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+    if (digits.length === 10) return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+  }
+
+  function selectRepairDivision(nextDivision: '일반' | '보험') {
+    setRepairDivision(nextDivision);
+    if (nextDivision === '일반') {
+      setInsuranceTypes([]);
+      return;
+    }
+
+    setInsuranceTypes((current) => (current.length > 0 ? current : [ESTIMATE_DEFAULT_INSURANCE_TYPE]));
+  }
+
+  function toggleInsuranceType(type: string) {
+    setRepairDivision('보험');
+    setInsuranceTypes((current) => {
+      if (current.includes(type)) return current.length === 1 ? current : current.filter((item) => item !== type);
+      return [...current, type];
+    });
+  }
+
+  function updateOutsourceType(nextType: EstimateOutsourceType) {
+    setOutsourceType(nextType);
+    if (nextType === '일반') setOutsourcePartner('');
+  }
+
+  function updateCalculatedAmount(nextReplacementAmount: string, nextTintAmount: string) {
+    const nextReplacement = formatMoneyInputValue(nextReplacementAmount);
+    const nextTint = formatMoneyInputValue(nextTintAmount);
+    setReplacementAmount(nextReplacement);
+    setTintAmount(nextTint);
+
+    if (nextReplacement || nextTint) {
+      setPaymentAmount(formatMoneyInputValue(parseMoneyInputValue(nextReplacement) + parseMoneyInputValue(nextTint)));
+    }
+  }
+
+  function togglePaymentMethod(method: string) {
+    setPaymentMethods((current) => (current.includes(method) ? current.filter((item) => item !== method) : [...current, method]));
+  }
+
+  function openLookup(target: NonNullable<typeof lookupTarget>, initialQuery = '') {
+    setLookupTarget(target);
+    setLookupQuery(initialQuery);
+  }
+
+  function selectLookupValue(value: string) {
+    lookupConfig?.onSelect(value);
+    setLookupTarget(null);
+    setLookupQuery('');
+  }
 
   return (
     <form
-      className="estimate-registration-form"
+      className="estimate-registration-form estimate-client-form"
+      id="estimate-registration-client-form"
       onSubmit={(event) => {
         event.preventDefault();
-        const record = createEstimateWorkRecordFromFormData(new FormData(event.currentTarget), autoCreateWork);
+        const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+        const shouldCreateWork = submitter?.dataset.intent === 'work';
+        const formData = new FormData(event.currentTarget);
+        if (shouldCreateWork) {
+          formData.set('scheduledWorkDate', estimateDate || ESTIMATE_DEFAULT_PERIOD_END);
+        }
+        const record = createEstimateWorkRecordFromFormData(formData, shouldCreateWork);
         if (record) {
           onCreateWorkRecord?.(record);
         }
         onSubmitComplete?.();
       }}
     >
-      <div className="estimate-required-strip">
-        <span>필수</span>
-        <strong>견적일자 · 견적 담당자 · 견적내용</strong>
-      </div>
+      <input name="tradeType" type="hidden" value={outsourceType === '일반' ? '개인' : '업체'} />
+      <input name="customer" type="hidden" value={outsourcePartner || purchasePartner} />
+      <input name="claimType" type="hidden" value={claimTypeValue} />
+      <input name="workType" type="hidden" value="교체" />
+      <input name="finalEstimateContent" type="hidden" value={estimateContent} />
+      <input name="paymentMethod" type="hidden" value={selectedPaymentMethod} />
+      <input name="cardCompany" type="hidden" value={CARD_COMPANY_OPTIONS[0] ?? ''} />
+      <input name="scheduledWorkDate" type="hidden" value="" />
 
-      <FormSection title="필수 입력">
-        <div className="estimate-form-grid">
-          <SearchInput
-            label="빠른 검색"
-            listId="estimate-registration-search-suggestions"
-            onChange={setLookupQuery}
-            placeholder="차량번호, 고객명, 차종, 품번, 연락처 검색"
-            suggestions={registrationSearchSuggestions}
-            value={lookupQuery}
+      <div className="estimate-client-grid">
+        <label className="estimate-client-label" htmlFor="client-estimate-date">견적일자</label>
+        <div className="estimate-client-icon-input date">
+          <input
+            id="client-estimate-date"
+            inputMode="numeric"
+            onChange={(event) => setEstimateDate(normalizeEstimateDateInput(event.target.value))}
+            placeholder="YYYY-MM-DD"
+            required
+            value={estimateDate}
           />
-          <label className="estimate-control">
-            <span>
-              견적일자
-              <em>필수</em>
-            </span>
-            <input defaultValue={estimateDateValue} required type="date" />
-          </label>
-          <label className="estimate-control">
-            <span>
-              견적 담당자
-              <em>필수</em>
-            </span>
-            <select defaultValue={estimate?.estimatorName ?? ESTIMATOR_OPTIONS[0]} name="estimatorName" required>
-              {ESTIMATOR_OPTIONS.map((name) => (
-                <option key={name}>{name}</option>
-              ))}
-            </select>
-          </label>
-          <label className="estimate-control full">
-            <span>
-              견적내용
-              <em>필수</em>
-            </span>
-            <textarea defaultValue={estimateContentValue} name="estimateContent" required />
-          </label>
+          <CalendarDays size={15} />
+          <input
+            aria-label="견적일자 날짜 선택"
+            className="estimate-client-date-native"
+            onChange={(event) => setEstimateDate(event.target.value)}
+            type="date"
+            value={nativeEstimateDate}
+          />
         </div>
-      </FormSection>
 
-      <FormSection title="선택 입력">
-        <div className="estimate-form-grid">
-          <label className="estimate-control">
-            <span>{tradeType === '업체' ? '업체명' : '고객명'}</span>
-            <div className="lookup-control">
-              <input
-                defaultValue={estimate?.customer}
-                list="estimate-customer-suggestions"
-                name="customer"
-                placeholder={tradeType === '업체' ? '거래 업체명' : '고객명'}
-              />
-              <button type="button">
-                <Search size={14} />
-                검색
-              </button>
-            </div>
-          </label>
-          <label className="estimate-control">
-            <span>전화번호</span>
-            <input defaultValue={estimate?.phone} inputMode="tel" placeholder="010-0000-0000" />
-          </label>
-          <div className="estimate-control">
-            <span>
-              거래유형
-            </span>
-            <div className="trade-segment" role="group" aria-label="거래유형">
-              {(['개인', '업체'] as EstimateTradeType[]).map((type) => (
-                <button
-                  className={tradeType === type ? 'selected' : ''}
-                  key={type}
-                  onClick={() => setTradeType(type)}
-                  type="button"
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
-            <input name="tradeType" type="hidden" value={tradeType} />
+        <label className="estimate-client-label" htmlFor="client-estimator">견적담당자</label>
+        <select id="client-estimator" name="estimatorName" onChange={(event) => setEstimatorName(event.target.value)} required value={estimatorName}>
+          <option value="">선택</option>
+          {estimatorOptions.map((name) => <option key={name}>{name}</option>)}
+        </select>
+
+        <span className="estimate-client-label">수리구분</span>
+        <div className="estimate-repair-control">
+          <div aria-label="수리구분" className="estimate-repair-primary" role="radiogroup">
+            <label className={repairDivision === '일반' ? 'selected' : ''}>
+              <input checked={repairDivision === '일반'} name="repairDivision" onChange={() => selectRepairDivision('일반')} type="radio" />
+              일반
+            </label>
+            <label className={repairDivision === '보험' ? 'selected' : ''}>
+              <input checked={repairDivision === '보험'} name="repairDivision" onChange={() => selectRepairDivision('보험')} type="radio" />
+              보험
+            </label>
           </div>
-          <label className="estimate-control">
-            <span>문의경로</span>
-            <select defaultValue={estimate?.source ?? '전화'}>
-              {INQUIRY_SOURCE_OPTIONS.map((source) => (
-                <option key={source}>{source}</option>
+          {repairDivision === '보험' ? (
+            <div aria-label="보험 유형" className="estimate-insurance-options">
+              <span>보험유형</span>
+              {ESTIMATE_INSURANCE_TYPE_OPTIONS.map((type) => (
+                <label key={type} className={insuranceTypes.includes(type) ? 'selected' : ''}>
+                  <input checked={insuranceTypes.includes(type)} onChange={() => toggleInsuranceType(type)} type="checkbox" />
+                  {type}
+                </label>
               ))}
-            </select>
-          </label>
-          <label className="estimate-control">
-            <span>차량번호</span>
-            <div className="lookup-control">
-              <input list="estimate-vehicle-lookup-suggestions" name="plateNumber" placeholder="12가3456" />
-              <button type="button">
-                <Search size={14} />
-                조회
-              </button>
             </div>
-          </label>
-          <label className="estimate-control">
-            <span>차대번호</span>
-            <input placeholder="VIN" />
-          </label>
-          <label className="estimate-control">
-            <span>브랜드/시리즈</span>
-            <div className="lookup-control">
-              <input list="estimate-vehicle-brand-suggestions" placeholder="브랜드 또는 시리즈" />
-              <button type="button">
-                <Search size={14} />
-                검색
-              </button>
-            </div>
-          </label>
-          <label className="estimate-control">
-            <span>모델명</span>
-            <input defaultValue={estimate?.vehicle} list="estimate-vehicle-model-suggestions" name="vehicle" placeholder="차종/모델명" />
-          </label>
-          <label className="estimate-control">
-            <span>년식</span>
-            <input list="estimate-vehicle-year-suggestions" placeholder="연식" />
-          </label>
-          <label className="estimate-control">
-            <span>청구/보험 구분</span>
-            <select defaultValue="일반" name="claimType">
-              {CLAIM_TYPE_OPTIONS.map((type) => (
-                <option key={type}>{type}</option>
-              ))}
-            </select>
-          </label>
-          <label className="estimate-control">
-            <span>작업구분</span>
-            <select defaultValue="교체" name="workType">
-              {WORK_TYPE_OPTIONS.map((type) => (
-                <option key={type}>{type}</option>
-              ))}
-            </select>
-          </label>
-          <label className="estimate-control">
-            <span>수리부위</span>
-            <input
-              defaultValue={estimate?.area.join(', ')}
-              list="estimate-repair-area-suggestions"
-              name="repairArea"
-              placeholder="전면, QTR(조), 루프/파노라마"
-            />
-          </label>
-          <label className="estimate-control">
-            <span>부품번호</span>
-            <div className="lookup-control">
-              <input list="estimate-part-suggestions" name="partNo" placeholder="86111-AT080" />
-              <button type="button">
-                <Search size={14} />
-                검색
-              </button>
-            </div>
-          </label>
-          <label className="estimate-control">
-            <span>옵션</span>
-            <input placeholder="차음, 열선, 센서, 차선 등" />
-          </label>
-          <label className="estimate-control">
-            <span>썬팅</span>
-            <input placeholder="3M, 루마, 애니가드 등" />
-          </label>
-          <label className="estimate-control">
-            <span>입고처/매입처</span>
-            <input placeholder="매입처" />
-          </label>
-          <label className="estimate-control">
-            <span>매입금액</span>
-            <input inputMode="numeric" onChange={formatMoneyInputElement} placeholder="원" />
-          </label>
-          <label className="estimate-control full">
-            <span>최종견적내용</span>
-            <textarea defaultValue={finalEstimateContentValue} name="finalEstimateContent" />
-          </label>
-          <label className="estimate-control full">
-            <span>비고</span>
-            <input placeholder="방문, 글로벌 홈페이지, 소개 등" />
-          </label>
+          ) : null}
         </div>
-      </FormSection>
 
-      <FormSection title="결제 정보">
-        <div className="estimate-form-grid">
-          <label className="estimate-control">
-            <span>결제수단</span>
-            <select defaultValue="" name="paymentMethod">
-              <option value="">선택</option>
-              <option>현금</option>
-              <option>카드</option>
-              <option>계좌이체</option>
-              <option>보험</option>
-            </select>
-          </label>
-          <label className="estimate-control">
-            <span>카드사</span>
-            <select defaultValue={CARD_COMPANY_OPTIONS[0]} name="cardCompany">
-              {CARD_COMPANY_OPTIONS.map((company) => (
-                <option key={company}>{company}</option>
-              ))}
-            </select>
-          </label>
-          <label className="estimate-control">
-            <span>자기부담금</span>
-            <select defaultValue="">
-              <option value="">선택</option>
-              <option>0%</option>
-              <option>20%</option>
-              <option>30%</option>
-              <option>50%</option>
-              <option>기타</option>
-            </select>
-          </label>
-          <label className="estimate-control">
-            <span>보험청구금액</span>
-            <input inputMode="numeric" name="insuranceClaimAmount" onChange={formatMoneyInputElement} placeholder="원" />
-          </label>
-          <label className="estimate-control">
-            <span>결제금액</span>
+        <span className="estimate-client-label">외주여부</span>
+        <div className="estimate-client-outsource">
+          <div className="estimate-client-checks">
+            {ESTIMATE_OUTSOURCE_OPTIONS.map((type) => (
+              <label key={type}><input checked={outsourceType === type} onChange={() => updateOutsourceType(type)} type="checkbox" />{type}</label>
+            ))}
+          </div>
+          <div className="estimate-client-icon-input">
             <input
-              defaultValue={estimate?.amount ? formatMoneyInputValue(estimate.amount) : undefined}
+              onChange={(event) => setOutsourcePartner(event.target.value)}
+              placeholder={outsourceType === '일반' ? '' : '거래처 검색'}
+              required={outsourceType !== '일반'}
+              value={outsourcePartner}
+            />
+            <button onClick={() => openLookup('outsourcePartner', outsourcePartner)} title="거래처 검색" type="button">
+              <Search size={23} />
+            </button>
+          </div>
+        </div>
+
+        <label className="estimate-client-label" htmlFor="client-phone">연락처</label>
+        <input id="client-phone" inputMode="tel" onChange={(event) => setPhone(formatPhoneInputValue(event.target.value))} value={phone} />
+
+        <label className="estimate-client-label" htmlFor="client-vehicle">차종</label>
+        <div className="estimate-client-icon-input">
+          <input id="client-vehicle" name="vehicle" onChange={(event) => setVehicle(event.target.value)} value={vehicle} />
+          <button onClick={() => openLookup('vehicle', vehicle)} title="차종 검색" type="button">
+            <Search size={23} />
+          </button>
+        </div>
+
+        <label className="estimate-client-label" htmlFor="client-plate">차량번호</label>
+        <input id="client-plate" name="plateNumber" onChange={(event) => setPlateNumber(event.target.value)} value={plateNumber} />
+
+        <label className="estimate-client-label" htmlFor="client-vin">차대번호</label>
+        <input id="client-vin" onChange={(event) => setVin(event.target.value)} value={vin} />
+
+        <label className="estimate-client-label" htmlFor="client-repair-area">수리부위</label>
+        <input className="span-3" id="client-repair-area" name="repairArea" onChange={(event) => setRepairArea(event.target.value)} value={repairArea} />
+
+        <label className="estimate-client-label" htmlFor="client-part-no">품번/썬팅</label>
+        <div className="estimate-client-split">
+          <div className="estimate-client-icon-input">
+            <input id="client-part-no" name="partNo" onChange={(event) => setPartNo(event.target.value)} value={partNo} />
+            <button onClick={() => openLookup('partNo', partNo)} title="품번 검색" type="button">
+              <Search size={22} />
+            </button>
+          </div>
+          <input aria-label="썬팅 사양" onChange={(event) => setTintSpec(event.target.value)} value={tintSpec} />
+        </div>
+
+        <label className="estimate-client-field estimate-client-content-field" htmlFor="client-estimate-content">
+          <span className="estimate-client-label">견적내용</span>
+          <AutoResizeTextarea
+            id="client-estimate-content"
+            minHeight={196}
+            name="estimateContent"
+            onChange={setEstimateContent}
+            placeholder="견적내용 입력"
+            required
+            value={estimateContent}
+          />
+        </label>
+
+        <div className="estimate-client-payment">
+          <div className="estimate-client-money-row">
+            <label className="estimate-client-label" htmlFor="client-replacement-amount">교체/면책금</label>
+            <input
+              id="client-replacement-amount"
+              inputMode="numeric"
+              onChange={(event) => updateCalculatedAmount(event.target.value, tintAmount)}
+              value={replacementAmount}
+            />
+            <label className="estimate-client-label compact" htmlFor="client-tint-amount">썬팅</label>
+            <input
+              id="client-tint-amount"
+              inputMode="numeric"
+              onChange={(event) => updateCalculatedAmount(replacementAmount, event.target.value)}
+              value={tintAmount}
+            />
+          </div>
+          <div className="estimate-client-payment-row">
+            <label className="estimate-client-label" htmlFor="client-payment-amount">결제금액</label>
+            <input
+              id="client-payment-amount"
               inputMode="numeric"
               name="paymentAmount"
-              onChange={formatMoneyInputElement}
-              placeholder="원"
+              onChange={(event) => setPaymentAmount(formatMoneyInputValue(event.target.value))}
+              value={paymentAmount}
             />
-          </label>
-        </div>
-      </FormSection>
-
-      <FormSection title="작업 예약">
-        <div className="estimate-form-grid">
-          <div className="estimate-auto-work-card full">
-            <label>
-              <input
-                checked={autoCreateWork}
-                name="autoCreateWork"
-                onChange={(event) => setAutoCreateWork(event.target.checked)}
-                type="checkbox"
-              />
-              <span>작업일 입력 시 작업 일정 자동 등록</span>
-            </label>
-            <p>작업일과 시간을 입력하면 견적 저장 후 작업 목록/캘린더에 예정 상태로 연결되는 흐름입니다. 견적만 남겨야 하는 경우 체크를 해제합니다.</p>
           </div>
-          <label className="estimate-control">
-            <span>작업일</span>
-            <input defaultValue={scheduledWorkDateValue} name="scheduledWorkDate" type="date" />
-          </label>
-          <label className="estimate-control">
-            <span>작업시간</span>
-            <select defaultValue={estimate?.scheduledWorkTime ?? ''} name="scheduledWorkTime">
-              <option value="">시간 미정</option>
-              <option>오전</option>
-              <option>오후</option>
-              <option>10:00</option>
-              <option>14:00</option>
-              <option>16:00</option>
-            </select>
-          </label>
-          <label className="estimate-control">
-            <span>방문/출장</span>
-            <select defaultValue={estimate?.scheduledVisit ?? ''} name="scheduledVisit">
-              <option value="">선택</option>
-              <option>방문</option>
-              <option>출장</option>
-              <option>탁송</option>
-            </select>
-          </label>
-          <label className="estimate-control">
-            <span>출장자</span>
-            <select defaultValue={estimate?.scheduledTechnician ?? ''} name="scheduledTechnician">
-              <option value="">선택</option>
-              {ESTIMATOR_OPTIONS.map((name) => (
-                <option key={name}>{name}</option>
+          <div className="estimate-client-payment-row payment-methods">
+            <span className="estimate-client-label">결제구분</span>
+            <div className="estimate-client-checks">
+              {['카드', '계좌', '현금'].map((method) => (
+                <label key={method}><input checked={paymentMethods.includes(method)} onChange={() => togglePaymentMethod(method)} type="checkbox" />{method}</label>
               ))}
-            </select>
-          </label>
+            </div>
+          </div>
         </div>
-      </FormSection>
 
-      <div className="estimate-save-row">
-        <button className="secondary-button" onClick={() => onSubmitComplete?.()} type="button">
-          견적만 저장
-        </button>
-        <button className="primary-button" type="submit">
-          {submitLabel}
-        </button>
+        <label className="estimate-client-label" htmlFor="client-purchase-partner">매입처</label>
+        <div className="estimate-client-icon-input">
+          <input id="client-purchase-partner" onChange={(event) => setPurchasePartner(event.target.value)} value={purchasePartner} />
+          <button onClick={() => openLookup('purchasePartner', purchasePartner)} title="매입처 검색" type="button">
+            <Search size={23} />
+          </button>
+        </div>
+
+        <label className="estimate-client-label" htmlFor="client-purchase-amount">매입금액</label>
+        <input
+          id="client-purchase-amount"
+          inputMode="numeric"
+          onChange={(event) => setPurchaseAmount(formatMoneyInputValue(event.target.value))}
+          value={purchaseAmount}
+        />
+
+        <label className="estimate-client-label" htmlFor="client-purchase-date">매입예정일</label>
+        <div className="estimate-client-icon-input date">
+          <input
+            id="client-purchase-date"
+            inputMode="numeric"
+            onChange={(event) => setPurchaseDate(normalizeEstimateDateInput(event.target.value))}
+            value={purchaseDate}
+          />
+          <CalendarDays size={15} />
+          <input
+            aria-label="매입예정일 날짜 선택"
+            className="estimate-client-date-native"
+            onChange={(event) => setPurchaseDate(event.target.value)}
+            type="date"
+            value={nativePurchaseDate}
+          />
+        </div>
       </div>
-      <datalist id="estimate-customer-suggestions">
-        {CUSTOMER_LOOKUP_SUGGESTIONS.map((suggestion) => (
-          <option key={suggestion} value={suggestion} />
-        ))}
-      </datalist>
-      <datalist id="estimate-vehicle-lookup-suggestions">
-        {vehicleSuggestions.lookup.map((suggestion) => (
-          <option key={suggestion} value={suggestion} />
-        ))}
-      </datalist>
-      <datalist id="estimate-vehicle-model-suggestions">
-        {vehicleSuggestions.model.map((suggestion) => (
-          <option key={suggestion} value={suggestion} />
-        ))}
-      </datalist>
-      <datalist id="estimate-vehicle-brand-suggestions">
-        {vehicleSuggestions.brand.map((suggestion) => (
-          <option key={suggestion} value={suggestion} />
-        ))}
-      </datalist>
-      <datalist id="estimate-vehicle-year-suggestions">
-        {vehicleSuggestions.yearRange.map((suggestion) => (
-          <option key={suggestion} value={suggestion} />
-        ))}
-      </datalist>
-      <datalist id="estimate-part-suggestions">
-        {PART_LOOKUP_SUGGESTIONS.map((suggestion) => (
-          <option key={suggestion} value={suggestion} />
-        ))}
-      </datalist>
-      <datalist id="estimate-repair-area-suggestions">
-        {REPAIR_AREA_OPTIONS.map((suggestion) => (
-          <option key={suggestion} value={suggestion} />
-        ))}
-      </datalist>
+
+      <div className="estimate-client-actions estimate-client-actions-footer">
+        {onCreateWorkRecord ? <button className="estimate-client-submit secondary" data-intent="work" type="submit">작업등록</button> : null}
+        <button className="estimate-client-submit primary" data-intent="estimate" type="submit">{submitLabel}</button>
+      </div>
+
+      {lookupConfig ? (
+        <div className="estimate-client-lookup-backdrop" role="presentation" onMouseDown={() => setLookupTarget(null)}>
+          <section className="estimate-client-lookup" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}>
+            <header>
+              <h3>{lookupConfig.title}</h3>
+              {lookupConfig.canCreate ? <button type="button">신규 등록</button> : null}
+            </header>
+            <input
+              autoFocus
+              onChange={(event) => setLookupQuery(event.target.value)}
+              placeholder={lookupConfig.placeholder}
+              value={lookupQuery}
+            />
+            <div className="estimate-client-lookup-list">
+              {filteredLookupSuggestions.length > 0 ? filteredLookupSuggestions.map((suggestion) => (
+                <button key={suggestion} onClick={() => selectLookupValue(suggestion)} type="button">{suggestion}</button>
+              )) : <span>검색 결과가 없습니다.</span>}
+            </div>
+          </section>
+        </div>
+      ) : null}
     </form>
   );
 }
@@ -9170,12 +9508,14 @@ function CardSalesDateInput({
   className = '',
   onChange,
   onFocus,
+  required = false,
   value,
 }: {
   ariaLabel: string;
   className?: string;
   onChange: (value: string) => void;
   onFocus?: (input: HTMLInputElement) => void;
+  required?: boolean;
   value: string;
 }) {
   const pickerRef = useRef<HTMLInputElement | null>(null);
@@ -9225,6 +9565,7 @@ function CardSalesDateInput({
           onChange(normalizedValue);
         }}
         placeholder="yyyy-mm-dd"
+        required={required}
         type="text"
         value={value}
       />
@@ -11847,13 +12188,6 @@ function EstimateDetailModal({
                 </div>
               </FormSection>
 
-              <FormSection title="작업 전환 전 확인">
-                <div className="flow-check-list">
-                  <span>견적 등록 시 작업일과 시간을 입력하면 작업 목록/캘린더에 자동 등록됩니다.</span>
-                  <span>부품번호와 보험 접수번호는 몰라도 예정 작업으로 먼저 생성할 수 있습니다.</span>
-                  <span>작업 화면의 직접 등록은 견적 없는 현장 접수나 긴급 작업용 예외 플로우로 사용합니다.</span>
-                </div>
-              </FormSection>
             </>
           )}
         </div>
@@ -12046,58 +12380,383 @@ function WorkListRegistrationDrawer({
 
 function WorkRegistrationDrawer({
   estimate,
+  onCreateWorkRecord,
   onClose,
   vehicleModelSuggestions,
 }: {
   estimate: Estimate;
+  onCreateWorkRecord: (record: WorkerWorkListRecord) => void;
   onClose: () => void;
   vehicleModelSuggestions: string[];
 }) {
-  const [visitType, setVisitType] = useState<WorkVisitType>(estimate.scheduledVisit ?? '출장');
+  const initialWorkDate = estimate.scheduledWorkDate?.replace(/\./g, '-') ?? ESTIMATE_DEFAULT_PERIOD_END;
+  const [vehicleModel, setVehicleModel] = useState(estimate.vehicle);
+  const [plateNumber, setPlateNumber] = useState(estimate.plateNumber);
+  const [workDate, setWorkDate] = useState(initialWorkDate);
+  const [workTime, setWorkTime] = useState(estimate.scheduledWorkTime ?? '15:00 ~ 15:30');
+  const [visitType, setVisitType] = useState<WorkVisitType>(estimate.scheduledVisit ?? '방문');
+  const [address, setAddress] = useState('');
+  const [addressDetail, setAddressDetail] = useState('');
+  const [selectedAddress, setSelectedAddress] = useState<AddressSearchResult | null>(null);
+  const [isAddressLookupOpen, setIsAddressLookupOpen] = useState(false);
+  const [addressLookupQuery, setAddressLookupQuery] = useState('');
+  const [estimateContent, setEstimateContent] = useState(estimate.estimateContent);
+  const [workContent, setWorkContent] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState(formatMoneyInputValue(estimate.paymentAmount ?? estimate.amount));
+  const [workPayments, setWorkPayments] = useState<WorkPaymentEntry[]>(() => [createEmptyWorkPaymentEntry(0)]);
+  const [saveMessage, setSaveMessage] = useState('');
+  const deductibleAmount = estimate.deductibleAmount === undefined ? '-' : formatMoney(estimate.deductibleAmount);
+  const tintAmount = estimate.tintAmount === undefined ? '-' : formatMoney(estimate.tintAmount);
+  const estimatePaymentAmount = formatMoney(estimate.paymentAmount ?? estimate.amount);
+  const paymentTargetAmount = parseWorkAmountInput(paymentAmount);
+  const validWorkPayments = useMemo(() => workPayments.filter((payment) => parseWorkAmountInput(payment.amount) > 0), [workPayments]);
+  const paymentTotal = sumWorkPayments(validWorkPayments);
+  const resolvedPaymentStatus = resolveWorkPaymentStatus(paymentTargetAmount, validWorkPayments);
+  const addressCoordinateTitle = selectedAddress
+    ? `좌표 ${selectedAddress.latitude.toFixed(6)}, ${selectedAddress.longitude.toFixed(6)}`
+    : undefined;
+  const workAddressPayload = useMemo(() => {
+    const payload: NonNullable<WorkerWorkListRecord['addressPayload']> = {
+      roadAddress: address.trim(),
+      detailAddress: addressDetail.trim(),
+      source: selectedAddress ? 'address-search' : 'manual',
+    };
+    if (selectedAddress) {
+      payload.latitude = selectedAddress.latitude;
+      payload.longitude = selectedAddress.longitude;
+    }
+    return payload;
+  }, [address, addressDetail, selectedAddress]);
+  const filteredAddressResults = useMemo(() => {
+    const normalizedQuery = compactEstimateSearchValue(addressLookupQuery || address);
+    if (!normalizedQuery) return ADDRESS_SEARCH_RESULTS;
+
+    return ADDRESS_SEARCH_RESULTS.filter((item) =>
+      compactEstimateSearchValue(`${item.placeName} ${item.roadAddress} ${item.jibunAddress} ${item.postalCode ?? ''}`).includes(normalizedQuery),
+    );
+  }, [address, addressLookupQuery]);
+
+  function updateWorkPaymentDraft<Key extends keyof WorkPaymentEntry>(paymentId: string, key: Key, value: WorkPaymentEntry[Key]) {
+    setWorkPayments((current) =>
+      current.map((payment) => (payment.id === paymentId ? { ...payment, [key]: value } : payment)),
+    );
+  }
+
+  function addWorkPaymentEntry() {
+    setWorkPayments((current) => [...current, createEmptyWorkPaymentEntry(current.length)]);
+  }
+
+  function removeWorkPaymentEntry(paymentId: string) {
+    setWorkPayments((current) => (current.length <= 1 ? current : current.filter((payment) => payment.id !== paymentId)));
+  }
+
+  function openAddressLookup() {
+    setAddressLookupQuery(address);
+    setIsAddressLookupOpen(true);
+  }
+
+  function selectAddressResult(result: AddressSearchResult) {
+    setAddress(result.roadAddress);
+    setSelectedAddress(result);
+    setIsAddressLookupOpen(false);
+  }
+
+  function saveConversionDraft() {
+    setSaveMessage(
+      workAddressPayload.latitude !== undefined && workAddressPayload.longitude !== undefined
+        ? '변경내용이 임시 저장되었습니다. 주소 좌표 포함'
+        : '변경내용이 임시 저장되었습니다.',
+    );
+  }
+
+  function buildWorkConversionRecord() {
+    const addressText = [workAddressPayload.roadAddress, workAddressPayload.detailAddress].filter(Boolean).join(' ');
+    const title =
+      workContent.trim() ||
+      estimateContent.trim() ||
+      estimate.repair ||
+      estimate.area.join(', ') ||
+      '견적 연결 작업';
+    const draft: WorkRegistrationFormDraft = {
+      date: workDate,
+      visit: visitType,
+      time: workTime || '시간 미정',
+      division: estimate.repairType.startsWith('보험') ? '보험' : '일반',
+      company: estimate.outsourceType,
+      customer: estimate.customer || '-',
+      vehicle: vehicleModel || estimate.vehicle || '-',
+      plateNumber: plateNumber || estimate.plateNumber || '-',
+      title,
+      stock: estimate.status === '부품확인' ? '재고확인' : '-',
+      insuranceClaimAmount: '',
+      insurancePaidAmount: '',
+      paymentAmount,
+      paymentStatus: resolvedPaymentStatus,
+      status: '예정',
+      owner: estimate.scheduledTechnician || estimate.estimatorName,
+      address: addressText,
+    };
+    const record = createWorkRecordFromRegistrationDraft(draft);
+
+    return {
+      ...record,
+      id: `estimate-work-${estimate.no}-${Date.now()}`,
+      paymentAmount: paymentTargetAmount,
+      paymentStatus: resolvedPaymentStatus,
+      payments: validWorkPayments,
+      addressPayload: workAddressPayload,
+    };
+  }
+
+  function convertToWork() {
+    onCreateWorkRecord(buildWorkConversionRecord());
+    onClose();
+  }
 
   return (
     <DetailDrawer
-      eyebrow="견적 연결 작업"
-      footer={<ActionFooter primaryLabel="작업 일정 저장" secondaryLabel="닫기" onSecondary={onClose} />}
+      eyebrow="견적"
+      footer={
+        <div className="estimate-work-footer">
+          <span>{saveMessage}</span>
+          <ActionFooter
+            onPrimary={convertToWork}
+            onSecondary={saveConversionDraft}
+            primaryLabel="작업으로 전환"
+            secondaryLabel="변경내용 저장"
+          />
+        </div>
+      }
       onClose={onClose}
-      title={`${estimate.customer} 작업 일정`}
+      title="작업 전환"
+      variant="modal"
     >
-      <div className="drawer-summary">
-        <div>
-          <span>연결 견적</span>
-          <strong>{estimate.no}</strong>
+      <section className="form-section estimate-work-main-section">
+        <div className="estimate-work-grid">
+          <label className="estimate-control estimate-work-vehicle">
+            <span>차량정보</span>
+            <div className="estimate-work-inline-inputs">
+              <input
+                list="work-registration-vehicle-model-suggestions"
+                onChange={(event) => setVehicleModel(event.target.value)}
+                value={vehicleModel}
+              />
+              <input onChange={(event) => setPlateNumber(event.target.value)} value={plateNumber} />
+            </div>
+          </label>
+          <label className="estimate-control">
+            <span>연동 견적코드</span>
+            <input readOnly value={estimate.no} />
+          </label>
+          <label className="estimate-control">
+            <span>
+              작업일시
+              <em>필수</em>
+            </span>
+            <CardSalesDateInput
+              ariaLabel="작업일시 날짜"
+              className="estimate-work-date-field"
+              onChange={setWorkDate}
+              required
+              value={workDate}
+            />
+          </label>
+          <label className="estimate-control">
+            <span>시간</span>
+            <input
+              inputMode="numeric"
+              onChange={(event) => setWorkTime(normalizeEstimateTimeRangeInput(event.target.value))}
+              placeholder="15:00 ~ 15:30"
+              value={workTime}
+            />
+          </label>
+          <label className="estimate-control">
+            <span>
+              작업방식
+              <em>필수</em>
+            </span>
+            <select onChange={(event) => setVisitType(event.target.value as WorkVisitType)} required value={visitType}>
+              {WORK_VISIT_OPTIONS.map((visit) => (
+                <option key={visit}>{visit}</option>
+              ))}
+            </select>
+          </label>
+          <label className="estimate-control estimate-work-address">
+            <span>주소</span>
+            <div className="estimate-work-address-control" title={addressCoordinateTitle}>
+              <div className="estimate-work-address-search">
+                <input
+                  onChange={(event) => {
+                    setAddress(event.target.value);
+                    setSelectedAddress(null);
+                  }}
+                  placeholder="주소 검색"
+                  value={address}
+                />
+                <button onClick={openAddressLookup} title="주소 검색" type="button">
+                  <Search size={16} />
+                </button>
+              </div>
+              <input
+                aria-label="상세주소"
+                onChange={(event) => setAddressDetail(event.target.value)}
+                placeholder="상세주소"
+                value={addressDetail}
+              />
+            </div>
+          </label>
+          <label className="estimate-control full">
+            <span>견적내용</span>
+            <AutoResizeTextarea minHeight={142} onChange={setEstimateContent} value={estimateContent} />
+          </label>
+          <label className="estimate-control full">
+            <span>작업내용</span>
+            <AutoResizeTextarea minHeight={48} onChange={setWorkContent} placeholder="작업내용 입력" value={workContent} />
+          </label>
+          <label className="estimate-control">
+            <span>수리구분</span>
+            <input readOnly value={estimate.repairType} />
+          </label>
+          <label className="estimate-control">
+            <span>면책금</span>
+            <input readOnly value={deductibleAmount} />
+          </label>
+          <label className="estimate-control">
+            <span>썬팅</span>
+            <input readOnly value={tintAmount} />
+          </label>
+          <label className="estimate-control">
+            <span>견적 결제금액</span>
+            <input readOnly value={estimatePaymentAmount} />
+          </label>
         </div>
-        <div>
-          <span>차량</span>
-          <strong>{estimate.vehicle}</strong>
-        </div>
-        <div>
-          <span>작업내용</span>
-          <strong>{estimate.repair}</strong>
-        </div>
-      </div>
+      </section>
 
-      <FormSection title="일정">
-        <Field label="작업일" value={estimate.scheduledWorkDate ?? '작업일 미정'} />
-        <Field label="작업시간" value={estimate.scheduledWorkTime ?? '시간 미정'} />
-        <label className="estimate-control">
-          <span>방문 방식</span>
-          <select onChange={(event) => setVisitType(event.target.value as WorkVisitType)} value={visitType}>
-            {WORK_VISIT_OPTIONS.map((visit) => (
-              <option key={visit}>{visit}</option>
-            ))}
-          </select>
-        </label>
-      </FormSection>
+      <FormSection title="결제 내용">
+        <div className="payment-summary-grid">
+          <label className="estimate-control">
+            <span>결제금액</span>
+            <input
+              inputMode="numeric"
+              onChange={(event) => setPaymentAmount(formatMoneyInputValue(event.target.value))}
+              placeholder="0"
+              value={paymentAmount}
+            />
+          </label>
+          <div className="payment-summary-item">
+            <span>입력 합계</span>
+            <strong>{formatWorkLedgerAmount(paymentTotal)}</strong>
+          </div>
+          <div className="payment-summary-item">
+            <span>결제여부</span>
+            <strong className={resolvedPaymentStatus === 'Y' ? 'payment-status-y' : ''}>{resolvedPaymentStatus}</strong>
+          </div>
+        </div>
 
-      <FormSection title="작업 정보">
-        <label className="estimate-control">
-          <span>차량</span>
-          <input defaultValue={estimate.vehicle} list="work-registration-vehicle-model-suggestions" />
-        </label>
-        <Field label="작업자" value="정하늘" />
-        <Field label="작업 메모" value="전면유리 교체 후 ADAS 보정 확인" />
-        <Field label="사용 부품" value="G80-FR-ADAS 1개" />
+        <div className="payment-entry-list">
+          {workPayments.map((payment, index) => (
+            <article className="payment-entry-card" key={payment.id}>
+              <div className="payment-entry-head">
+                <strong>결제 {index + 1}</strong>
+                {workPayments.length > 1 ? (
+                  <button
+                    aria-label={`결제 ${index + 1} 삭제`}
+                    className="mini-button payment-remove-button"
+                    onClick={() => removeWorkPaymentEntry(payment.id)}
+                    title="결제 삭제"
+                    type="button"
+                  >
+                    <X size={14} />
+                  </button>
+                ) : null}
+              </div>
+              <div className="payment-entry-grid">
+                <label className="estimate-control">
+                  <span>결제 방식</span>
+                  <select
+                    onChange={(event) => updateWorkPaymentDraft(payment.id, 'method', event.target.value as WorkPaymentMethod)}
+                    value={payment.method}
+                  >
+                    {PAYMENT_METHOD_OPTIONS.map((method) => (
+                      <option key={method}>{method}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="estimate-control">
+                  <span>결제액</span>
+                  <input
+                    inputMode="numeric"
+                    onChange={(event) => updateWorkPaymentDraft(payment.id, 'amount', formatMoneyInputValue(event.target.value))}
+                    placeholder="0"
+                    value={formatMoneyInputValue(payment.amount)}
+                  />
+                </label>
+                {payment.method === '카드' ? (
+                  <>
+                    <label className="estimate-control">
+                      <span>카드사</span>
+                      <input
+                        list="estimate-work-card-company-suggestions"
+                        onChange={(event) => updateWorkPaymentDraft(payment.id, 'cardCompany', event.target.value)}
+                        value={payment.cardCompany}
+                      />
+                    </label>
+                    {payment.cardCompany === '기타' ? (
+                      <label className="estimate-control">
+                        <span>카드사 직접 입력</span>
+                        <input
+                          onChange={(event) => updateWorkPaymentDraft(payment.id, 'customCardCompany', event.target.value)}
+                          value={payment.customCardCompany}
+                        />
+                      </label>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    <label className="estimate-control">
+                      <span>은행</span>
+                      <input
+                        list="estimate-work-bank-suggestions"
+                        onChange={(event) => updateWorkPaymentDraft(payment.id, 'bankName', event.target.value)}
+                        value={payment.bankName}
+                      />
+                    </label>
+                    {payment.bankName === '기타' ? (
+                      <label className="estimate-control">
+                        <span>은행 직접 입력</span>
+                        <input
+                          onChange={(event) => updateWorkPaymentDraft(payment.id, 'customBankName', event.target.value)}
+                          value={payment.customBankName}
+                        />
+                      </label>
+                    ) : null}
+                    <label className="estimate-control">
+                      <span>계좌번호</span>
+                      <input
+                        onChange={(event) => updateWorkPaymentDraft(payment.id, 'accountNumber', event.target.value)}
+                        value={payment.accountNumber}
+                      />
+                    </label>
+                    <label className="estimate-control">
+                      <span>예금주</span>
+                      <input
+                        onChange={(event) => updateWorkPaymentDraft(payment.id, 'accountHolder', event.target.value)}
+                        value={payment.accountHolder}
+                      />
+                    </label>
+                  </>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className="payment-add-row">
+          <button className="secondary-button" onClick={addWorkPaymentEntry} type="button">
+            <Plus size={16} />
+            결제 추가
+          </button>
+        </div>
       </FormSection>
 
       <datalist id="work-registration-vehicle-model-suggestions">
@@ -12105,7 +12764,46 @@ function WorkRegistrationDrawer({
           <option key={suggestion} value={suggestion} />
         ))}
       </datalist>
-      <p className="helper-text">견적 등록 시 작업일이 입력된 건은 작업 목록과 캘린더에 자동 생성되는 흐름으로 봅니다. 이 화면은 자동 생성된 작업 일정을 확인하거나 예외적으로 수정하는 용도입니다.</p>
+      <datalist id="estimate-work-card-company-suggestions">
+        {CARD_COMPANY_OPTIONS.map((company) => (
+          <option key={company} value={company} />
+        ))}
+      </datalist>
+      <datalist id="estimate-work-bank-suggestions">
+        {BANK_OPTIONS.map((bank) => (
+          <option key={bank} value={bank} />
+        ))}
+      </datalist>
+      {isAddressLookupOpen ? (
+        <div className="estimate-address-lookup-backdrop" onMouseDown={() => setIsAddressLookupOpen(false)} role="presentation">
+          <section aria-modal="true" className="estimate-address-lookup" onMouseDown={(event) => event.stopPropagation()} role="dialog">
+            <header>
+              <h3>주소 검색</h3>
+              <button aria-label="주소 검색 닫기" onClick={() => setIsAddressLookupOpen(false)} type="button">
+                <X size={16} />
+              </button>
+            </header>
+            <div className="estimate-address-search-input">
+              <Search size={16} />
+              <input
+                autoFocus
+                onChange={(event) => setAddressLookupQuery(event.target.value)}
+                placeholder="도로명, 지번, 거래처명 검색"
+                value={addressLookupQuery}
+              />
+            </div>
+            <div className="estimate-address-result-list">
+              {filteredAddressResults.length > 0 ? filteredAddressResults.map((result) => (
+                <button key={result.id} onClick={() => selectAddressResult(result)} type="button">
+                  <strong>{result.placeName}</strong>
+                  <span>{result.roadAddress}</span>
+                  <small>{result.jibunAddress} · {result.latitude.toFixed(6)}, {result.longitude.toFixed(6)}</small>
+                </button>
+              )) : <span>검색 결과가 없습니다.</span>}
+            </div>
+          </section>
+        </div>
+      ) : null}
     </DetailDrawer>
   );
 }
