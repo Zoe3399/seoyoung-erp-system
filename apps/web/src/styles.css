@@ -1520,6 +1520,7 @@ h2 {
 .estimate-followup-actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 6px;
 }
 
@@ -1808,7 +1809,14 @@ h2 {
 .estimate-list-table th,
 .estimate-list-table td {
   padding: 10px 8px;
+  border-right: 1px solid #d1d6db;
   text-align: center;
+  user-select: text;
+}
+
+.estimate-list-table th:last-child,
+.estimate-list-table td:last-child {
+  border-right: 0;
 }
 
 .estimate-list-table td:nth-child(6),
@@ -1879,11 +1887,42 @@ h2 {
 
 .estimate-list-table th:nth-child(12),
 .estimate-list-table td:nth-child(12) {
-  width: 118px;
+  width: 144px;
+  user-select: none;
 }
 
 .estimate-list-table tbody tr:has(.estimate-vehicle-cell.needs-stock) td {
   background: #fff1f2;
+}
+
+.estimate-copy-text {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  border-radius: 4px;
+  cursor: copy;
+  user-select: text;
+}
+
+.estimate-copy-text:hover {
+  background: rgb(49 130 246 / 7%);
+}
+
+.estimate-copy-toast {
+  position: fixed;
+  right: 28px;
+  bottom: 28px;
+  z-index: 120;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid #c9dcff;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1b64da;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 36px;
+  box-shadow: 0 14px 36px rgb(25 31 40 / 16%);
 }
 
 .estimate-customer-cell {
@@ -6184,10 +6223,10 @@ tbody tr:hover {
   position: relative;
   isolation: isolate;
   display: grid;
-  grid-template-columns: max-content minmax(150px, 0.9fr) max-content minmax(150px, 0.9fr) max-content minmax(220px, 1.2fr);
-  gap: 10px 10px;
-  align-items: center;
-  padding: 14px;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 12px 14px;
+  align-items: start;
+  padding: 18px;
   border: 1px solid #edf0f2;
   border-radius: 8px;
   background: #fbfdff;
@@ -6198,13 +6237,41 @@ tbody tr:hover {
   z-index: 1;
 }
 
+.estimate-client-field-unit {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  align-content: start;
+}
+
+.estimate-client-field-unit.span-3 {
+  grid-column: span 3;
+}
+
+.estimate-client-field-unit.span-4 {
+  grid-column: span 4;
+}
+
+.estimate-client-field-unit.span-6 {
+  grid-column: span 6;
+}
+
+.estimate-client-field-unit.span-8 {
+  grid-column: span 8;
+}
+
+.estimate-client-field-unit.span-12 {
+  grid-column: 1 / -1;
+}
+
 .estimate-client-label {
   display: inline-flex;
   align-items: center;
-  min-height: 40px;
+  min-height: 0;
   color: #6b7684;
   font-size: 12px;
   font-weight: 900;
+  line-height: 1.35;
   text-decoration: none;
   white-space: nowrap;
 }
@@ -6292,7 +6359,7 @@ tbody tr:hover {
   align-items: center;
   gap: 8px;
   min-width: 0;
-  min-height: 40px;
+  min-height: 38px;
 }
 
 .estimate-client-checks label {
@@ -6324,6 +6391,8 @@ tbody tr:hover {
   display: grid;
   gap: 6px;
   min-width: 0;
+  min-height: 40px;
+  align-content: center;
 }
 
 .estimate-repair-primary,
@@ -6367,7 +6436,7 @@ tbody tr:hover {
 }
 
 .estimate-insurance-options {
-  margin-left: 20px;
+  margin-left: 0;
   padding: 7px 8px;
   border-left: 2px solid #c9dcff;
   border-radius: 6px;
@@ -6383,15 +6452,16 @@ tbody tr:hover {
 
 .estimate-client-outsource {
   display: grid;
-  grid-template-columns: 170px minmax(0, 1fr);
-  grid-column: span 3;
-  gap: 10px;
-  align-items: center;
+  gap: 6px;
   min-width: 0;
 }
 
-.estimate-client-grid .span-3 {
-  grid-column: span 3;
+.estimate-client-outsource-control {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.42fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
 }
 
 .estimate-client-split {
@@ -6401,23 +6471,8 @@ tbody tr:hover {
   min-width: 0;
 }
 
-.estimate-client-field {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
-}
-
-.estimate-client-field .estimate-client-label {
-  min-height: 0;
-}
-
-.estimate-client-content-field {
-  grid-column: span 4;
-}
-
 .estimate-client-content-field .estimate-client-label {
   align-items: flex-end;
-  height: 18px;
 }
 
 .estimate-client-content-field textarea {
@@ -6432,7 +6487,6 @@ tbody tr:hover {
 
 .estimate-client-payment {
   display: grid;
-  grid-column: span 2;
   gap: 10px;
   align-self: start;
   min-width: 0;
@@ -6444,9 +6498,9 @@ tbody tr:hover {
 
 .estimate-client-money-row {
   display: grid;
-  grid-template-columns: 86px minmax(0, 1fr) 54px minmax(0, 0.8fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  align-items: center;
+  align-items: start;
 }
 
 .estimate-client-payment-row {
@@ -6456,14 +6510,31 @@ tbody tr:hover {
   align-items: center;
 }
 
+.estimate-client-subfield {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.estimate-client-subfield span,
+.estimate-client-payment-methods > span {
+  color: #6b7684;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.estimate-client-subfield input,
 .estimate-client-payment-row input,
 .estimate-client-money-row input {
   text-align: right;
   font-weight: 700;
 }
 
-.estimate-client-payment-row.payment-methods {
-  align-items: start;
+.estimate-client-payment-methods {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
 }
 
 .estimate-client-lookup-backdrop {
@@ -8475,6 +8546,16 @@ tbody tr:hover {
     grid-template-columns: 1fr;
   }
 
+  .estimate-client-field-unit.span-3,
+  .estimate-client-field-unit.span-4 {
+    grid-column: span 6;
+  }
+
+  .estimate-client-field-unit.span-6,
+  .estimate-client-field-unit.span-8 {
+    grid-column: 1 / -1;
+  }
+
   .ledger-side-panel {
     position: static;
   }
@@ -8731,6 +8812,11 @@ tbody tr:hover {
   .kp-list-summary {
     white-space: normal;
   }
+
+  .estimate-client-outsource-control,
+  .estimate-client-money-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 680px) {
@@ -8838,8 +8924,17 @@ tbody tr:hover {
   .revenue-current-card,
   .sales-form-grid,
   .estimate-form-grid,
-  .estimate-save-row {
+  .estimate-save-row,
+  .estimate-client-grid {
     grid-template-columns: 1fr;
+  }
+
+  .estimate-client-field-unit.span-3,
+  .estimate-client-field-unit.span-4,
+  .estimate-client-field-unit.span-6,
+  .estimate-client-field-unit.span-8,
+  .estimate-client-field-unit.span-12 {
+    grid-column: 1 / -1;
   }
 
   .calendar-toolbar {

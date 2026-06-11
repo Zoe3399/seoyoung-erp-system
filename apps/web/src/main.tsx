@@ -6055,6 +6055,8 @@ function EstimatesPage({
   );
   const [selectedEstimate, setSelectedEstimate] = useState<Estimate | null>(null);
   const [workDraftEstimate, setWorkDraftEstimate] = useState<Estimate | null>(null);
+  const [copyNotice, setCopyNotice] = useState('');
+  const copyNoticeTimerRef = useRef<number | null>(null);
 
   const estimatorOptions = useMemo(() => Array.from(new Set([...ESTIMATOR_OPTIONS, ...estimates.map((estimate) => estimate.estimatorName)])), []);
   const vehicleSuggestionsForSearch = useMemo(
@@ -6091,6 +6093,13 @@ function EstimatesPage({
         return matchesPeriod && matchesEstimator && matchesStatus && matchesOutsource && matchesPartner && matchesVehicle && matchesPhone;
       }),
     [estimateStatuses, estimatorFilter, outsourceFilter, partnerQuery, periodEnd, periodStart, phoneQuery, statusFilters, vehicleQuery],
+  );
+
+  useEffect(
+    () => () => {
+      if (copyNoticeTimerRef.current !== null) window.clearTimeout(copyNoticeTimerRef.current);
+    },
+    [],
   );
 
   function updatePeriodStart(value: string) {
@@ -6144,6 +6153,40 @@ function EstimatesPage({
   function openEstimateWorkConversion(estimate: Estimate) {
     setEstimateStatuses((current) => ({ ...current, [estimate.no]: '확정' }));
     setWorkDraftEstimate(estimate);
+  }
+
+  function showEstimateCopyNotice(value: string) {
+    if (copyNoticeTimerRef.current !== null) window.clearTimeout(copyNoticeTimerRef.current);
+
+    const preview = value.length > 18 ? `${value.slice(0, 18)}...` : value;
+    setCopyNotice(`복사됨: ${preview}`);
+    copyNoticeTimerRef.current = window.setTimeout(() => setCopyNotice(''), 1500);
+  }
+
+  function copyEstimateText(value: string) {
+    const selectedText = window.getSelection()?.toString().trim();
+    if (selectedText) return;
+
+    const text = value.trim();
+    if (!text || !navigator.clipboard) return;
+
+    void navigator.clipboard.writeText(text).then(() => showEstimateCopyNotice(text));
+  }
+
+  function CopyableEstimateText({
+    children,
+    className = '',
+    value,
+  }: {
+    children?: ReactNode;
+    className?: string;
+    value: string;
+  }) {
+    return (
+      <span className={`estimate-copy-text ${className}`.trim()} onClick={() => copyEstimateText(value)} title="클릭하면 복사됩니다">
+        {children ?? value}
+      </span>
+    );
   }
 
   return (
@@ -6264,36 +6307,38 @@ function EstimatesPage({
           <ListColumnTable
             className="estimate-list-table"
             columns={['견적일', '담당자', '구분', '거래처', '차량정보', '수리부위', '견적내용', '수리구분', '금액', '연락처', '상태', '보기']}
-            onRowClick={(rowIndex) => {
-              const estimate = filteredEstimates[rowIndex];
-              if (estimate) setSelectedEstimate(estimate);
-            }}
             rows={filteredEstimates.map((estimate) => {
               const displayStatus = estimateStatuses[estimate.no] ?? estimateDisplayStatus(estimate);
               const isStockCheck = displayStatus === '재고확인';
+              const estimateAreaText = estimate.area.join(', ');
+              const amountText = formatMoney(estimate.amount);
+              const phoneText = estimate.phone || '연락처 미입력';
               return [
-                estimate.estimateDate,
-                estimate.estimatorName,
-                estimate.outsourceType,
-                <span className="estimate-customer-cell" key={`${estimate.no}-customer`} title={estimate.customer || '-'}>
+                <CopyableEstimateText key={`${estimate.no}-date`} value={estimate.estimateDate} />,
+                <CopyableEstimateText key={`${estimate.no}-estimator`} value={estimate.estimatorName} />,
+                <CopyableEstimateText key={`${estimate.no}-outsource`} value={estimate.outsourceType} />,
+                <CopyableEstimateText className="estimate-customer-cell" key={`${estimate.no}-customer`} value={estimate.customer || '-'}>
                   {estimate.customer || '-'}
-                </span>,
+                </CopyableEstimateText>,
                 <div className={isStockCheck ? 'estimate-vehicle-cell needs-stock' : 'estimate-vehicle-cell'} key={`${estimate.no}-vehicle`}>
-                  <strong>{estimate.vehicle}</strong>
-                  <span className={isStockCheck ? 'estimate-plate-cell needs-stock' : 'estimate-plate-cell'}>
+                  <CopyableEstimateText value={estimate.vehicle}>
+                    <strong>{estimate.vehicle}</strong>
+                  </CopyableEstimateText>
+                  <CopyableEstimateText className={isStockCheck ? 'estimate-plate-cell needs-stock' : 'estimate-plate-cell'} value={estimate.plateNumber}>
                     {estimate.plateNumber}
-                  </span>
+                  </CopyableEstimateText>
                 </div>,
-                estimate.area.join(', '),
-                <div className="estimate-content-cell" key={`${estimate.no}-content`}>{estimate.estimateContent}</div>,
-                estimate.repairType,
-                formatMoney(estimate.amount),
-                estimate.phone || '연락처 미입력',
+                <CopyableEstimateText key={`${estimate.no}-area`} value={estimateAreaText}>{estimateAreaText}</CopyableEstimateText>,
+                <CopyableEstimateText className="estimate-content-cell" key={`${estimate.no}-content`} value={estimate.estimateContent}>{estimate.estimateContent}</CopyableEstimateText>,
+                <CopyableEstimateText key={`${estimate.no}-repair-type`} value={estimate.repairType} />,
+                <CopyableEstimateText key={`${estimate.no}-amount`} value={amountText}>{amountText}</CopyableEstimateText>,
+                <CopyableEstimateText key={`${estimate.no}-phone`} value={phoneText}>{phoneText}</CopyableEstimateText>,
                 <select className={`estimate-status-select ${isStockCheck ? 'stock-check' : ''} ${displayStatus === '확정' ? 'confirmed' : ''}`} key={`${estimate.no}-status`} onChange={(event) => updateEstimateListStatus(estimate, event.target.value as EstimateListStatus)} value={displayStatus}>
                   {ESTIMATE_LIST_STATUS_OPTIONS.map((status) => <option key={status}>{status}</option>)}
                 </select>,
                 <div className="estimate-followup-actions" key={`${estimate.no}-actions`}>
                   <button className="mini-button" onClick={() => openEstimateWorkConversion(estimate)} type="button">작업전환</button>
+                  <button className="mini-button" onClick={() => setSelectedEstimate(estimate)} type="button">상세</button>
                 </div>,
               ];
             })}
@@ -6305,6 +6350,7 @@ function EstimatesPage({
           </div>
         )}
       </Panel>
+      {copyNotice ? <div className="estimate-copy-toast" role="status">{copyNotice}</div> : null}
 
       {selectedEstimate ? (
         <EstimateDetailModal
@@ -6465,6 +6511,8 @@ function EstimateRegistrationPanel({
   const claimTypeValue = repairDivision === '일반' ? '일반' : `보험(${(insuranceTypes.length > 0 ? insuranceTypes : [ESTIMATE_DEFAULT_INSURANCE_TYPE]).join(', ')})`;
   const nativeEstimateDate = /^\d{4}-\d{2}-\d{2}$/.test(estimateDate) ? estimateDate : '';
   const nativePurchaseDate = /^\d{4}-\d{2}-\d{2}$/.test(purchaseDate) ? purchaseDate : '';
+  const clientFieldClass = (span: 3 | 4 | 6 | 8 | 12, extraClass = '') =>
+    `estimate-client-field-unit span-${span} ${extraClass}`.trim();
 
   function formatPhoneInputValue(value: string) {
     const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -6553,109 +6601,129 @@ function EstimateRegistrationPanel({
       <input name="scheduledWorkDate" type="hidden" value="" />
 
       <div className="estimate-client-grid">
-        <label className="estimate-client-label" htmlFor="client-estimate-date">견적일자</label>
-        <div className="estimate-client-icon-input date">
-          <input
-            id="client-estimate-date"
-            inputMode="numeric"
-            onChange={(event) => setEstimateDate(normalizeEstimateDateInput(event.target.value))}
-            placeholder="YYYY-MM-DD"
-            required
-            value={estimateDate}
-          />
-          <CalendarDays size={15} />
-          <input
-            aria-label="견적일자 날짜 선택"
-            className="estimate-client-date-native"
-            onChange={(event) => setEstimateDate(event.target.value)}
-            type="date"
-            value={nativeEstimateDate}
-          />
+        <div className={clientFieldClass(3)}>
+          <label className="estimate-client-label" htmlFor="client-estimate-date">견적일자</label>
+          <div className="estimate-client-icon-input date">
+            <input
+              id="client-estimate-date"
+              inputMode="numeric"
+              onChange={(event) => setEstimateDate(normalizeEstimateDateInput(event.target.value))}
+              placeholder="YYYY-MM-DD"
+              required
+              value={estimateDate}
+            />
+            <CalendarDays size={15} />
+            <input
+              aria-label="견적일자 날짜 선택"
+              className="estimate-client-date-native"
+              onChange={(event) => setEstimateDate(event.target.value)}
+              type="date"
+              value={nativeEstimateDate}
+            />
+          </div>
         </div>
 
-        <label className="estimate-client-label" htmlFor="client-estimator">견적담당자</label>
-        <select id="client-estimator" name="estimatorName" onChange={(event) => setEstimatorName(event.target.value)} required value={estimatorName}>
-          <option value="">선택</option>
-          {estimatorOptions.map((name) => <option key={name}>{name}</option>)}
-        </select>
+        <div className={clientFieldClass(3)}>
+          <label className="estimate-client-label" htmlFor="client-estimator">견적담당자</label>
+          <select id="client-estimator" name="estimatorName" onChange={(event) => setEstimatorName(event.target.value)} required value={estimatorName}>
+            <option value="">선택</option>
+            {estimatorOptions.map((name) => <option key={name}>{name}</option>)}
+          </select>
+        </div>
 
-        <span className="estimate-client-label">수리구분</span>
-        <div className="estimate-repair-control">
-          <div aria-label="수리구분" className="estimate-repair-primary" role="radiogroup">
-            <label className={repairDivision === '일반' ? 'selected' : ''}>
-              <input checked={repairDivision === '일반'} name="repairDivision" onChange={() => selectRepairDivision('일반')} type="radio" />
-              일반
-            </label>
-            <label className={repairDivision === '보험' ? 'selected' : ''}>
-              <input checked={repairDivision === '보험'} name="repairDivision" onChange={() => selectRepairDivision('보험')} type="radio" />
-              보험
-            </label>
+        <div className={clientFieldClass(6, 'estimate-client-repair-field')}>
+          <span className="estimate-client-label">수리구분</span>
+          <div className="estimate-repair-control">
+            <div aria-label="수리구분" className="estimate-repair-primary" role="radiogroup">
+              <label className={repairDivision === '일반' ? 'selected' : ''}>
+                <input checked={repairDivision === '일반'} name="repairDivision" onChange={() => selectRepairDivision('일반')} type="radio" />
+                일반
+              </label>
+              <label className={repairDivision === '보험' ? 'selected' : ''}>
+                <input checked={repairDivision === '보험'} name="repairDivision" onChange={() => selectRepairDivision('보험')} type="radio" />
+                보험
+              </label>
+            </div>
+            {repairDivision === '보험' ? (
+              <div aria-label="보험 유형" className="estimate-insurance-options">
+                <span>보험유형</span>
+                {ESTIMATE_INSURANCE_TYPE_OPTIONS.map((type) => (
+                  <label key={type} className={insuranceTypes.includes(type) ? 'selected' : ''}>
+                    <input checked={insuranceTypes.includes(type)} onChange={() => toggleInsuranceType(type)} type="checkbox" />
+                    {type}
+                  </label>
+                ))}
+              </div>
+            ) : null}
           </div>
-          {repairDivision === '보험' ? (
-            <div aria-label="보험 유형" className="estimate-insurance-options">
-              <span>보험유형</span>
-              {ESTIMATE_INSURANCE_TYPE_OPTIONS.map((type) => (
-                <label key={type} className={insuranceTypes.includes(type) ? 'selected' : ''}>
-                  <input checked={insuranceTypes.includes(type)} onChange={() => toggleInsuranceType(type)} type="checkbox" />
-                  {type}
-                </label>
+        </div>
+
+        <div className={clientFieldClass(8, 'estimate-client-outsource')}>
+          <span className="estimate-client-label">외주여부</span>
+          <div className="estimate-client-outsource-control">
+            <div className="estimate-client-checks">
+              {ESTIMATE_OUTSOURCE_OPTIONS.map((type) => (
+                <label key={type}><input checked={outsourceType === type} onChange={() => updateOutsourceType(type)} type="checkbox" />{type}</label>
               ))}
             </div>
-          ) : null}
+            <div className="estimate-client-icon-input">
+              <input
+                onChange={(event) => setOutsourcePartner(event.target.value)}
+                placeholder={outsourceType === '일반' ? '' : '거래처 검색'}
+                required={outsourceType !== '일반'}
+                value={outsourcePartner}
+              />
+              <button onClick={() => openLookup('outsourcePartner', outsourcePartner)} title="거래처 검색" type="button">
+                <Search size={23} />
+              </button>
+            </div>
+          </div>
         </div>
 
-        <span className="estimate-client-label">외주여부</span>
-        <div className="estimate-client-outsource">
-          <div className="estimate-client-checks">
-            {ESTIMATE_OUTSOURCE_OPTIONS.map((type) => (
-              <label key={type}><input checked={outsourceType === type} onChange={() => updateOutsourceType(type)} type="checkbox" />{type}</label>
-            ))}
-          </div>
+        <div className={clientFieldClass(4)}>
+          <label className="estimate-client-label" htmlFor="client-phone">연락처</label>
+          <input id="client-phone" inputMode="tel" onChange={(event) => setPhone(formatPhoneInputValue(event.target.value))} value={phone} />
+        </div>
+
+        <div className={clientFieldClass(4)}>
+          <label className="estimate-client-label" htmlFor="client-vehicle">차종</label>
           <div className="estimate-client-icon-input">
-            <input
-              onChange={(event) => setOutsourcePartner(event.target.value)}
-              placeholder={outsourceType === '일반' ? '' : '거래처 검색'}
-              required={outsourceType !== '일반'}
-              value={outsourcePartner}
-            />
-            <button onClick={() => openLookup('outsourcePartner', outsourcePartner)} title="거래처 검색" type="button">
+            <input id="client-vehicle" name="vehicle" onChange={(event) => setVehicle(event.target.value)} value={vehicle} />
+            <button onClick={() => openLookup('vehicle', vehicle)} title="차종 검색" type="button">
               <Search size={23} />
             </button>
           </div>
         </div>
 
-        <label className="estimate-client-label" htmlFor="client-phone">연락처</label>
-        <input id="client-phone" inputMode="tel" onChange={(event) => setPhone(formatPhoneInputValue(event.target.value))} value={phone} />
-
-        <label className="estimate-client-label" htmlFor="client-vehicle">차종</label>
-        <div className="estimate-client-icon-input">
-          <input id="client-vehicle" name="vehicle" onChange={(event) => setVehicle(event.target.value)} value={vehicle} />
-          <button onClick={() => openLookup('vehicle', vehicle)} title="차종 검색" type="button">
-            <Search size={23} />
-          </button>
+        <div className={clientFieldClass(4)}>
+          <label className="estimate-client-label" htmlFor="client-plate">차량번호</label>
+          <input id="client-plate" name="plateNumber" onChange={(event) => setPlateNumber(event.target.value)} value={plateNumber} />
         </div>
 
-        <label className="estimate-client-label" htmlFor="client-plate">차량번호</label>
-        <input id="client-plate" name="plateNumber" onChange={(event) => setPlateNumber(event.target.value)} value={plateNumber} />
+        <div className={clientFieldClass(4)}>
+          <label className="estimate-client-label" htmlFor="client-vin">차대번호</label>
+          <input id="client-vin" onChange={(event) => setVin(event.target.value)} value={vin} />
+        </div>
 
-        <label className="estimate-client-label" htmlFor="client-vin">차대번호</label>
-        <input id="client-vin" onChange={(event) => setVin(event.target.value)} value={vin} />
+        <div className={clientFieldClass(6)}>
+          <label className="estimate-client-label" htmlFor="client-repair-area">수리부위</label>
+          <input id="client-repair-area" name="repairArea" onChange={(event) => setRepairArea(event.target.value)} value={repairArea} />
+        </div>
 
-        <label className="estimate-client-label" htmlFor="client-repair-area">수리부위</label>
-        <input className="span-3" id="client-repair-area" name="repairArea" onChange={(event) => setRepairArea(event.target.value)} value={repairArea} />
-
-        <label className="estimate-client-label" htmlFor="client-part-no">품번/썬팅</label>
-        <div className="estimate-client-split">
-          <div className="estimate-client-icon-input">
-            <input id="client-part-no" name="partNo" onChange={(event) => setPartNo(event.target.value)} value={partNo} />
-            <button onClick={() => openLookup('partNo', partNo)} title="품번 검색" type="button">
-              <Search size={22} />
-            </button>
+        <div className={clientFieldClass(6)}>
+          <label className="estimate-client-label" htmlFor="client-part-no">품번/썬팅</label>
+          <div className="estimate-client-split">
+            <div className="estimate-client-icon-input">
+              <input id="client-part-no" name="partNo" onChange={(event) => setPartNo(event.target.value)} value={partNo} />
+              <button onClick={() => openLookup('partNo', partNo)} title="품번 검색" type="button">
+                <Search size={22} />
+              </button>
+            </div>
+            <input aria-label="썬팅 사양" onChange={(event) => setTintSpec(event.target.value)} value={tintSpec} />
           </div>
-          <input aria-label="썬팅 사양" onChange={(event) => setTintSpec(event.target.value)} value={tintSpec} />
         </div>
 
-        <label className="estimate-client-field estimate-client-content-field" htmlFor="client-estimate-content">
+        <label className={clientFieldClass(8, 'estimate-client-content-field')} htmlFor="client-estimate-content">
           <span className="estimate-client-label">견적내용</span>
           <AutoResizeTextarea
             id="client-estimate-content"
@@ -6668,25 +6736,29 @@ function EstimateRegistrationPanel({
           />
         </label>
 
-        <div className="estimate-client-payment">
+        <div className={clientFieldClass(4, 'estimate-client-payment')}>
           <div className="estimate-client-money-row">
-            <label className="estimate-client-label" htmlFor="client-replacement-amount">교체/면책금</label>
-            <input
-              id="client-replacement-amount"
-              inputMode="numeric"
-              onChange={(event) => updateCalculatedAmount(event.target.value, tintAmount)}
-              value={replacementAmount}
-            />
-            <label className="estimate-client-label compact" htmlFor="client-tint-amount">썬팅</label>
-            <input
-              id="client-tint-amount"
-              inputMode="numeric"
-              onChange={(event) => updateCalculatedAmount(replacementAmount, event.target.value)}
-              value={tintAmount}
-            />
+            <label className="estimate-client-subfield" htmlFor="client-replacement-amount">
+              <span>교체/면책금</span>
+              <input
+                id="client-replacement-amount"
+                inputMode="numeric"
+                onChange={(event) => updateCalculatedAmount(event.target.value, tintAmount)}
+                value={replacementAmount}
+              />
+            </label>
+            <label className="estimate-client-subfield" htmlFor="client-tint-amount">
+              <span>썬팅</span>
+              <input
+                id="client-tint-amount"
+                inputMode="numeric"
+                onChange={(event) => updateCalculatedAmount(replacementAmount, event.target.value)}
+                value={tintAmount}
+              />
+            </label>
           </div>
-          <div className="estimate-client-payment-row">
-            <label className="estimate-client-label" htmlFor="client-payment-amount">결제금액</label>
+          <label className="estimate-client-subfield" htmlFor="client-payment-amount">
+            <span>결제금액</span>
             <input
               id="client-payment-amount"
               inputMode="numeric"
@@ -6694,9 +6766,9 @@ function EstimateRegistrationPanel({
               onChange={(event) => setPaymentAmount(formatMoneyInputValue(event.target.value))}
               value={paymentAmount}
             />
-          </div>
-          <div className="estimate-client-payment-row payment-methods">
-            <span className="estimate-client-label">결제구분</span>
+          </label>
+          <div className="estimate-client-payment-methods">
+            <span>결제구분</span>
             <div className="estimate-client-checks">
               {['카드', '계좌', '현금'].map((method) => (
                 <label key={method}><input checked={paymentMethods.includes(method)} onChange={() => togglePaymentMethod(method)} type="checkbox" />{method}</label>
@@ -6705,38 +6777,44 @@ function EstimateRegistrationPanel({
           </div>
         </div>
 
-        <label className="estimate-client-label" htmlFor="client-purchase-partner">매입처</label>
-        <div className="estimate-client-icon-input">
-          <input id="client-purchase-partner" onChange={(event) => setPurchasePartner(event.target.value)} value={purchasePartner} />
-          <button onClick={() => openLookup('purchasePartner', purchasePartner)} title="매입처 검색" type="button">
-            <Search size={23} />
-          </button>
+        <div className={clientFieldClass(4)}>
+          <label className="estimate-client-label" htmlFor="client-purchase-partner">매입처</label>
+          <div className="estimate-client-icon-input">
+            <input id="client-purchase-partner" onChange={(event) => setPurchasePartner(event.target.value)} value={purchasePartner} />
+            <button onClick={() => openLookup('purchasePartner', purchasePartner)} title="매입처 검색" type="button">
+              <Search size={23} />
+            </button>
+          </div>
         </div>
 
-        <label className="estimate-client-label" htmlFor="client-purchase-amount">매입금액</label>
-        <input
-          id="client-purchase-amount"
-          inputMode="numeric"
-          onChange={(event) => setPurchaseAmount(formatMoneyInputValue(event.target.value))}
-          value={purchaseAmount}
-        />
-
-        <label className="estimate-client-label" htmlFor="client-purchase-date">매입예정일</label>
-        <div className="estimate-client-icon-input date">
+        <div className={clientFieldClass(4)}>
+          <label className="estimate-client-label" htmlFor="client-purchase-amount">매입금액</label>
           <input
-            id="client-purchase-date"
+            id="client-purchase-amount"
             inputMode="numeric"
-            onChange={(event) => setPurchaseDate(normalizeEstimateDateInput(event.target.value))}
-            value={purchaseDate}
+            onChange={(event) => setPurchaseAmount(formatMoneyInputValue(event.target.value))}
+            value={purchaseAmount}
           />
-          <CalendarDays size={15} />
-          <input
-            aria-label="매입예정일 날짜 선택"
-            className="estimate-client-date-native"
-            onChange={(event) => setPurchaseDate(event.target.value)}
-            type="date"
-            value={nativePurchaseDate}
-          />
+        </div>
+
+        <div className={clientFieldClass(4)}>
+          <label className="estimate-client-label" htmlFor="client-purchase-date">매입예정일</label>
+          <div className="estimate-client-icon-input date">
+            <input
+              id="client-purchase-date"
+              inputMode="numeric"
+              onChange={(event) => setPurchaseDate(normalizeEstimateDateInput(event.target.value))}
+              value={purchaseDate}
+            />
+            <CalendarDays size={15} />
+            <input
+              aria-label="매입예정일 날짜 선택"
+              className="estimate-client-date-native"
+              onChange={(event) => setPurchaseDate(event.target.value)}
+              type="date"
+              value={nativePurchaseDate}
+            />
+          </div>
         </div>
       </div>
 
